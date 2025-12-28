@@ -164,6 +164,51 @@ char * IColumn::serializeValueIntoMemory(size_t /* n */, char * /* memory */, co
     throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method serializeValueIntoMemory is not supported for {}", getName());
 }
 
+void IColumn::batchSerializeValueIntoMemory(
+    std::vector<char *> & /* memories */, const IColumn::SerializationSettings * /* settings */) const
+{
+    throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method batchSerializeValueIntoMemory is not supported for {}", getName());
+}
+
+void IColumn::batchSerializeValueIntoMemoryWithNull(
+    std::vector<char *> & /* memories */, const UInt8 * /* is_null */, const IColumn::SerializationSettings * /* settings */) const
+{
+    throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method batchSerializeValueIntoMemoryWithNull is not supported for {}", getName());
+}
+
+template <typename Derived, typename Parent>
+void IColumnHelper<Derived, Parent>::batchSerializeValueIntoMemoryWithNull(
+    std::vector<char *> & memories, const UInt8 * is_null, const IColumn::SerializationSettings * settings) const
+{
+    const auto & self = static_cast<const Derived &>(*this);
+    chassert(memories.size() == self.size());
+
+    if (!is_null)
+    {
+        self.batchSerializeValueIntoMemory(memories, settings);
+        return;
+    }
+
+    size_t rows = self.size();
+    for (size_t i = 0; i < rows; ++i)
+    {
+        *memories[i] = is_null[i];
+        ++memories[i];
+        if (!is_null[i])
+            memories[i] = self.serializeValueIntoMemory(i, memories[i], settings);
+    }
+}
+
+template <typename Derived, typename Parent>
+void IColumnHelper<Derived, Parent>::batchSerializeValueIntoMemory(
+    std::vector<char *> & memories, const IColumn::SerializationSettings * settings) const
+{
+    const auto & self = static_cast<const Derived &>(*this);
+    chassert(memories.size() == self.size());
+    for (size_t i = 0; i < self.size(); ++i)
+        memories[i] = self.serializeValueIntoMemory(i, memories[i], settings);
+}
+
 std::string_view IColumn::serializeValueIntoArenaWithNull(size_t n, Arena & arena, char const *& begin, const UInt8 * is_null, const SerializationSettings * settings) const
 {
     if (is_null)

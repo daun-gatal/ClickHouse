@@ -328,6 +328,11 @@ public:
 
     virtual char * serializeValueIntoMemoryWithNull(size_t /* n */, char * /* memory */, const UInt8 * /* is_null */, const SerializationSettings * settings) const;
 
+    virtual void batchSerializeValueIntoMemory(std::vector<char *> & /* memories */, const SerializationSettings *) const;
+
+    virtual void batchSerializeValueIntoMemoryWithNull(
+        std::vector<char *> & /* memories */, const UInt8 * /* is_null */, const SerializationSettings *) const;
+
     /// Calculate all the sizes of serialized data (as in the methods above) in the column and add to `sizes`.
     /// If `is_null` is not nullptr, also take null byte into account.
     /// This is currently used to facilitate the allocation of memory for an entire continuous row
@@ -921,6 +926,11 @@ private:
 
     /// Fills column values from list of columns and row numbers
     void fillFromBlocksAndRowNumbers(const DataTypePtr & type, size_t source_column_index_in_block, ColumnsWithRowNumbers columns_with_row_numbers) override;
+
+    void batchSerializeValueIntoMemory(std::vector<char *> & memories, const IColumn::SerializationSettings * settings) const override;
+
+    void batchSerializeValueIntoMemoryWithNull(
+        std::vector<char *> & memories, const UInt8 * is_null, const IColumn::SerializationSettings * settings) const override;
 };
 
 }

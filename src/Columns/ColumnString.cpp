@@ -265,6 +265,24 @@ void ColumnString::collectSerializedValueSizes(PaddedPODArray<UInt64> & sizes, c
     }
 }
 
+void ColumnString::batchSerializeValueIntoMemory(std::vector<char *> & memories, const IColumn::SerializationSettings * settings) const
+{
+    chassert(memories.size() == size());
+    bool serialize_string_with_zero_byte = settings && settings->serialize_string_with_zero_byte;
+    for (size_t i = 0; i < memories.size(); ++i)
+    {
+        size_t string_size = sizeAt(i) + serialize_string_with_zero_byte;
+        size_t offset = offsetAt(i);
+
+        memcpy(memories[i], &string_size, sizeof(string_size));
+        memories[i] += sizeof(string_size);
+        memcpy(memories[i], &chars[offset], string_size - serialize_string_with_zero_byte);
+        if (serialize_string_with_zero_byte)
+            *(memories[i] + string_size - 1) = 0;
+        memories[i] += string_size;
+    }
+}
+
 void ColumnString::deserializeAndInsertFromArena(ReadBuffer & in, const SerializationSettings * settings)
 {
     size_t string_size;

@@ -392,19 +392,19 @@ struct HashMethodSerialized
                     }
                 }
 
-                if (optimize && typeid_cast<const ColumnString *>(key_column))
-                    string_key_columns.emplace_back(static_cast<const ColumnString *>(key_column), null_map, pos++);
-                else if (const auto * ptr = dynamic_cast<const ColumnFixedSizeHelper *>(key_column); ptr && optimize)
-                    fixed_size_key_columns.emplace_back(ptr, null_map, pos++);
-                else
-                    other_key_columns.emplace_back(key_column, null_map, pos++);
+                // if (optimize && typeid_cast<const ColumnString *>(key_column))
+                string_key_columns.emplace_back(static_cast<const ColumnString *>(key_column), null_map, pos++);
+                // else if (const auto * ptr = dynamic_cast<const ColumnFixedSizeHelper *>(key_column); ptr && optimize)
+                //     fixed_size_key_columns.emplace_back(ptr, null_map, pos++);
+                // else
+                //     other_key_columns.emplace_back(key_column, null_map, pos++);
             }
         }
 
         bool optimize = true;
         std::vector<ColumnWithNullMap<ColumnString>> string_key_columns;
-        std::vector<ColumnWithNullMap<ColumnFixedSizeHelper>> fixed_size_key_columns;
-        std::vector<ColumnWithNullMap<IColumn>> other_key_columns;
+        // std::vector<ColumnWithNullMap<ColumnFixedSizeHelper>> fixed_size_key_columns;
+        // std::vector<ColumnWithNullMap<IColumn>> other_key_columns;
     };
 
     PaddedPODArray<UInt64> row_sizes;
@@ -430,10 +430,10 @@ struct HashMethodSerialized
         {
             for (const auto & [key_column, null_map, _] : key_columns.string_key_columns)
                 key_column->collectSerializedValueSizes(row_sizes, null_map, &serialization_settings);
-            for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
-                key_column->collectSerializedValueSizes(row_sizes, null_map, &serialization_settings);
-            for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
-                key_column->collectSerializedValueSizes(row_sizes, null_map, &serialization_settings);
+            // for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
+            //     key_column->collectSerializedValueSizes(row_sizes, null_map, &serialization_settings);
+            // for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
+            //     key_column->collectSerializedValueSizes(row_sizes, null_map, &serialization_settings);
         }
     }
 
@@ -447,27 +447,29 @@ struct HashMethodSerialized
 
             char * memory = pool.allocContinue(row_sizes[row], begin);
             std::string_view key(memory, row_sizes[row]);
-            for (const auto & [key_column, null_map, _] : key_columns.string_key_columns)
+            // for (const auto & [key_column, null_map, _] : key_columns.string_key_columns)
+            for (size_t i = 0; i < 2; ++i)
             {
+                const auto & [key_column, null_map, _] = key_columns.string_key_columns[i];
                 if constexpr (nullable)
                     memory = key_column->serializeValueIntoMemoryWithNull(row, memory, null_map, &serialization_settings);
                 else
                     memory = key_column->serializeValueIntoMemory(row, memory, &serialization_settings);
             }
-            for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
-            {
-                if constexpr (nullable)
-                    memory = key_column->serializeValueIntoMemoryWithNull(row, memory, null_map, &serialization_settings);
-                else
-                    memory = key_column->serializeValueIntoMemory(row, memory, &serialization_settings);
-            }
-            for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
-            {
-                if constexpr (nullable)
-                    memory = key_column->serializeValueIntoMemoryWithNull(row, memory, null_map, &serialization_settings);
-                else
-                    memory = key_column->serializeValueIntoMemory(row, memory, &serialization_settings);
-            }
+            // for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
+            // {
+            //     if constexpr (nullable)
+            //         memory = key_column->serializeValueIntoMemoryWithNull(row, memory, null_map, &serialization_settings);
+            //     else
+            //         memory = key_column->serializeValueIntoMemory(row, memory, &serialization_settings);
+            // }
+            // for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
+            // {
+            //     if constexpr (nullable)
+            //         memory = key_column->serializeValueIntoMemoryWithNull(row, memory, null_map, &serialization_settings);
+            //     else
+            //         memory = key_column->serializeValueIntoMemory(row, memory, &serialization_settings);
+            // }
 
             return SerializedKeyHolder{key, pool};
         }
@@ -476,27 +478,29 @@ struct HashMethodSerialized
             const char * begin = nullptr;
 
             size_t sum_size = 0;
-            for (const auto & [key_column, null_map, _] : key_columns.string_key_columns)
+            // for (const auto & [key_column, null_map, _] : key_columns.string_key_columns)
+            for (size_t i = 0; i < 2; ++i)
             {
+                const auto & [key_column, null_map, _] = key_columns.string_key_columns[i];
                 if constexpr (nullable)
                     sum_size += key_column->serializeValueIntoArenaWithNull(row, pool, begin, null_map, &serialization_settings).size();
                 else
                     sum_size += key_column->serializeValueIntoArena(row, pool, begin, &serialization_settings).size();
             }
-            for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
-            {
-                if constexpr (nullable)
-                    sum_size += key_column->serializeValueIntoArenaWithNull(row, pool, begin, null_map, &serialization_settings).size();
-                else
-                    sum_size += key_column->serializeValueIntoArena(row, pool, begin, &serialization_settings).size();
-            }
-            for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
-            {
-                if constexpr (nullable)
-                    sum_size += key_column->serializeValueIntoArenaWithNull(row, pool, begin, null_map, &serialization_settings).size();
-                else
-                    sum_size += key_column->serializeValueIntoArena(row, pool, begin, &serialization_settings).size();
-            }
+            // for (const auto & [key_column, null_map, _] : key_columns.fixed_size_key_columns)
+            // {
+            //     if constexpr (nullable)
+            //         sum_size += key_column->serializeValueIntoArenaWithNull(row, pool, begin, null_map, &serialization_settings).size();
+            //     else
+            //         sum_size += key_column->serializeValueIntoArena(row, pool, begin, &serialization_settings).size();
+            // }
+            // for (const auto & [key_column, null_map, _] : key_columns.other_key_columns)
+            // {
+            //     if constexpr (nullable)
+            //         sum_size += key_column->serializeValueIntoArenaWithNull(row, pool, begin, null_map, &serialization_settings).size();
+            //     else
+            //         sum_size += key_column->serializeValueIntoArena(row, pool, begin, &serialization_settings).size();
+            // }
 
             return SerializedKeyHolder{{begin, sum_size}, pool};
         }
@@ -515,16 +519,16 @@ struct HashMethodSerialized
             new_key_columns.push_back(key_columns_[original_pos]);
             new_key_sizes.push_back(sizes[original_pos]);
         }
-        for (const auto & [key_column, null_map, original_pos] : new_columns.fixed_size_key_columns)
-        {
-            new_key_columns.push_back(key_columns_[original_pos]);
-            new_key_sizes.push_back(sizes[original_pos]);
-        }
-        for (const auto & [key_column, null_map, original_pos] : new_columns.other_key_columns)
-        {
-            new_key_columns.push_back(key_columns_[original_pos]);
-            new_key_sizes.push_back(sizes[original_pos]);
-        }
+        // for (const auto & [key_column, null_map, original_pos] : new_columns.fixed_size_key_columns)
+        // {
+        //     new_key_columns.push_back(key_columns_[original_pos]);
+        //     new_key_sizes.push_back(sizes[original_pos]);
+        // }
+        // for (const auto & [key_column, null_map, original_pos] : new_columns.other_key_columns)
+        // {
+        //     new_key_columns.push_back(key_columns_[original_pos]);
+        //     new_key_sizes.push_back(sizes[original_pos]);
+        // }
         key_columns_ = std::move(new_key_columns);
         return new_key_sizes;
     }
