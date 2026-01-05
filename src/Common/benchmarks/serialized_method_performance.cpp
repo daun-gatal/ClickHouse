@@ -14,8 +14,6 @@ using namespace DB;
 using namespace DB::ColumnsHashing;
 
 
-static constexpr size_t ROWS = DEFAULT_BLOCK_SIZE;
-
 template <typename Value, typename Mapped, bool nullable, bool prealloc>
 struct HashMethodSerializedNew
     : public columns_hashing_impl::HashMethodBase<HashMethodSerializedNew<Value, Mapped, nullable, prealloc>, Value, Mapped, false>
@@ -343,7 +341,7 @@ struct HashMethodSerializedOld
     }
 };
 
-template <template <typename Value, typename Mapped, bool nullable, bool prealloc> typename HashMethod>
+template <template <typename Value, typename Mapped, bool nullable, bool prealloc> typename HashMethod, size_t Rows>
 void BM_serializedMethod([[maybe_unused]] benchmark::State & state)
 {
     MutableColumns cols(2);
@@ -353,7 +351,7 @@ void BM_serializedMethod([[maybe_unused]] benchmark::State & state)
     pcg64 generator(42);
     std::uniform_int_distribution<size_t> dist;
 
-    for (size_t i = 0; i < ROWS; ++i)
+    for (size_t i = 0; i < Rows; ++i)
     {
         cols[0]->insert("key" + std::to_string(i));
         cols[1]->insert("value" + std::to_string(dist(generator)));
@@ -364,7 +362,7 @@ void BM_serializedMethod([[maybe_unused]] benchmark::State & state)
     for (const auto & col : cols)
         key_columns.push_back(col.get());
 
-    std::vector<size_t> indexes(ROWS);
+    std::vector<size_t> indexes(Rows);
     std::iota(indexes.begin(), indexes.end(), 0);
     std::shuffle(indexes.begin(), indexes.end(), generator);
 
@@ -382,15 +380,15 @@ void BM_serializedMethod([[maybe_unused]] benchmark::State & state)
         using Value = HashTable::value_type;
         using Mapped = HashTable::mapped_type;
 
-        HashTable table(ROWS);
+        HashTable table(Rows);
         HashMethod<Value, Mapped, false, true> method(
             key_columns,
             {/*key_sizes*/},
             context,
             /*optimize_=*/true);
 
-        Arena pool(4190208);
-        for (size_t row = 0; row < ROWS; ++row)
+        Arena pool;
+        for (size_t row = 0; row < Rows; ++row)
         {
             auto holder = method.getKeyHolder(row, pool);
             benchmark::DoNotOptimize(holder.key.data());
@@ -409,5 +407,32 @@ void BM_serializedMethod([[maybe_unused]] benchmark::State & state)
 //     return 0;
 // }
 
-BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld);
-BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew);
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 32)->Name("HashMethodSerializedOld/5");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 64)->Name("HashMethodSerializedOld/6");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 128)->Name("HashMethodSerializedOld/7");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 256)->Name("HashMethodSerializedOld/8");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 512)->Name("HashMethodSerializedOld/9");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 1024)->Name("HashMethodSerializedOld/10");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 2048)->Name("HashMethodSerializedOld/11");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 4096)->Name("HashMethodSerializedOld/12");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 8192)->Name("HashMethodSerializedOld/13");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 16384)->Name("HashMethodSerializedOld/14");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 32768)->Name("HashMethodSerializedOld/15");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 65536)->Name("HashMethodSerializedOld/16");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 131072)->Name("HashMethodSerializedOld/17");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedOld, 262144)->Name("HashMethodSerializedOld/18");
+
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 32)->Name("HashMethodSerializedNew/5");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 64)->Name("HashMethodSerializedNew/6");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 128)->Name("HashMethodSerializedNew/7");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 256)->Name("HashMethodSerializedNew/8");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 512)->Name("HashMethodSerializedNew/9");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 1024)->Name("HashMethodSerializedNew/10");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 2048)->Name("HashMethodSerializedNew/11");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 4096)->Name("HashMethodSerializedNew/12");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 8192)->Name("HashMethodSerializedNew/13");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 16384)->Name("HashMethodSerializedNew/14");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 32768)->Name("HashMethodSerializedNew/15");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 65536)->Name("HashMethodSerializedNew/16");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 131072)->Name("HashMethodSerializedNew/17");
+BENCHMARK_TEMPLATE(BM_serializedMethod, HashMethodSerializedNew, 262144)->Name("HashMethodSerializedNew/18");
