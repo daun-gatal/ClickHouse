@@ -476,19 +476,21 @@ void WindowTransform::advancePartitionEnd()
     // case when it still has no rows.
     assert(prev_frame_start < partition_end || partition_start == partition_end);
     assert(first_block_number <= prev_frame_start.block);
+
+    const auto * reference_columns = inputAt(prev_frame_start).data();
+    const auto * compared_columns = inputAt(partition_end).data();
+    const auto reference_row = prev_frame_start.row;
     const auto block_rows = blockRowsNumber(partition_end);
     for (; partition_end.row < block_rows; ++partition_end.row)
     {
         size_t i = 0;
         for (; i < partition_by_columns; ++i)
         {
-            const auto * reference_column
-                = inputAt(prev_frame_start)[partition_by_indices[i]].get();
-            const auto * compared_column
-                = inputAt(partition_end)[partition_by_indices[i]].get();
+            const auto * reference_column = reference_columns[partition_by_indices[i]].get();
+            const auto * compared_column = compared_columns[partition_by_indices[i]].get();
 
             if (compared_column->compareAt(partition_end.row,
-                    prev_frame_start.row, *reference_column,
+                    reference_row, *reference_column,
                     1 /* nan_direction_hint */) != 0)
             {
                 break;
@@ -642,14 +644,17 @@ void WindowTransform::advanceFrameStartRangeOffset()
     const int direction = window_description.order_by[0].direction;
     const bool preceding = window_description.frame.begin_preceding
         == (direction > 0);
-    const auto * reference_column
-        = inputAt(current_row)[order_by_indices[0]].get();
+
+    const size_t order_by_col_idx = order_by_indices[0];
+    const auto * reference_cols = inputAt(current_row).data();
+    const auto * reference_column = reference_cols[order_by_col_idx].get();
+
     for (; frame_start < partition_end; advanceRowNumber(frame_start))
     {
         // The first frame value is [current_row] with offset, so we advance
         // while [frames_start] < [current_row] with offset.
-        const auto * compared_column
-            = inputAt(frame_start)[order_by_indices[0]].get();
+        const auto * compared_cols = inputAt(frame_start).data();
+        const auto * compared_column = compared_cols[order_by_col_idx].get();
         if (compare_values_with_offset(compared_column, frame_start.row,
             reference_column, current_row.row,
             window_description.frame.begin_offset,
@@ -731,7 +736,9 @@ void WindowTransform::advanceFrameStart()
     }
 }
 
-bool WindowTransform::arePeers(const RowNumber & x, const RowNumber & y) const
+bool WindowTransform::arePeersImpl(
+    const RowNumber & x, const RowNumber & y,
+    const ColumnPtr * columns_x, const ColumnPtr * columns_y) const
 {
     if (x == y)
     {
@@ -757,8 +764,8 @@ bool WindowTransform::arePeers(const RowNumber & x, const RowNumber & y) const
     size_t i = 0;
     for (; i < n; ++i)
     {
-        const auto * column_x = inputAt(x)[order_by_indices[i]].get();
-        const auto * column_y = inputAt(y)[order_by_indices[i]].get();
+        const auto * column_x = columns_x[order_by_indices[i]].get();
+        const auto * column_y = columns_y[order_by_indices[i]].get();
         if (column_x->compareAt(x.row, y.row, *column_y,
                 1 /* nan_direction_hint */) != 0)
         {
@@ -767,6 +774,11 @@ bool WindowTransform::arePeers(const RowNumber & x, const RowNumber & y) const
     }
 
     return true;
+}
+
+bool WindowTransform::arePeers(const RowNumber & x, const RowNumber & y) const
+{
+    return arePeersImpl(x, y, inputAt(x).data(), inputAt(y).data());
 }
 
 void WindowTransform::advanceFrameEndCurrentRow()
@@ -806,10 +818,16 @@ void WindowTransform::advanceFrameEndCurrentRow()
     // Equality would mean "no data to process", for which we checked above.
     assert(frame_end.row < rows_end);
 
+    // Cache column data for current_row and frame_end blocks to avoid repeated
+    // inputAt() calls. frame_end.block never changes in this loop (we only
+    // process one block here), so we can safely cache the columns.
+    const auto * columns_current = inputAt(current_row).data();
+    const auto * columns_frame = inputAt(frame_end).data();
+
     // Advance frame_end while it is still peers with the current row.
     for (; frame_end.row < rows_end; ++frame_end.row)
     {
-        if (!arePeers(current_row, frame_end))
+        if (!arePeersImpl(current_row, frame_end, columns_current, columns_frame))
         {
             frame_ended = true;
             return;
@@ -878,15 +896,18 @@ void WindowTransform::advanceFrameEndRangeOffset()
     const int direction = window_description.order_by[0].direction;
     const bool preceding = window_description.frame.end_preceding
         == (direction > 0);
-    const auto * reference_column
-        = inputAt(current_row)[order_by_indices[0]].get();
+
+    const size_t order_by_col_idx = order_by_indices[0];
+    const auto * reference_cols = inputAt(current_row).data();
+    const auto * reference_column = reference_cols[order_by_col_idx].get();
+
     for (; frame_end < partition_end; advanceRowNumber(frame_end))
     {
         // The last frame value is current_row with offset, and we need a
         // past-the-end pointer, so we advance while
         // [frame_end] <= [current_row] with offset.
-        const auto * compared_column
-            = inputAt(frame_end)[order_by_indices[0]].get();
+        const auto * compared_cols = inputAt(frame_end).data();
+        const auto * compared_column = compared_cols[order_by_col_idx].get();
         if (compare_values_with_offset(compared_column, frame_end.row,
             reference_column, current_row.row,
             window_description.frame.end_offset,
@@ -1011,10 +1032,10 @@ void WindowTransform::updateAggregationState()
 
             if (ws.cached_block_number != block_number)
             {
+                const auto * input_cols = block.input_columns.data();
                 for (size_t i = 0; i < ws.argument_column_indices.size(); ++i)
                 {
-                    ws.argument_columns[i] = block.input_columns[
-                        ws.argument_column_indices[i]].get();
+                    ws.argument_columns[i] = input_cols[ws.argument_column_indices[i]].get();
                 }
                 ws.cached_block_number = block_number;
             }
@@ -1178,92 +1199,109 @@ void WindowTransform::appendChunk(Chunk & chunk)
         // After that, try to calculate window functions for each next row.
         // We can continue until the end of partition or current end of data,
         // which is precisely the definition of `partition_end`.
-        while (current_row < partition_end)
+
+        ColumnPtr * peer_group_start_columns;
+        ColumnPtr * current_row_columns;
+
+        if (current_row < partition_end)
         {
-            // We now know that the current row is valid, so we can update the
-            // peer group start.
-            if (!arePeers(peer_group_start, current_row))
+            peer_group_start_columns = inputAt(peer_group_start).data();
+            current_row_columns = inputAt(current_row).data(); // current_row >= partition_end -> maybe crash idk
+
+            while (current_row < partition_end)
             {
-                peer_group_start = current_row;
-                peer_group_start_row_number = current_row_number;
-                ++peer_group_number;
+                // We now know that the current row is valid, so we can update the
+                // peer group start.
+                if (!arePeersImpl(peer_group_start, current_row, peer_group_start_columns, current_row_columns))
+                {
+                    peer_group_start = current_row;
+                    peer_group_start_columns = current_row_columns;
+                    peer_group_start_row_number = current_row_number;
+                    ++peer_group_number;
+                }
+
+                // Advance the frame start.
+                advanceFrameStart();
+
+                if (!frame_started)
+                {
+                    // Wait for more input data to find the start of frame.
+                    assert(!input_is_finished);
+                    assert(!partition_ended);
+                    return;
+                }
+
+                // frame_end must be greater or equal than frame_start, so if the
+                // frame_start is already past the current frame_end, we can start
+                // from it to save us some work.
+                if (frame_end < frame_start)
+                {
+                    frame_end = frame_start;
+                }
+
+                // Advance the frame end.
+                advanceFrameEnd();
+
+                if (!frame_ended)
+                {
+                    // Wait for more input data to find the end of frame.
+                    assert(!input_is_finished);
+                    assert(!partition_ended);
+                    return;
+                }
+
+                // The frame can be empty sometimes, e.g. the boundaries coincide
+                // or the start is after the partition end. But hopefully start is
+                // not after end.
+                assert(frame_started);
+                assert(frame_ended);
+                assert(frame_start <= frame_end);
+
+                // Now that we know the new frame boundaries, update the aggregation
+                // states. Theoretically we could do this simultaneously with moving
+                // the frame boundaries, but it would require some care not to
+                // perform unnecessary work while we are still looking for the frame
+                // start, so do it the simple way for now.
+                updateAggregationState();
+
+                // Write out the aggregation results.
+                writeOutCurrentRow();
+
+                if (isCancelled())
+                {
+                    // Good time to check if the query is cancelled. Checking once
+                    // per block might not be enough in severe quadratic cases.
+                    // Just leave the work halfway through and return, the 'prepare'
+                    // method will figure out what to do. Note that this doesn't
+                    // handle 'max_execution_time' and other limits, because these
+                    // limits are only updated between blocks. Eventually we should
+                    // start updating them in background and canceling the processor,
+                    // like we do for Ctrl+C handling.
+                    //
+                    // This class is final, so the check should hopefully be
+                    // devirtualized and become a single never-taken branch that is
+                    // basically free.
+                    return;
+                }
+
+                prev_frame_start = frame_start;
+                prev_frame_end = frame_end;
+
+                // Move to the next row. The frame will have to be recalculated.
+                // The peer group start is updated at the beginning of the loop,
+                // because current_row might now be past-the-end.
+                advanceRowNumber(current_row);
+
+                if (current_row.row == 0 && current_row != partition_end)
+                {
+                    current_row_columns = inputAt(current_row).data();
+                }
+
+                ++current_row_number;
+                first_not_ready_row = current_row;
+                frame_ended = false;
+                frame_started = false;
             }
-
-            // Advance the frame start.
-            advanceFrameStart();
-
-            if (!frame_started)
-            {
-                // Wait for more input data to find the start of frame.
-                assert(!input_is_finished);
-                assert(!partition_ended);
-                return;
-            }
-
-            // frame_end must be greater or equal than frame_start, so if the
-            // frame_start is already past the current frame_end, we can start
-            // from it to save us some work.
-            if (frame_end < frame_start)
-            {
-                frame_end = frame_start;
-            }
-
-            // Advance the frame end.
-            advanceFrameEnd();
-
-            if (!frame_ended)
-            {
-                // Wait for more input data to find the end of frame.
-                assert(!input_is_finished);
-                assert(!partition_ended);
-                return;
-            }
-
-            // The frame can be empty sometimes, e.g. the boundaries coincide
-            // or the start is after the partition end. But hopefully start is
-            // not after end.
-            assert(frame_started);
-            assert(frame_ended);
-            assert(frame_start <= frame_end);
-
-            // Now that we know the new frame boundaries, update the aggregation
-            // states. Theoretically we could do this simultaneously with moving
-            // the frame boundaries, but it would require some care not to
-            // perform unnecessary work while we are still looking for the frame
-            // start, so do it the simple way for now.
-            updateAggregationState();
-
-            // Write out the aggregation results.
-            writeOutCurrentRow();
-
-            if (isCancelled())
-            {
-                // Good time to check if the query is cancelled. Checking once
-                // per block might not be enough in severe quadratic cases.
-                // Just leave the work halfway through and return, the 'prepare'
-                // method will figure out what to do. Note that this doesn't
-                // handle 'max_execution_time' and other limits, because these
-                // limits are only updated between blocks. Eventually we should
-                // start updating them in background and canceling the processor,
-                // like we do for Ctrl+C handling.
-                //
-                // This class is final, so the check should hopefully be
-                // devirtualized and become a single never-taken branch that is
-                // basically free.
-                return;
-            }
-
-            prev_frame_start = frame_start;
-            prev_frame_end = frame_end;
-
-            // Move to the next row. The frame will have to be recalculated.
-            // The peer group start is updated at the beginning of the loop,
-            // because current_row might now be past-the-end.
-            advanceRowNumber(current_row);
-            ++current_row_number;
-            first_not_ready_row = current_row;
-            frame_ended = false;
-            frame_started = false;
         }
 
         if (input_is_finished)
@@ -1296,6 +1334,7 @@ void WindowTransform::appendChunk(Chunk & chunk)
         assert(current_row == partition_start);
         current_row_number = 1;
         peer_group_start = partition_start;
+        peer_group_start_columns = inputAt(peer_group_start).data();
         peer_group_start_row_number = 1;
         peer_group_number = 1;
 
@@ -1500,11 +1539,9 @@ struct WindowFunctionRank final : public StatelessWindowFunction
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        IColumn & to = *transform->blockAt(transform->current_row)
-            .output_columns[function_index];
+        IColumn & to = *transform->blockAt(transform->current_row).output_columns[function_index];
         assert_cast<ColumnUInt64 &>(to).getData().push_back(
             transform->peer_group_start_row_number);
     }
@@ -1518,11 +1555,9 @@ struct WindowFunctionDenseRank final : public StatelessWindowFunction
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        IColumn & to = *transform->blockAt(transform->current_row)
-            .output_columns[function_index];
+        IColumn & to = *transform->blockAt(transform->current_row).output_columns[function_index];
         assert_cast<ColumnUInt64 &>(to).getData().push_back(
             transform->peer_group_number);
     }
@@ -1659,8 +1694,7 @@ struct WindowFunctionExponentialTimeDecayedSum final : public StatefulWindowFunc
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
         const auto & workspace = transform->workspaces[function_index];
         auto & state = getState(workspace);
@@ -1755,8 +1789,7 @@ struct WindowFunctionExponentialTimeDecayedMax final : public StatelessWindowFun
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
         Float64 result = std::numeric_limits<Float64>::quiet_NaN();
 
@@ -1822,8 +1855,7 @@ struct WindowFunctionExponentialTimeDecayedCount final : public StatefulWindowFu
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
         const auto & workspace = transform->workspaces[function_index];
         auto & state = getState(workspace);
@@ -1916,8 +1948,7 @@ struct WindowFunctionExponentialTimeDecayedAvg final : public StatefulWindowFunc
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
         const auto & workspace = transform->workspaces[function_index];
         auto & state = getState(workspace);
@@ -1993,11 +2024,9 @@ struct WindowFunctionRowNumber final : public StatelessWindowFunction
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        IColumn & to = *transform->blockAt(transform->current_row)
-            .output_columns[function_index];
+        IColumn & to = *transform->blockAt(transform->current_row).output_columns[function_index];
         assert_cast<ColumnUInt64 &>(to).getData().push_back(
             transform->current_row_number);
     }
@@ -2067,8 +2096,7 @@ struct WindowFunctionNtile final : public StatefulWindowFunction<NtileState>
         return frame;
     }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
         const auto & workspace = transform->workspaces[function_index];
         auto & state = getState(workspace);
@@ -2085,9 +2113,8 @@ namespace
     {
         if (!buckets) [[unlikely]]
         {
-            const auto & current_block = transform->blockAt(transform->current_row);
             const auto & workspace = transform->workspaces[function_index];
-            const auto & arg_col = *current_block.original_input_columns[workspace.argument_column_indices[0]];
+            const auto & arg_col = *transform->blockAt(transform->current_row).original_input_columns[workspace.argument_column_indices[0]];
             if (!isColumnConst(arg_col))
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Argument of 'ntile' function must be a constant");
             auto type_id = argument_types[0]->getTypeId();
@@ -2453,7 +2480,7 @@ struct WindowFunctionLagLeadImpl final : public StatelessWindowFunction
 
     }
 
-    ColumnPtr castColumn(const Columns & columns, const std::vector<size_t> & idx) override
+    ColumnPtr castColumn(const Columns & columns, const PODArray<size_t> & idx) override
     {
         if (!func_cast)
             return nullptr;
@@ -2495,17 +2522,15 @@ struct WindowFunctionLagLeadImpl final : public StatelessWindowFunction
         return frame;
     }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        const auto & current_block = transform->blockAt(transform->current_row);
-        IColumn & to = *current_block.output_columns[function_index];
+        IColumn & to = *transform->blockAt(transform->current_row).output_columns[function_index];
         const auto & workspace = transform->workspaces[function_index];
 
         Int64 offset = 1;
         if (argument_types.size() > 1)
         {
-            offset = (*current_block.input_columns[
+            offset = (*transform->blockAt(transform->current_row).input_columns[
                     workspace.argument_column_indices[1]])[
                         transform->current_row.row].safeGet<Int64>();
 
@@ -2530,9 +2555,9 @@ struct WindowFunctionLagLeadImpl final : public StatelessWindowFunction
             {
                 // Column with default values is specified.
                 const IColumn & default_column =
-                    current_block.cast_columns[function_index] ?
-                        *current_block.cast_columns[function_index].get() :
-                        *current_block.input_columns[workspace.argument_column_indices[2]].get();
+                    transform->blockAt(transform->current_row).cast_columns[function_index] ?
+                        *transform->blockAt(transform->current_row).cast_columns[function_index].get() :
+                        *transform->blockAt(transform->current_row).input_columns[workspace.argument_column_indices[2]].get();
 
                 to.insert(default_column[transform->current_row.row]);
             }
@@ -2589,14 +2614,12 @@ struct WindowFunctionNthValue final : public StatelessWindowFunction
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-        size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        const auto & current_block = transform->blockAt(transform->current_row);
-        IColumn & to = *current_block.output_columns[function_index];
+        IColumn & to = *transform->blockAt(transform->current_row).output_columns[function_index];
         const auto & workspace = transform->workspaces[function_index];
 
-        Int64 offset = (*current_block.input_columns[
+        Int64 offset = (*transform->blockAt(transform->current_row).input_columns[
                 workspace.argument_column_indices[1]])[
             transform->current_row.row].safeGet<Int64>();
 
@@ -2717,15 +2740,13 @@ struct WindowFunctionNonNegativeDerivative final : public StatefulWindowFunction
 
     bool allocatesMemoryInArena() const override { return false; }
 
-    void windowInsertResultInto(const WindowTransform * transform,
-                                size_t function_index) const override
+    void windowInsertResultInto(const WindowTransform * transform, size_t function_index) const override
     {
-        const auto & current_block = transform->blockAt(transform->current_row);
         const auto & workspace = transform->workspaces[function_index];
         auto & state = getState(workspace);
 
         auto interval_duration = interval_specified ? interval_length *
-            (*current_block.input_columns[workspace.argument_column_indices[ARGUMENT_INTERVAL]]).getFloat64(0) : 1;
+            (*transform->blockAt(transform->current_row).input_columns[workspace.argument_column_indices[ARGUMENT_INTERVAL]]).getFloat64(0) : 1;
 
         Float64 curr_metric = WindowFunctionHelpers::getValue<Float64>(transform, function_index, ARGUMENT_METRIC, transform->current_row);
         Float64 metric_diff = curr_metric - state.previous_metric;

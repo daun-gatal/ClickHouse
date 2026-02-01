@@ -5,6 +5,7 @@
 #include <Interpreters/WindowDescription.h>
 #include <Processors/IProcessor.h>
 #include <Processors/Port.h>
+#include <Common/PODArray.h>
 
 #include <deque>
 
@@ -89,6 +90,9 @@ public:
     void advancePartitionEnd();
 
     bool arePeers(const RowNumber & x, const RowNumber & y) const;
+    bool arePeersImpl(
+        const RowNumber & x, const RowNumber & y,
+        const ColumnPtr * columns_x, const ColumnPtr * columns_y) const;
 
     void advanceFrameStartRowsOffset();
     void advanceFrameStartRangeOffset();
@@ -247,9 +251,9 @@ public:
     WindowDescription window_description;
 
     // Indices of the PARTITION BY columns in block.
-    std::vector<size_t> partition_by_indices;
+    PODArray<size_t> partition_by_indices;
     // Indices of the ORDER BY columns in block;
-    std::vector<size_t> order_by_indices;
+    PODArray<size_t> order_by_indices;
 
     // Per-window-function scratch spaces.
     std::vector<WindowFunctionWorkspace> workspaces;
