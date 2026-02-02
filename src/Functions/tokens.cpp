@@ -110,11 +110,11 @@ public:
             /// This leads to an error while executing this function multi-threaded because that state is not protected.
             /// To avoid this case, a clone of the sparse gram token extractor will be used.
             auto sparse_gram_extractor = token_extractor->clone();
-            executeWithTokenizer(*sparse_gram_extractor, std::move(col_input), *col_offsets, input_rows_count, *col_result, null_map);
+            executeWithTokenizer(*sparse_gram_extractor, std::move(col_input), *col_offsets, null_map, input_rows_count, *col_result);
         }
         else
         {
-            executeWithTokenizer(*token_extractor, std::move(col_input), *col_offsets, input_rows_count, *col_result, null_map);
+            executeWithTokenizer(*token_extractor, std::move(col_input), *col_offsets, null_map, input_rows_count, *col_result);
         }
 
         return ColumnArray::create(std::move(col_result), std::move(col_offsets));
@@ -125,14 +125,14 @@ private:
         const ITokenExtractor & extractor,
         ColumnPtr col_input,
         ColumnArray::ColumnOffsets & col_offsets,
+        const NullMap * null_map,
         size_t input_rows_count,
-        ColumnString & col_result,
-        const NullMap * null_map) const
+        ColumnString & col_result) const
     {
         if (const auto * column_string = checkAndGetColumn<ColumnString>(col_input.get()))
-            executeImpl(extractor, *column_string, col_offsets, input_rows_count, col_result, null_map);
+            executeImpl(extractor, *column_string, col_offsets, null_map, input_rows_count, col_result);
         else if (const auto * column_fixed_string = checkAndGetColumn<ColumnFixedString>(col_input.get()))
-            executeImpl(extractor, *column_fixed_string, col_offsets, input_rows_count, col_result, null_map);
+            executeImpl(extractor, *column_fixed_string, col_offsets, null_map, input_rows_count, col_result);
     }
 
     template <typename StringColumnType>
@@ -140,9 +140,9 @@ private:
         const ITokenExtractor & extractor,
         const StringColumnType & column_input,
         ColumnArray::ColumnOffsets & column_offsets_input,
+        const NullMap * null_map,
         size_t input_rows_count,
-        ColumnString & column_result,
-        const NullMap * null_map) const
+        ColumnString & column_result) const
     {
         auto & offsets_data = column_offsets_input.getData();
         offsets_data.resize(input_rows_count);

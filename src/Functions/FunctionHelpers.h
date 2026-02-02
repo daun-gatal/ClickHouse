@@ -191,16 +191,4 @@ bool isDecimalOrNullableDecimal(const DataTypePtr & type);
 
 void checkFunctionArgumentSizes(const ColumnsWithTypeAndName & arguments, size_t input_rows_count);
 
-struct UnwrappedColumnConstIsNullValue {};
-struct UnwrappedNullableColumn
-{
-    ColumnPtr column;                     /// The unwrapped column (nested data)
-    const NullMap * null_map = nullptr;   /// Pointer to null map, or nullptr if not nullable
-};
-
-/// Unwraps a column that may be nullable and/or const.
-/// Handles ColumnConst(ColumnNullable(...)) and ColumnNullable(...)
-/// Returns unwrapped column, null map (if any), and whether it's a constant NULL.
-std::variant<UnwrappedNullableColumn, UnwrappedColumnConstIsNullValue> unwrapNullableColumn(const ColumnPtr & column);
-
 }

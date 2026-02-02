@@ -97,21 +97,19 @@ public:
 
         const auto & array_argument = arguments[generator.strings_argument_position];
 
-        auto unwrapped_column = unwrapNullableColumn(array_argument.column);
+        const auto * column = array_argument.column->getPtr().get();
+        const NullMap * null_map = nullptr;
 
-        // If it's a const NULL, return empty array for all rows
-        if (std::holds_alternative<UnwrappedColumnConstIsNullValue>(unwrapped_column))
-        {
-            auto col_res = ColumnArray::create(ColumnString::create());
-            auto & res_offsets = col_res->getOffsets();
-            res_offsets.resize_fill(input_rows_count, 0);
-            return col_res;
+        if (const auto * col_const = checkAndGetColumn<ColumnConst>(column))
+            column = &col_const->getDataColumn();
+
+        if (const auto * col_nullable = checkAndGetColumn<ColumnNullable>(column)) {
+            column = col_nullable->getNestedColumnPtr().get();
+            null_map = &col_nullable->getNullMapData();
         }
 
-        auto column_with_null_map = std::get<UnwrappedNullableColumn>(unwrapped_column);
-        const ColumnString * col_str = checkAndGetColumn<ColumnString>(column_with_null_map.column.get());
-        const ColumnConst * col_str_const = checkAndGetColumnConstStringOrFixedString(column_with_null_map.column.get());
-        const NullMap * null_map = column_with_null_map.null_map;
+        const ColumnString * col_str = checkAndGetColumn<ColumnString>(column);
+        const ColumnConst * col_str_const = checkAndGetColumnConstStringOrFixedString(column);
 
         auto col_res = ColumnArray::create(ColumnString::create());
 

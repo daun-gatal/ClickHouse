@@ -50,7 +50,7 @@ public:
         auto ngram_input_argument_type = WhichDataType(input_type);
         if (!ngram_input_argument_type.isStringOrFixedString())
             throw Exception(ErrorCodes::BAD_ARGUMENTS,
-                "Function {} first argument type should be String, FixedString, or Nullable. Actual {}",
+                "Function {} first argument type should be String, FixedString, Nullable(String) or Nullable(FixedString). Actual {}",
                 getName(),
                 arguments[0].type->getName());
 
@@ -88,9 +88,9 @@ public:
         }
 
         if (const auto * column_string = checkAndGetColumn<ColumnString>(input_column.get()))
-            executeImpl(extractor, *column_string, *result_column_string, *column_offsets, input_rows_count, null_map);
+            executeImpl(extractor, *column_string, *result_column_string, *column_offsets, null_map, input_rows_count);
         else if (const auto * column_fixed_string = checkAndGetColumn<ColumnFixedString>(input_column.get()))
-            executeImpl(extractor, *column_fixed_string, *result_column_string, *column_offsets, input_rows_count, null_map);
+            executeImpl(extractor, *column_fixed_string, *result_column_string, *column_offsets, null_map, input_rows_count);
 
         return ColumnArray::create(std::move(result_column_string), std::move(column_offsets));
     }
@@ -103,8 +103,8 @@ private:
         StringColumnType & input_data_column,
         ResultStringColumnType & result_data_column,
         ColumnArray::ColumnOffsets & offsets_column,
-        size_t input_rows_count,
-        const NullMap * null_map = nullptr) const
+        const NullMap * null_map,
+        size_t input_rows_count) const
     {
         size_t current_tokens_size = 0;
         auto & offsets_data = offsets_column.getData();
