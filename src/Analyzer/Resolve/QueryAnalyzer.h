@@ -31,6 +31,9 @@ using ProjectionNames = std::vector<ProjectionName>;
 
 struct Settings;
 
+struct TemporaryTableHolder;
+using TemporaryTableHolderPtr = std::shared_ptr<TemporaryTableHolder>;
+
 /** Query analyzer implementation overview. Please check documentation in QueryAnalysisPass.h first.
   * And additional documentation for each method, where special cases are described in detail.
   *
