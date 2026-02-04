@@ -183,32 +183,36 @@ void IcebergBitmapPositionDeleteTransform::initialize()
     /// Wait for all tasks to complete and rethrow any exceptions
     runner.waitForAllToFinishAndRethrowFirstError();
 }
-
-void IcebergStreamingPositionDeleteTransform::worker()
-{
-    {
-        std::unique_lock signal_mutex_lock(signal_mutex);
-        if (states[waiting_for_new_chunk_index] == State::NON_EMPTY || states[waiting_for_new_chunk_index] == State::FINISHED)
-        {
-            return;
-        }
-        states[waiting_for_new_chunk_index] = State::NON_EMPTY;
-    }
-
-    size_t delete_source_index;
-    while (orders_queue.pop(delete_source_index))
-    {
-        auto & delete_source = delete_sources[delete_source_index].delete_source;
-        auto chunk = delete_source->read();
-        chunks_blocking_queue.push({delete_source_index, chunk});
-    }
-}
-
-
 void IcebergStreamingPositionDeleteTransform::initialize()
 {
+    auto & thread_pool = DB::getFormatParsingThreadPool().get();
+    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::POLYGON_DICT_LOAD);
+    delete_pipelines.reserve(delete_sources.size());
     for (size_t i = 0; i < delete_sources.size(); ++i)
     {
+        delete_pipelines.emplace_back(QueryPipeline{*delete_sources[i]});
+        runner.enqueueAndKeepTrack(
+            [&, delete_source_ptr = delete_source.get()]()
+            {
+                while (auto delete_chunk = delete_source_ptr->read())
+                {
+                    auto position_index = getColumnIndex(
+                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
+                        IcebergPositionDeleteTransform::positions_column_name);
+                    auto filename_index = getColumnIndex(
+                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
+                        IcebergPositionDeleteTransform::data_file_path_column_name);
+
+                    auto position_column = delete_chunk.getColumns()[position_index];
+                    auto filename_column = delete_chunk.getColumns()[filename_index];
+
+                    std::lock_guard<std::mutex> lock(bitmap_mutex);
+                    for (size_t i = 0; i < delete_chunk.getNumRows(); ++i)
+                    {
+                        bitmap.add(position_column->get64(i));
+                    }
+                }
+            });
         auto & delete_source = delete_sources[i];
         size_t position_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::positions_column_name);
         size_t filename_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::data_file_path_column_name);
@@ -228,51 +232,10 @@ void IcebergStreamingPositionDeleteTransform::initialize()
     }
 }
 
-
-// struct PositionDeleteFileChunkWithPosition
-// {
-//     Chunk chunk;
-//     size_t position = 0;
-
-//     const size_t position_index;
-
-//     PositionDeleteFileChunkWithPosition(Chunk chunk_, size_t position_index_)
-//         : chunk(std::move(chunk_))
-//         , position_index(position_index_)
-//     {
-//     }
-
-//     std::optional<size_t> current() const
-//     {
-//         if (position >= chunk.getNumRows())
-//             return std::nullopt;
-//         return chunk.getColumns()[position_index]->get64(position);
-//     }
-
-//     std::optional<size_t> next()
-//     {
-//         if (position >= chunk.getNumRows())
-//             return std::nullopt;
-//         return chunk.getColumns()[position_index]->get64(position++);
-//     }
-// };
-
-// class PositionDeleteFileIterator
-// {
-// public:
-//     PositionDeleteFileIterator();
-
-//     virtual void next() = 0;
-
-//     virtual std::optional<PositionDeleteFileChunkWithPosition> current() const = 0;
-
-
-//     virtual ~PositionDeleteFileIterator() = 0;
-// };
-
-void IcebergStreamingPositionDeleteTransform::pullNewChunkForSource(size_t delete_source_index)
+void IcebergStreamingPositionDeleteTransform::fetchNewChunkForSource(size_t delete_source_index)
 {
-    auto latest_chunk = delete_sources[delete_source_index]->read();
+    delete_pipelines[delete_source_index]->pull(latest_chunks[delete_source_index]);
+    const auto & latest_chunk = latest_chunks[delete_source_index];
     if (latest_chunk.hasRows())
     {
         size_t first_position_value_in_delete_file
@@ -281,79 +244,6 @@ void IcebergStreamingPositionDeleteTransform::pullNewChunkForSource(size_t delet
     }
 
     iterator_at_latest_chunks[delete_source_index] = 0;
-    latest_chunks[delete_source_index] = std::move(latest_chunk);
-}
-
-
-// void IcebergStreamingPositionDeleteTransform::getNewChunkFromSource(size_t delete_source_index)
-// {
-//     // auto latest_chunk = delete_sources[delete_source_index]->read();
-//     // if (latest_chunk.hasRows())
-//     // {
-//     //     size_t first_position_value_in_delete_file
-//     //         = latest_chunk.getColumns()[delete_source_column_indices[delete_source_index].position_index]->get64(0);
-//     //     latest_positions.insert(std::pair<size_t, size_t>{first_position_value_in_delete_file, delete_source_index});
-//     // }
-//     while (true)
-//     {
-//         auto [current_delete_source_index, chunk] = chunks_blocking_queue.pop();
-//         std::unique_lock signal_mutex_lock(signal_mutex);
-//         if (chunk.hasRows())
-//         {
-//             pulled_chunks_by_stream[current_delete_source_index].push_back(std::move(chunk));
-//             if (pulled_chunks_by_stream[current_delete_source_index].size() < max_chunks_per_stream)
-//             {
-//                 orders_queue.push(current_delete_source_index);
-//             }
-//             if (current_delete_source_index == waiting_for_new_chunk_index)
-//             {
-//                 signal_cv.notify_all();
-//             }
-//         }
-//         else
-//         {
-//             finished_streams[current_delete_source_index] = true;
-//         }
-//     }
-// }
-
-void IcebergStreamingPositionDeleteTransform::getNewChunkFromSource(size_t delete_source_index)
-{
-    std::unique_lock signal_mutex_lock(signal_mutex);
-    waiting_for_new_chunk_index = delete_source_index;
-    iterator_at_latest_chunks[delete_source_index] = 0;
-    if (pulled_chunks_by_stream[delete_source_index].empty())
-    {
-        if (states[delete_source_index] == State::NON_EMPTY)
-        {
-            signal_cv.wait(
-                signal_mutex_lock,
-                [&] { return !pulled_chunks_by_stream[delete_source_index].empty() || states[delete_source_index] == State::FINISHED; });
-            latest_chunks[delete_source_index] = std::move(pulled_chunks_by_stream[delete_source_index].front());
-            if (pulled_chunks_by_stream[delete_source_index].size() == max_chunks_per_stream)
-            {
-                orders_queue.push(delete_source_index);
-            }
-        }
-        if (states[delete_source_index] == State::EMPTY)
-        {
-            states[delete_source_index] = State::NON_EMPTY;
-            signal_mutex_lock.unlock();
-            latest_chunks[delete_source_index] = delete_sources[delete_source_index]->read();
-            orders_queue.push(delete_source_index);
-            signal_mutex_lock.lock();
-            states[delete_source_index] = State::EMPTY;
-            return;
-        }
-        if (finished_streams[delete_source_index])
-        {
-            latest_chunks[delete_source_index] = Chunk();
-        }
-    }
-    else
-    {
-        latest_chunks[delete_source_index] = pulled_chunks_by_stream[delete_source_index].pop_front();
-    }
 }
 
 void IcebergStreamingPositionDeleteTransform::transform(Chunk & chunk)
