@@ -17,7 +17,7 @@ struct ASTCheckDatabaseQuery : public ASTQueryWithOutput
 
     ASTPtr clone() const override
     {
-        auto res = std::make_shared<ASTCheckDatabaseQuery>(*this);
+        auto res = make_intrusive<ASTCheckDatabaseQuery>(*this);
         res->children.clear();
         cloneOutputOptions(*res);
         cloneDatabaseOptions(*res);

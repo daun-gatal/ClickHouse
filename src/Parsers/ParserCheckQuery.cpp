@@ -79,7 +79,7 @@ bool ParserCheckQuery::parseCheckDatabase(Pos & pos, ASTPtr & node, Expected & e
     if (!s_check_table.ignore(pos, expected))
         return false;
 
-    auto query = std::make_shared<ASTCheckDatabaseQuery>();
+    auto query = make_intrusive<ASTCheckDatabaseQuery>();
 
     if (!parseDatabaseAsAST(pos, expected, query->database))
         return false;
