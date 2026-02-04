@@ -113,7 +113,7 @@ public:
         {
             column_haystack = col_nullable->getNestedColumnPtr();
             // preserve legacy behavior for NULL which is represented as Nothing and resulted in a call to ColumnNothing::getDataAt(size_t) which returns an empty string_view
-            if(!isNothing(column_haystack->getDataType()))
+            if (!isNothing(column_haystack->getDataType()))
                 null_map = &col_nullable->getNullMapData();
         }
 

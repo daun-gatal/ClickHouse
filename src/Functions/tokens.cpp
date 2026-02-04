@@ -33,7 +33,8 @@ constexpr size_t arg_tokenizer = 1;
 
 std::unique_ptr<ITokenExtractor> createTokenizer(const ColumnsWithTypeAndName & arguments, std::string_view function_name)
 {
-    const auto tokenizer = [&arguments]() -> std::string_view {
+    const auto tokenizer = [&arguments]() -> std::string_view
+    {
         if (arguments.size() >= 2 && arguments[arg_tokenizer].column != nullptr) {
             const DB::IColumn* column = arguments[arg_tokenizer].column.get();
 
@@ -241,7 +242,8 @@ public:
             return isStringOrFixedString(type);
         };
 
-        auto is_string_nullable_string_or_nothing = [](const IDataType & type) {
+        auto is_string_nullable_string_or_nothing = [](const IDataType & type)
+        {
             if (isStringOrNullableString(type) || isNothing(type))
                 return true;
             if (const auto * nullable_type = typeid_cast<const DataTypeNullable *>(&type))
@@ -249,7 +251,8 @@ public:
             return false;
         };
 
-        auto is_column_const_or_nullable_nothing = [](const IColumn & column) {
+        auto is_column_const_or_nullable_nothing = [](const IColumn & column)
+        {
             if (isColumnConst(column))
                 return true;
             if (const auto * nullable_column = checkAndGetColumn<ColumnNullable>(&column))
