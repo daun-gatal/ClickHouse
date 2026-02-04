@@ -160,7 +160,7 @@ void AllocationQueue::updateMinMaxAllocated(ResourceCost new_value)
     min_max_allocated = new_value;
 
     // Reject pending allocations that can never succeed because they exceed the new limit
-    for (auto it = pending_allocations.begin(); it != pending_allocations.end(); )
+    for (auto it = pending_allocations.begin(); it != pending_allocations.end();)
     {
         ResourceAllocation & allocation = *it;
         ++it; // Advance before erasing

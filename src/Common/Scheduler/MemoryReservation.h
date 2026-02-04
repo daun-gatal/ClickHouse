@@ -57,7 +57,8 @@ private:
     ResourceCost actual_size = 0; // real size of the resource used by the allocation
 
     /// Helper struct. Holds postponed ProfileEvents increments to be executed from a query thread.
-    struct Metrics {
+    struct Metrics
+    {
         UInt64 increases = 0;
         UInt64 decreases = 0;
         UInt64 failed = 0;
