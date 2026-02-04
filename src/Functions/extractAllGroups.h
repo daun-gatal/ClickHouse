@@ -86,14 +86,8 @@ public:
         };
 
         FunctionArgumentDescriptors args{
-            {"haystack",
-             static_cast<FunctionArgumentDescriptor::TypeValidator>(is_string_or_fixed_string_nullable),
-             nullptr,
-             "String, FixedString, or Nullable String"},
-            {"needle",
-             static_cast<FunctionArgumentDescriptor::TypeValidator>(&isStringOrFixedString),
-             isColumnConst,
-             "const String or const FixedString"},
+            {"haystack", static_cast<FunctionArgumentDescriptor::TypeValidator>(is_string_or_fixed_string_nullable), nullptr, "String, FixedString, or Nullable String"},
+            {"needle", static_cast<FunctionArgumentDescriptor::TypeValidator>(&isStringOrFixedString), isColumnConst, "const String or const FixedString"},
         };
         validateFunctionArguments(*this, arguments, args);
 
