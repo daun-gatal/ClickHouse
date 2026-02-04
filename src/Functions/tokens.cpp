@@ -35,18 +35,20 @@ std::unique_ptr<ITokenExtractor> createTokenizer(const ColumnsWithTypeAndName & 
 {
     const auto tokenizer = [&arguments]() -> std::string_view
     {
-        if (arguments.size() >= 2 && arguments[arg_tokenizer].column != nullptr) {
+        if (arguments.size() >= 2 && arguments[arg_tokenizer].column != nullptr)
+        {
             const DB::IColumn* column = arguments[arg_tokenizer].column.get();
 
             if (const auto* column_const = checkAndGetColumn<ColumnConst>(column))
                 column = column_const->getDataColumn().getPtr().get();
 
-            if (const auto* column_nullable = checkAndGetColumn<ColumnNullable>(column)) {
-                if(column_nullable->isNullAt(0))
+            if (const auto* column_nullable = checkAndGetColumn<ColumnNullable>(column))
+            {
+                if (column_nullable->isNullAt(0))
                     return SplitByNonAlphaTokenExtractor::getExternalName();
                 column = column_nullable->getNestedColumn().getPtr().get();
             }
-
+            
             return arguments[arg_tokenizer].column->getDataAt(0);
         }
         return SplitByNonAlphaTokenExtractor::getExternalName();
