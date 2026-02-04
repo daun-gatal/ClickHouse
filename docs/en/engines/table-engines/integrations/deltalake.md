@@ -30,6 +30,11 @@ Engine parameters can be specified using [Named Collections](/operations/named-c
 
 **Example**
 
+:::note[Compatibility note for MacOS]
+If you're using a recent version but still getting an error `Received exception:
+Code: 56. DB::Exception: Unknown table engine DeltaLake. (UNKNOWN_STORAGE)` this is because builds on Mac don't include DeltaLake due to the usage of Rust.
+:::
+
 ```sql
 CREATE TABLE deltalake ENGINE=DeltaLake('http://mars-doc-test.s3.amazonaws.com/clickhouse-bucket-3/test_table/', 'ABC123', 'Abc+123')
 ```
