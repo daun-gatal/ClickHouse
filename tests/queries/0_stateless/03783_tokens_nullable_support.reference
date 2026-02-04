@@ -2,6 +2,7 @@
 ['hello','world']
 ['hello','world']
 []
+['hello','world']
 -- Test with different tokenizer
 ['abc','bc ','c d',' de','def']
 []

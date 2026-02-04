@@ -1,3 +1,4 @@
+#include <string_view>
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnFixedString.h>
 #include <Columns/ColumnString.h>
@@ -32,8 +33,23 @@ constexpr size_t arg_tokenizer = 1;
 
 std::unique_ptr<ITokenExtractor> createTokenizer(const ColumnsWithTypeAndName & arguments, std::string_view function_name)
 {
-    const auto tokenizer = arguments.size() < 2 || !arguments[arg_tokenizer].column ? SplitByNonAlphaTokenExtractor::getExternalName()
-                                                                                    : arguments[arg_tokenizer].column->getDataAt(0);
+    const auto tokenizer = [&arguments]() -> std::string_view {
+        if (arguments.size() >= 2 && arguments[arg_tokenizer].column != nullptr) {
+            const DB::IColumn* column = arguments[arg_tokenizer].column.get();
+
+            if (const auto* column_const = checkAndGetColumn<ColumnConst>(column))
+                column = column_const->getDataColumn().getPtr().get();
+
+            if (const auto* column_nullable = checkAndGetColumn<ColumnNullable>(column)) {
+                if(column_nullable->isNullAt(0))
+                    return SplitByNonAlphaTokenExtractor::getExternalName();
+                column = column_nullable->getNestedColumn().getPtr().get();
+            }
+
+            return arguments[arg_tokenizer].column->getDataAt(0);
+        }
+        return SplitByNonAlphaTokenExtractor::getExternalName();
+    }();
 
     FieldVector params;
     for (size_t i = 2; i < arguments.size(); ++i)

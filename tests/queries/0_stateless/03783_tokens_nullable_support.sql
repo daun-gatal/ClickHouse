@@ -4,6 +4,7 @@ SELECT '-- Test basic nullable string';
 SELECT tokens(toNullable('hello world'));
 SELECT tokens(materialize(toNullable('hello world')));
 SELECT tokens(CAST(NULL AS Nullable(String)));
+SELECT tokens('hello world', NULL);
 SELECT tokens(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
 SELECT '-- Test with different tokenizer';
