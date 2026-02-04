@@ -37,6 +37,11 @@ A table with the specified structure for reading data in the specified Delta Lak
 
 ## Examples {#examples}
 
+:::note[Compatibility note for MacOS]
+If you're using a recent version but still getting an error `Received exception:
+Code: 46. DB::Exception: Unknown table function deltaLake. (UNKNOWN_FUNCTION)` this is because builds on Mac don't include DeltaLake due to the usage of Rust.
+:::
+
 Selecting rows from the table in S3 `https://clickhouse-public-datasets.s3.amazonaws.com/delta_lake/hits/`:
 
 ```sql
