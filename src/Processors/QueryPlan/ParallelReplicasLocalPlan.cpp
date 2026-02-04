@@ -23,7 +23,7 @@ namespace FailPoints
 }
 
 std::pair<QueryPlanPtr, bool> createLocalPlanForParallelReplicas(
-    const ASTPtr & query_ast,
+    const QueryTreeNodePtr & query_tree,
     const Block & header,
     ContextPtr context,
     QueryProcessingStage::Enum processed_stage,
@@ -51,7 +51,7 @@ std::pair<QueryPlanPtr, bool> createLocalPlanForParallelReplicas(
     /// ConstantNode with ProjectionNode again(https://github.com/ClickHouse/ClickHouse/issues/62289).
     new_context->setSetting("enable_positional_arguments", Field(false));
     new_context->setSetting("allow_experimental_parallel_reading_from_replicas", Field(0));
-    auto interpreter = InterpreterSelectQueryAnalyzer(query_ast, new_context, select_query_options);
+    auto interpreter = InterpreterSelectQueryAnalyzer(query_tree, new_context, select_query_options);
     query_plan = std::make_unique<QueryPlan>(std::move(interpreter).extractQueryPlan());
 
     QueryPlan::Node * node = query_plan->getRootNode();
