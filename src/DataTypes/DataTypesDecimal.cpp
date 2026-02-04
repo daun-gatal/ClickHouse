@@ -166,11 +166,130 @@ ReturnType convertDecimalsImpl(const typename FromDataType::FieldType & value, U
     return ReturnType(true);
 }
 
+template <typename FromDataType, typename ToDataType, typename ReturnType>
+requires (IsDataTypeDecimal<FromDataType> && IsDataTypeDecimal<ToDataType>)
+void convertDecimalsBatch(
+    const typename FromDataType::FieldType * __restrict from,
+    typename ToDataType::FieldType * __restrict to,
+    size_t size,
+    UInt32 scale_from,
+    UInt32 scale_to,
+    ReturnType * __restrict nullmap)
+{
+    using FromFieldType = typename FromDataType::FieldType;
+    using ToFieldType = typename ToDataType::FieldType;
+    using MaxFieldType = std::conditional_t<(sizeof(FromFieldType) > sizeof(ToFieldType)), FromFieldType, ToFieldType>;
+    using MaxNativeType = typename MaxFieldType::NativeType;
+    using ToNativeType = typename ToFieldType::NativeType;
+
+    static constexpr bool has_nullmap = !std::is_same_v<ReturnType, void>;
+    static constexpr bool check_overflow = sizeof(FromFieldType) > sizeof(ToFieldType);
+
+    if (scale_to > scale_from)
+    {
+        const MaxNativeType multiplier = DecimalUtils::scaleMultiplier<MaxNativeType>(scale_to - scale_from);
+        for (size_t i = 0; i < size; ++i)
+        {
+            MaxNativeType converted_value;
+            bool overflow = common::mulOverflow(static_cast<MaxNativeType>(from[i].value), multiplier, converted_value);
+
+            if constexpr (check_overflow)
+            {
+                overflow |= converted_value < std::numeric_limits<ToNativeType>::min()
+                         || converted_value > std::numeric_limits<ToNativeType>::max();
+            }
+
+            if constexpr (has_nullmap)
+            {
+                nullmap[i] = overflow;
+                if (overflow)
+                    to[i] = static_cast<ToNativeType>(0);
+                else
+                    to[i] = static_cast<ToNativeType>(converted_value);
+            }
+            else
+            {
+                if (overflow)
+                    throw Exception(ErrorCodes::DECIMAL_OVERFLOW, "{} convert overflow", std::string(ToDataType::family_name));
+                to[i] = static_cast<ToNativeType>(converted_value);
+            }
+        }
+    }
+    else if (scale_to == scale_from)
+    {
+        for (size_t i = 0; i < size; ++i)
+        {
+            MaxNativeType converted_value = from[i].value;
+            bool overflow = false;
+
+            if constexpr (check_overflow)
+            {
+                overflow = converted_value < std::numeric_limits<ToNativeType>::min()
+                        || converted_value > std::numeric_limits<ToNativeType>::max();
+            }
+
+            if constexpr (has_nullmap)
+            {
+                nullmap[i] = overflow;
+                if (overflow)
+                    to[i] = static_cast<ToNativeType>(0);
+                else
+                    to[i] = static_cast<ToNativeType>(converted_value);
+            }
+            else
+            {
+                if (overflow)
+                    throw Exception(ErrorCodes::DECIMAL_OVERFLOW, "{} convert overflow", std::string(ToDataType::family_name));
+                to[i] = static_cast<ToNativeType>(converted_value);
+            }
+        }
+    }
+    else
+    {
+        const MaxNativeType divisor = DecimalUtils::scaleMultiplier<MaxNativeType>(scale_from - scale_to);
+        for (size_t i = 0; i < size; ++i)
+        {
+            MaxNativeType converted_value = from[i].value / divisor;
+            bool overflow = false;
+
+            if constexpr (check_overflow)
+            {
+                overflow = converted_value < std::numeric_limits<ToNativeType>::min()
+                        || converted_value > std::numeric_limits<ToNativeType>::max();
+            }
+
+            if constexpr (has_nullmap)
+            {
+                nullmap[i] = overflow;
+                if (overflow)
+                    to[i] = static_cast<ToNativeType>(0);
+                else
+                    to[i] = static_cast<ToNativeType>(converted_value);
+            }
+            else
+            {
+                if (overflow)
+                    throw Exception(ErrorCodes::DECIMAL_OVERFLOW, "{} convert overflow", std::string(ToDataType::family_name));
+                to[i] = static_cast<ToNativeType>(converted_value);
+            }
+        }
+    }
+}
+
 #define DISPATCH(FROM_DATA_TYPE, TO_DATA_TYPE) \
     template void convertDecimalsImpl<FROM_DATA_TYPE, TO_DATA_TYPE, void>(const typename FROM_DATA_TYPE::FieldType & value, UInt32 scale_from, UInt32 scale_to, typename TO_DATA_TYPE::FieldType & result); \
     template bool convertDecimalsImpl<FROM_DATA_TYPE, TO_DATA_TYPE, bool>(const typename FROM_DATA_TYPE::FieldType & value, UInt32 scale_from, UInt32 scale_to, typename TO_DATA_TYPE::FieldType & result);
 #define INVOKE(X) FOR_EACH_DECIMAL_TYPE_PASS(DISPATCH, X)
 FOR_EACH_DECIMAL_TYPE(INVOKE);
+#undef INVOKE
+#undef DISPATCH
+
+#define DISPATCH(FROM_DATA_TYPE, TO_DATA_TYPE) \
+    template void convertDecimalsBatch<FROM_DATA_TYPE, TO_DATA_TYPE, void>(const typename FROM_DATA_TYPE::FieldType * __restrict, typename TO_DATA_TYPE::FieldType * __restrict, size_t, UInt32, UInt32, void *); \
+    template void convertDecimalsBatch<FROM_DATA_TYPE, TO_DATA_TYPE, UInt8>(const typename FROM_DATA_TYPE::FieldType * __restrict, typename TO_DATA_TYPE::FieldType * __restrict, size_t, UInt32, UInt32, UInt8 *);
+#define INVOKE(X) FOR_EACH_DECIMAL_TYPE_PASS(DISPATCH, X)
+FOR_EACH_DECIMAL_TYPE(INVOKE);
+#undef INVOKE
 #undef DISPATCH
 
 
@@ -307,9 +426,92 @@ ReturnType convertToDecimalImpl(const typename FromDataType::FieldType & value, 
     }
 }
 
+template <typename FromDataType, typename ToDataType, typename ReturnType>
+requires (is_arithmetic_v<typename FromDataType::FieldType> && IsDataTypeDecimal<ToDataType>)
+void convertToDecimalBatch(
+    const typename FromDataType::FieldType * __restrict from,
+    typename ToDataType::FieldType * __restrict to,
+    size_t size,
+    UInt32 scale,
+    ReturnType * __restrict nullmap)
+{
+    using FromFieldType = typename FromDataType::FieldType;
+    using ToFieldType = typename ToDataType::FieldType;
+    using ToNativeType = typename ToFieldType::NativeType;
+
+    static constexpr bool has_nullmap = !std::is_same_v<ReturnType, void>;
+
+    if constexpr (std::is_same_v<FromFieldType, BFloat16>)
+    {
+        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Conversion from BFloat16 to Decimal is not implemented");
+    }
+    else if constexpr (is_floating_point<FromFieldType>)
+    {
+        const auto multiplier = static_cast<FromFieldType>(DecimalUtils::scaleMultiplier<ToNativeType>(scale));
+        for (size_t i = 0; i < size; ++i)
+        {
+            bool overflow = !isFinite(from[i]);
+            FromFieldType out = from[i] * multiplier;
+
+            overflow |= out <= static_cast<FromFieldType>(std::numeric_limits<ToNativeType>::min())
+                     || out >= static_cast<FromFieldType>(std::numeric_limits<ToNativeType>::max());
+
+            if constexpr (has_nullmap)
+            {
+                nullmap[i] = overflow;
+                if (overflow)
+                    to[i] = static_cast<ToNativeType>(0);
+                else
+                    to[i] = static_cast<ToNativeType>(out);
+            }
+            else
+            {
+                if (overflow)
+                    throw Exception(ErrorCodes::DECIMAL_OVERFLOW, "{} convert overflow", std::string(ToDataType::family_name));
+                to[i] = static_cast<ToNativeType>(out);
+            }
+        }
+    }
+    else
+    {
+        // For integer types, use the batch decimal conversion
+        // Convert scale_from=0 to scale_to=scale (always scaling up)
+        const ToNativeType multiplier = DecimalUtils::scaleMultiplier<ToNativeType>(scale);
+
+        for (size_t i = 0; i < size; ++i)
+        {
+            ToNativeType converted_value;
+            bool overflow = common::mulOverflow(static_cast<ToNativeType>(from[i]), multiplier, converted_value);
+
+            if constexpr (has_nullmap)
+            {
+                nullmap[i] = overflow;
+                if (overflow)
+                    to[i] = static_cast<ToNativeType>(0);
+                else
+                    to[i] = static_cast<ToNativeType>(converted_value);
+            }
+            else
+            {
+                if (overflow)
+                    throw Exception(ErrorCodes::DECIMAL_OVERFLOW, "{} convert overflow", std::string(ToDataType::family_name));
+                to[i] = static_cast<ToNativeType>(converted_value);
+            }
+        }
+    }
+}
+
 #define DISPATCH(FROM_DATA_TYPE, TO_DATA_TYPE) \
     template void convertToDecimalImpl<FROM_DATA_TYPE, TO_DATA_TYPE>(const typename FROM_DATA_TYPE::FieldType & value, UInt32 scale, typename TO_DATA_TYPE::FieldType & result);  \
     template bool convertToDecimalImpl<FROM_DATA_TYPE, TO_DATA_TYPE>(const typename FROM_DATA_TYPE::FieldType & value, UInt32 scale, typename TO_DATA_TYPE::FieldType & result);
+#define INVOKE(X) FOR_EACH_ARITHMETIC_TYPE_PASS(DISPATCH, X)
+FOR_EACH_DECIMAL_TYPE(INVOKE);
+#undef INVOKE
+#undef DISPATCH
+
+#define DISPATCH(FROM_DATA_TYPE, TO_DATA_TYPE) \
+    template void convertToDecimalBatch<FROM_DATA_TYPE, TO_DATA_TYPE, void>(const typename FROM_DATA_TYPE::FieldType * __restrict, typename TO_DATA_TYPE::FieldType * __restrict, size_t, UInt32, void *); \
+    template void convertToDecimalBatch<FROM_DATA_TYPE, TO_DATA_TYPE, UInt8>(const typename FROM_DATA_TYPE::FieldType * __restrict, typename TO_DATA_TYPE::FieldType * __restrict, size_t, UInt32, UInt8 *);
 #define INVOKE(X) FOR_EACH_ARITHMETIC_TYPE_PASS(DISPATCH, X)
 FOR_EACH_DECIMAL_TYPE(INVOKE);
 #undef INVOKE
