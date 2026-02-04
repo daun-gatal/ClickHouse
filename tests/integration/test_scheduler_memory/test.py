@@ -45,7 +45,6 @@ def clear_workloads_and_resources():
 
 
 def assert_profile_event(node, query_id, profile_event, check):
-    """Assert that a profile event for a given query matches the check function."""
     result = node.query(
         f"select ProfileEvents['{profile_event}'] from system.query_log "
         f"where query_id = '{query_id}' "
@@ -56,7 +55,6 @@ def assert_profile_event(node, query_id, profile_event, check):
 
 
 def get_current_metric(metric_name):
-    """Get the current value of a metric from system.metrics."""
     return int(node.query(f"select value from system.metrics where metric = '{metric_name}'").strip())
 
 
@@ -126,51 +124,48 @@ def test_reserve_memory():
 
     node.query("SYSTEM FLUSH LOGS")
 
+    assert_profile_event(node, "test_production", "MemoryReservationIncreases", lambda x: x == 1)
+    assert_profile_event(node, "test_production", "MemoryReservationDecreases", lambda x: x == 1)
+    assert_profile_event(node, "test_production", "MemoryReservationKilled", lambda x: x == 0)
+    assert_profile_event(node, "test_production", "MemoryReservationFailed", lambda x: x == 0)
+    assert_profile_event(node, "test_development", "MemoryReservationIncreases", lambda x: x == 1)
+    assert_profile_event(node, "test_development", "MemoryReservationDecreases", lambda x: x == 1)
+    assert_profile_event(node, "test_development", "MemoryReservationKilled", lambda x: x == 0)
+    assert_profile_event(node, "test_development", "MemoryReservationFailed", lambda x: x == 0)
 
-def test_memory_reservation_basic_metrics():
-    """Test that running a query with reserve_memory properly increments profile events."""
+
+def test_max_memory_limit():
     node.query(
         f"""
         create resource memory (memory reservation);
-        create workload all settings max_memory='10Gi';
+        create workload all settings max_memory='5Mi';
         create workload production in all;
     """
     )
 
-    node.query(
-        "select count(*) from numbers(1000000) settings workload='production', reserve_memory='128Mi'",
-        query_id="test_basic_metrics",
-    )
+    # This query should fail because it tries to reserve more memory than the workload allows.
+    with pytest.raises(QueryRuntimeException) as exc_info:
+        node.query(
+            "select count(*) from numbers(10000000) group by number % 1000000 settings workload='production'",
+            query_id="test_max_memory_limit",
+        )
+    assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value)
 
-    node.query("SYSTEM FLUSH LOGS")
+    # Test that reserve_memory does not change the outcome.
+    with pytest.raises(QueryRuntimeException) as exc_info:
+        node.query(
+            "select count(*) from numbers(10000000) group by number % 1000000 settings workload='production', reserve_memory='1Mi'",
+            query_id="test_max_memory_limit",
+        )
+    assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value)
 
-    # Check that memory reservation increases and decreases happened
-    assert_profile_event(node, "test_basic_metrics", "MemoryReservationIncreases", lambda x: x >= 1)
-    assert_profile_event(node, "test_basic_metrics", "MemoryReservationDecreases", lambda x: x >= 1)
-    # No kills or failures should have occurred
-    assert_profile_event(node, "test_basic_metrics", "MemoryReservationKilled", lambda x: x == 0)
-    assert_profile_event(node, "test_basic_metrics", "MemoryReservationFailed", lambda x: x == 0)
-
-
-def test_memory_reservation_exceeds_limit_self_kill():
-    """Test that a query trying to allocate more memory than max_memory of its workload fails."""
-    node.query(
-        f"""
-        create resource memory (memory reservation);
-        create workload all settings max_memory='1Mi';
-        create workload production in all;
-    """
-    )
-
-    # This query should fail because it tries to reserve more memory than the workload allows
+    # Too high reserve_memory should also fail, not block.
     with pytest.raises(QueryRuntimeException) as exc_info:
         node.query(
             "select count(*) from numbers(10000000) group by number % 1000000 settings workload='production', reserve_memory='10Mi'",
-            query_id="test_self_kill",
+            query_id="test_max_memory_limit",
         )
-
-    # The error should mention the memory limit
-    assert "MEMORY_RESERVATION_KILLED" in str(exc_info.value) or "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value)
+    assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value)
 
     node.query("SYSTEM FLUSH LOGS")
 

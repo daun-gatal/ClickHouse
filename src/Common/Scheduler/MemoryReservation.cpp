@@ -78,6 +78,7 @@ MemoryReservation::~MemoryReservation()
         cv.wait(lock, [this]() { return bool(fail_reason) || (!increase_enqueued && !decrease_enqueued && allocated_size == 0); });
     }
     chassert(removed);
+    metrics.apply();
 }
 
 void MemoryReservation::syncWithMemoryTracker(const MemoryTracker * memory_tracker)
@@ -99,6 +100,8 @@ void MemoryReservation::syncWithMemoryTracker(const MemoryTracker * memory_track
             auto increase_timer = CurrentThread::getProfileEvents().timer(ProfileEvents::MemoryReservationIncreaseMicroseconds);
             cv.wait(lock, [this] { return kill_reason || fail_reason || actual_size <= allocated_size; });
         }
+
+        metrics.apply();
         throwIfNeeded();
     }
 }
@@ -109,6 +112,22 @@ void MemoryReservation::throwIfNeeded()
         throw Exception(ErrorCodes::MEMORY_RESERVATION_KILLED, "Kill reason: {}", getExceptionMessage(kill_reason, /* with_stacktrace = */ false));
     if (fail_reason)
         throw Exception(ErrorCodes::MEMORY_RESERVATION_FAILED, "Fail reason: {}", getExceptionMessage(fail_reason, /* with_stacktrace = */ false));
+}
+
+void MemoryReservation::Metrics::apply()
+{
+    if (increases)
+        ProfileEvents::increment(ProfileEvents::MemoryReservationIncreases, increases);
+    if (decreases)
+        ProfileEvents::increment(ProfileEvents::MemoryReservationDecreases, decreases);
+    if (failed)
+        ProfileEvents::increment(ProfileEvents::MemoryReservationFailed, failed);
+    if (killed)
+        ProfileEvents::increment(ProfileEvents::MemoryReservationKilled, killed);
+    increases = 0;
+    decreases = 0;
+    failed = 0;
+    killed = 0;
 }
 
 void MemoryReservation::syncWithScheduler()
@@ -135,16 +154,16 @@ void MemoryReservation::syncWithScheduler()
 
 void MemoryReservation::killAllocation(const std::exception_ptr & reason)
 {
-    ProfileEvents::increment(ProfileEvents::MemoryReservationKilled);
     std::unique_lock lock(mutex);
+    metrics.killed++;
     kill_reason = reason;
     cv.notify_all(); // notify syncWithMemoryTracker
 }
 
 void MemoryReservation::increaseApproved(const IncreaseRequest & increase)
 {
-    ProfileEvents::increment(ProfileEvents::MemoryReservationIncreases);
     std::unique_lock lock(mutex);
+    metrics.increases++;
     allocated_size += increase.size;
     approved_increment.add(increase.size);
     demand_increment.sub(increase.size);
@@ -154,8 +173,8 @@ void MemoryReservation::increaseApproved(const IncreaseRequest & increase)
 
 void MemoryReservation::decreaseApproved(const DecreaseRequest & decrease)
 {
-    ProfileEvents::increment(ProfileEvents::MemoryReservationDecreases);
     std::unique_lock lock(mutex);
+    metrics.decreases++;
     chassert(allocated_size >= decrease.size);
     allocated_size -= decrease.size;
     approved_increment.sub(decrease.size);
@@ -167,8 +186,8 @@ void MemoryReservation::decreaseApproved(const DecreaseRequest & decrease)
 
 void MemoryReservation::allocationFailed(const std::exception_ptr & reason)
 {
-    ProfileEvents::increment(ProfileEvents::MemoryReservationFailed);
     std::unique_lock lock(mutex);
+    metrics.failed++;
     fail_reason = reason;
     removed = true; // failed allocation are auto-removed by the scheduler
     if (increase_enqueued)

@@ -56,6 +56,15 @@ private:
     ResourceCost allocated_size = 0; // equals ResourceAllocation::allocated, which is private and controlled by the scheduler
     ResourceCost actual_size = 0; // real size of the resource used by the allocation
 
+    /// Helper struct. Holds postponed ProfileEvents increments to be executed from a query thread.
+    struct Metrics {
+        UInt64 increases = 0;
+        UInt64 decreases = 0;
+        UInt64 failed = 0;
+        UInt64 killed = 0;
+        void apply();
+    } metrics;
+
     /// Introspection
     CurrentMetrics::Increment approved_increment;
     CurrentMetrics::Increment demand_increment;
