@@ -48,8 +48,10 @@ public:
     /// Processes activation of this node
     void processActivation() override
     {
-        chassert(parent);
-        castParent().activateChild(*this);
+        // NOTE: Activations on detached subtrees are possible and should be processed normally until the detached root.
+        // NOTE: This root can be then either reattached or simply discarded.
+        if (parent)
+            castParent().activateChild(*this);
     }
 
     ITimeSharedNode & castParent() const

@@ -278,7 +278,8 @@ ResourceAllocation * AllocationQueue::selectAllocationToKill(IncreaseRequest & k
 
 void AllocationQueue::processActivation()
 {
-    chassert(parent);
+    if (!parent)
+        return; // Detached queue - nothing to do
     Update update;
     {
         std::lock_guard lock(mutex);

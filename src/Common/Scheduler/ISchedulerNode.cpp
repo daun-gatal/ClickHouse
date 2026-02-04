@@ -144,11 +144,9 @@ String ISchedulerNode::formatReadableCost(ResourceCost cost) const
 
 void ISchedulerNode::scheduleActivation()
 {
-    if (likely(parent))
-    {
-        // The same as `enqueue([this] { parent->activateChild(*this); });` but faster
-        event_queue.enqueueActivation(*this);
-    }
+    // The same as `enqueue([this] { parent->activateChild(*this); });` but faster
+    // NOTE: Parent check is done in processActivation() on the scheduler thread to avoid data race
+    event_queue.enqueueActivation(*this);
 }
 
 void ISchedulerNode::cancelActivation()
