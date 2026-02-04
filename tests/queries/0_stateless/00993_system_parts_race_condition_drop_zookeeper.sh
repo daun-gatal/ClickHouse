@@ -45,7 +45,10 @@ function thread4()
     while [ $SECONDS -lt "$TIMELIMIT" ]
     do
         REPLICA=$(($RANDOM % 10))
-        $CLICKHOUSE_CLIENT -q "OPTIMIZE TABLE alter_table_$REPLICA FINAL SETTINGS receive_timeout=1";
+        # NOTE: max_execution_time is needed to ensure the server-side query times out,
+        # not just the client connection. OPTIMIZE TABLE FINAL can hang for a long time
+        # waiting for merge entries that cannot be processed due to concurrent mutations.
+        $CLICKHOUSE_CLIENT -q "OPTIMIZE TABLE alter_table_$REPLICA FINAL SETTINGS receive_timeout=1, max_execution_time=3" |& grep -Fv "TIMEOUT_EXCEEDED"
         sleep 0.$RANDOM;
     done
 }

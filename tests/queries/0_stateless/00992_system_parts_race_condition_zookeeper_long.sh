@@ -56,7 +56,11 @@ function thread4()
     local TIMELIMIT=$((SECONDS+TIMEOUT))
     while [ $SECONDS -lt "$TIMELIMIT" ]
     do
-        $CLICKHOUSE_CLIENT --receive_timeout=1 -q "OPTIMIZE TABLE alter_table0 FINAL" | grep -Fv "Timeout exceeded while receiving data from server"
+        # NOTE: max_execution_time is needed to ensure the server-side query times out,
+        # not just the client connection (receive_timeout only affects the client).
+        # Without this, OPTIMIZE TABLE FINAL can hang for a long time waiting for merge entries
+        # that cannot be processed due to concurrent mutations.
+        $CLICKHOUSE_CLIENT --max_execution_time=3 --receive_timeout=1 -q "OPTIMIZE TABLE alter_table0 FINAL" |& grep -Fv "Timeout exceeded while receiving data from server" | grep -Fv "TIMEOUT_EXCEEDED"
     done
 }
 
