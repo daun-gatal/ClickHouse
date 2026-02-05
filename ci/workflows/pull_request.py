@@ -16,6 +16,7 @@ FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES = [
             "_debug, parallel",
             "_binary, parallel",
             "_asan, distributed plan, parallel",
+            "_tsan, parallel",
         )
     )
 ]
@@ -69,6 +70,10 @@ workflow = Workflow.Config(
                 else []
             )
             for j in JobConfigs.functional_tests_jobs
+        ],
+        *[
+            job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
+            for job in JobConfigs.functional_tests_jobs_azure
         ],
         *[
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
@@ -140,7 +145,6 @@ workflow = Workflow.Config(
         "python3 ./ci/jobs/scripts/workflow_hooks/store_data.py",
         "python3 ./ci/jobs/scripts/workflow_hooks/pr_labels_and_category.py",
         "python3 ./ci/jobs/scripts/workflow_hooks/version_log.py",
-        "python3 ./ci/jobs/scripts/workflow_hooks/quick_sync.py",
         "python3 ./ci/jobs/scripts/workflow_hooks/team_notifications.py",
     ],
     workflow_filter_hooks=[should_skip_job],
@@ -155,6 +159,7 @@ workflow = Workflow.Config(
             0
         ].name,  # plain integration test job, no old analyzer, no dist plan
         "functional": PLAIN_FUNCTIONAL_TEST_JOB.name,
+        "build": "Build (amd_binary)",
     },
 )
 
