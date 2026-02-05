@@ -92,18 +92,18 @@ void fillBufferWithRandomPrintableASCIIBytes(char * __restrict data, size_t size
     {
         UInt64 rand = rng();
 
-        UInt16 rand1 = rand;
-        UInt16 rand2 = rand >> 16;
-        UInt16 rand3 = rand >> 32;
-        UInt16 rand4 = rand >> 48;
+        UInt16 rand1 = static_cast<UInt16>(rand);
+        UInt16 rand2 = static_cast<UInt16>(rand >> 16);
+        UInt16 rand3 = static_cast<UInt16>(rand >> 32);
+        UInt16 rand4 = static_cast<UInt16>(rand >> 48);
 
         /// Printable characters are from range [32; 126].
         /// https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
 
-        data[pos + 0] = 32 + ((rand1 * 95) >> 16);
-        data[pos + 1] = 32 + ((rand2 * 95) >> 16);
-        data[pos + 2] = 32 + ((rand3 * 95) >> 16);
-        data[pos + 3] = 32 + ((rand4 * 95) >> 16);
+        data[pos + 0] = static_cast<char>(32 + ((rand1 * 95) >> 16));
+        data[pos + 1] = static_cast<char>(32 + ((rand2 * 95) >> 16));
+        data[pos + 2] = static_cast<char>(32 + ((rand3 * 95) >> 16));
+        data[pos + 3] = static_cast<char>(32 + ((rand4 * 95) >> 16));
 
         /// NOTE gcc failed to vectorize this code (aliasing of char?)
     }
@@ -203,7 +203,7 @@ void appendFuzzyRandomString(ColumnString::Chars & out, size_t max_length, pcg64
                 UInt64 scale = rng() % 11;
                 s += fmt::format(" {}:{}:{}", hour, minute, second);
                 if (scale > 0)
-                    s += fmt::format(".{:0{}}", rng() % intExp10(scale), scale);
+                    s += fmt::format(".{:0{}}", rng() % intExp10(scale), static_cast<int>(scale));
             }
             out.insert(out.end(), s.begin(), s.end());
             break;
@@ -446,11 +446,10 @@ ColumnPtr fillColumnWithRandomData(
             auto & data = column->getData();
             data.resize(limit);
 
-            UInt8 size = values.size();
-            UInt8 off;
+            size_t enum_size = values.size();
             for (UInt64 i = 0; i < limit; ++i)
             {
-                off = static_cast<UInt8>(rng()) % size;
+                size_t off = rng() % enum_size;
                 data[i] = values[off].second;
             }
 
@@ -464,11 +463,10 @@ ColumnPtr fillColumnWithRandomData(
             auto & data = column->getData();
             data.resize(limit);
 
-            UInt16 size = values.size();
-            UInt8 off;
+            size_t enum_size = values.size();
             for (UInt64 i = 0; i < limit; ++i)
             {
-                off = static_cast<UInt16>(rng()) % size;
+                size_t off = rng() % enum_size;
                 data[i] = values[off].second;
             }
 
@@ -740,7 +738,14 @@ ColumnPtr fillColumnWithRandomData(
             auto & column_concrete = typeid_cast<ColumnDecimal<DateTime64> &>(*column);
             column_concrete.getData().resize(limit);
             UInt64 range = (1ULL << 32) * intExp10(typeid_cast<const DataTypeDateTime64 &>(*type).getScale());
-            fillRandomDecimals<Int64>(reinterpret_cast<char *>(column_concrete.getData().data()), limit, range, rng, fuzzy);
+            if (fuzzy)
+                fillRandomDecimals<Int64>(reinterpret_cast<char *>(column_concrete.getData().data()), limit, static_cast<Int64>(range), rng, fuzzy);
+            else
+            {
+                /// Keep the old behavior for non-fuzzy mode: use UInt64 arithmetic
+                for (size_t i = 0; i < limit; ++i)
+                    column_concrete.getData()[i] = rng() % range;
+            }
             return column;
         }
         case TypeIndex::LowCardinality:
