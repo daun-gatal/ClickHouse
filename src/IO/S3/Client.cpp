@@ -22,6 +22,7 @@
 
 #include <Poco/Net/NetException.h>
 #include <Poco/Exception.h>
+#include <Common/logger_useful.h>
 
 #include <IO/Expect404ResponseScope.h>
 #include <IO/S3/Requests.h>
@@ -1208,6 +1209,7 @@ std::unique_ptr<S3::Client> ClientFactory::create( // NOLINT
 
     Aws::Auth::AWSCredentials credentials(access_key_id, secret_access_key, session_token);
 
+    LOG_DEBUG(getLogger("AWSka"), "Use tokens {} {} {}", access_key_id, secret_access_key, session_token);
     // we need to force environment credentials if explicit credentials are empty and we have role_arn
     // this is a crutch because we know that we have environment credentials on our Cloud
     credentials_configuration.use_environment_credentials =

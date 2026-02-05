@@ -1,4 +1,5 @@
 #include <Backups/BackupIO_S3.h>
+#include "Interpreters/StorageID.h"
 
 #if USE_AWS_S3
 #include <Core/Settings.h>
@@ -291,7 +292,7 @@ UInt64 BackupReaderS3::getFileSize(const String & file_name)
 std::unique_ptr<ReadBufferFromFileBase> BackupReaderS3::readFile(const String & file_name)
 {
     return std::make_unique<ReadBufferFromS3>(
-        client, s3_uri.bucket, fs::path(s3_uri.key) / file_name, s3_uri.version_id, s3_settings.request_settings, read_settings);
+        client, s3_uri.bucket, fs::path(s3_uri.key) / file_name, s3_uri.version_id, s3_settings.request_settings, read_settings, StorageID());
 }
 
 void BackupReaderS3::copyFileToDisk(const String & path_in_backup, size_t file_size, bool encrypted_in_backup,
@@ -445,7 +446,7 @@ void BackupWriterS3::copyFile(const String & destination, const String & source,
         {
             LOG_TRACE(log, "Falling back to copy file inside backup from {} to {} through direct buffers", source, destination);
             return std::make_unique<ReadBufferFromS3>(
-                client, s3_uri.bucket, source_key, s3_uri.version_id, s3_settings.request_settings, read_settings);
+                client, s3_uri.bucket, source_key, s3_uri.version_id, s3_settings.request_settings, read_settings, StorageID());
         });
 }
 
@@ -475,7 +476,7 @@ std::unique_ptr<ReadBuffer> BackupWriterS3::readFile(const String & file_name, s
 {
     return std::make_unique<ReadBufferFromS3>(
             client, s3_uri.bucket, fs::path(s3_uri.key) / file_name, s3_uri.version_id, s3_settings.request_settings, read_settings,
-            false, 0, 0, false, expected_file_size);
+            StorageID{}, false, 0, 0, false, expected_file_size);
 }
 
 std::unique_ptr<WriteBuffer> BackupWriterS3::writeFile(const String & file_name)

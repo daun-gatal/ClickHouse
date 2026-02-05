@@ -93,17 +93,24 @@ std::unique_ptr<S3::Client> getClient(
     ContextPtr context,
     bool for_disk_s3,
     std::optional<std::string> opt_disk_name,
-    std::function<std::shared_ptr<DataLake::IStorageCredentials>()> refresh_credentials_callback)
-
+    std::function<std::shared_ptr<DataLake::IStorageCredentials>(const StorageID &)> refresh_credentials_callback,
+    const StorageID & storage_id)
 {
     auto url = S3::URI(endpoint);
     if (!url.key.ends_with('/'))
         url.key.push_back('/');
-    return getClient(url, settings, context, for_disk_s3, opt_disk_name, refresh_credentials_callback);
+    return getClient(url, settings, context, for_disk_s3, opt_disk_name, refresh_credentials_callback, storage_id);
 }
 
 std::unique_ptr<S3::Client>
-getClient(const S3::URI & url, const S3Settings & settings, ContextPtr context, bool for_disk_s3, std::optional<std::string> opt_disk_name, std::function<std::shared_ptr<DataLake::IStorageCredentials>()> refresh_credentials_callback)
+getClient(
+    const S3::URI & url,
+    const S3Settings & settings,
+    ContextPtr context,
+    bool for_disk_s3,
+    std::optional<std::string> opt_disk_name,
+    std::function<std::shared_ptr<DataLake::IStorageCredentials>(const StorageID &)> refresh_credentials_callback,
+    const StorageID & storage_id)
 {
     const auto & auth_settings = settings.auth_settings;
     const auto & server_settings = context->getGlobalContext()->getServerSettings();
@@ -206,7 +213,7 @@ getClient(const S3::URI & url, const S3Settings & settings, ContextPtr context, 
     String secret_access_key = auth_settings[S3AuthSetting::secret_access_key];
     String session_token = auth_settings[S3AuthSetting::session_token];
 
-    auto updated_credentials = refresh_credentials_callback();
+    auto updated_credentials = refresh_credentials_callback(storage_id);
     if (updated_credentials)
     {
         auto s3_updated_credentials = std::static_pointer_cast<DataLake::S3Credentials>(updated_credentials);

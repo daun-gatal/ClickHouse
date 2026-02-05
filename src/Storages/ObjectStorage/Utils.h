@@ -28,6 +28,7 @@ void validateSupportedColumns(
     const StorageObjectStorageConfiguration & configuration);
 
 std::unique_ptr<ReadBufferFromFileBase> createReadBuffer(
+    const StorageID & storage_id,
     RelativePathWithMetadata & object_info,
     const ObjectStoragePtr & object_storage,
     const ContextPtr & context_,

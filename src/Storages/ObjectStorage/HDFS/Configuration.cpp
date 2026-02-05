@@ -51,7 +51,8 @@ void StorageHDFSConfiguration::check(ContextPtr context)
 ObjectStoragePtr StorageHDFSConfiguration::createObjectStorage( /// NOLINT
     ContextPtr context,
     bool /* is_readonly */,
-    CredentialsConfigurationCallback /*refresh_credentials_callback*/)
+    CredentialsConfigurationCallback /*refresh_credentials_callback*/,
+    const StorageID & /*storage_id*/)
 {
     assertInitialized();
     const auto & settings = context->getSettingsRef();

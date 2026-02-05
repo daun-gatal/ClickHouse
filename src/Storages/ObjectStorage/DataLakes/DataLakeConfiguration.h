@@ -164,11 +164,11 @@ public:
 
     }
 
-    ObjectStoragePtr createObjectStorage(ContextPtr context, bool is_readonly, StorageObjectStorageConfiguration::CredentialsConfigurationCallback refresh_credentials_callback) override
+    ObjectStoragePtr createObjectStorage(ContextPtr context, bool is_readonly, StorageObjectStorageConfiguration::CredentialsConfigurationCallback refresh_credentials_callback, const StorageID & storage_id) override
     {
         if (ready_object_storage)
             return ready_object_storage;
-        return BaseStorageConfiguration::createObjectStorage(context, is_readonly, refresh_credentials_callback);
+        return BaseStorageConfiguration::createObjectStorage(context, is_readonly, refresh_credentials_callback, storage_id);
     }
 
     std::optional<ColumnsDescription> tryGetTableStructureFromMetadata(ContextPtr local_context) const override

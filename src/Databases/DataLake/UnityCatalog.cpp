@@ -443,7 +443,7 @@ UnityCatalog::UnityCatalog(
 
 ICatalog::CredentialsRefreshCallback UnityCatalog::getCredentialsConfigurationCallback()
 {
-    return [this] () -> std::shared_ptr<IStorageCredentials>
+    return [this] (const DB::StorageID & /*storage_id*/) -> std::shared_ptr<IStorageCredentials>
     {
         LOG_DEBUG(log, "Update credentials in the catalog");
 

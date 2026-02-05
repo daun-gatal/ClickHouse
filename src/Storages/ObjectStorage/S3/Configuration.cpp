@@ -153,8 +153,9 @@ StorageObjectStorageQuerySettings StorageS3Configuration::getQuerySettings(const
     };
 }
 
-ObjectStoragePtr StorageS3Configuration::createObjectStorage(ContextPtr context, bool /* is_readonly */, CredentialsConfigurationCallback refresh_credentials_callback) /// NOLINT
+ObjectStoragePtr StorageS3Configuration::createObjectStorage(ContextPtr context, bool /* is_readonly */, CredentialsConfigurationCallback refresh_credentials_callback, const StorageID & storage_id) /// NOLINT
 {
+    std::cerr << "createObjectStorage " << storage_id.getFullTableName() << '\n';
     assertInitialized();
 
     if (!headers_from_ast.empty())
@@ -165,10 +166,10 @@ ObjectStoragePtr StorageS3Configuration::createObjectStorage(ContextPtr context,
     }
 
     auto client = getClient(url, *s3_settings, context, /* for_disk_s3 */false);
-    auto client_refresher = [refresh_credentials_callback, this, context] ()
+    auto client_refresher = [refresh_credentials_callback, this, context] (const DB::StorageID & sid)
     {
-        auto new_client = getClient(url, *s3_settings, context, /* for_disk_s3 */false, /*opt_disk_name*/ {}, refresh_credentials_callback);
-        return new_client;
+        auto new_client = getClient(url, *s3_settings, context, /* for_disk_s3 */false, /*opt_disk_name*/ {}, refresh_credentials_callback, sid);
+        return std::unique_ptr<const S3::Client>(std::move(new_client));
     };
     return std::make_shared<S3ObjectStorage>(
         std::move(client),
@@ -178,7 +179,8 @@ ObjectStoragePtr StorageS3Configuration::createObjectStorage(ContextPtr context,
         /*key_generator=*/nullptr,
         "StorageS3",
         false,
-        client_refresher);
+        client_refresher,
+        storage_id);
 }
 
 void S3StorageParsedArguments::fromNamedCollection(const NamedCollection & collection, ContextPtr context)

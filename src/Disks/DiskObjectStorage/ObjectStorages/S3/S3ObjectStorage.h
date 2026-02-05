@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Interpreters/StorageID.h"
 #include "config.h"
 
 #if USE_AWS_S3
@@ -40,7 +41,8 @@ private:
         ObjectStorageKeyGeneratorPtr key_generator_,
         const String & disk_name_,
         bool for_disk_s3_ = true,
-        const S3CredentialsRefreshCallback & credentials_refresh_callback_ = [] -> std::unique_ptr<const S3::Client>{ return nullptr; })
+        const S3CredentialsRefreshCallback & credentials_refresh_callback_ = [] (const StorageID &) -> std::unique_ptr<const S3::Client>{ return nullptr; },
+        const StorageID & storage_id_ = StorageID{})
         : uri(uri_)
         , disk_name(disk_name_)
         , client(std::move(client_))
@@ -50,6 +52,7 @@ private:
         , log(getLogger(logger_name))
         , for_disk_s3(for_disk_s3_)
         , credentials_refresh_callback(credentials_refresh_callback_)
+        , storage_id_for_credentials_refresh(storage_id_)
     {
     }
 
@@ -166,6 +169,7 @@ private:
 
     const bool for_disk_s3;
     S3CredentialsRefreshCallback credentials_refresh_callback;
+    const StorageID storage_id_for_credentials_refresh;
 };
 
 }

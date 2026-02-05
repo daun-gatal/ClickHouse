@@ -34,6 +34,7 @@
 #include <boost/operators.hpp>
 #include <Common/SipHash.h>
 #include <Common/parseGlobs.h>
+#include "Interpreters/StorageID.h"
 #include <Storages/ObjectStorage/IObjectIterator.h>
 #if ENABLE_DISTRIBUTED_CACHE
 #include <DistributedCache/DistributedCacheRegistry.h>
@@ -82,6 +83,7 @@ namespace ErrorCodes
 }
 
 StorageObjectStorageSource::StorageObjectStorageSource(
+    const StorageID & storage_id_,
     String name_,
     ObjectStoragePtr object_storage_,
     StorageObjectStorageConfigurationPtr configuration_,
@@ -95,6 +97,7 @@ StorageObjectStorageSource::StorageObjectStorageSource(
     FormatFilterInfoPtr format_filter_info_,
     bool need_only_count_)
     : ISource(std::make_shared<const Block>(info.source_header), false)
+    , storage_id(storage_id_)
     , name(std::move(name_))
     , object_storage(object_storage_)
     , configuration(configuration_)
@@ -136,6 +139,7 @@ std::string StorageObjectStorageSource::getUniqueStoragePathIdentifier(
 }
 
 std::shared_ptr<IObjectIterator> StorageObjectStorageSource::createFileIterator(
+    const StorageID & storage_id,
     StorageObjectStorageConfigurationPtr configuration,
     const StorageObjectStorageQuerySettings & query_settings,
     ObjectStoragePtr object_storage,
@@ -159,6 +163,7 @@ std::shared_ptr<IObjectIterator> StorageObjectStorageSource::createFileIterator(
         const bool expect_whole_archive = !local_context->getSettingsRef()[Setting::cluster_function_process_archive_on_multiple_nodes];
 
         auto distributed_iterator = std::make_unique<ReadTaskIterator>(
+            storage_id,
             local_context->getClusterFunctionReadTaskCallback(),
             local_context->getSettingsRef()[Setting::max_threads],
             /*is_archive_=*/is_archive && !expect_whole_archive,
@@ -478,7 +483,9 @@ void StorageObjectStorageSource::addNumRowsToCache(const ObjectInfo & object_inf
 
 StorageObjectStorageSource::ReaderHolder StorageObjectStorageSource::createReader()
 {
+    std::cerr << "StorageObjectStorageSource " << storage_id.getFullTableName() << '\n';
     return createReader(
+        storage_id,
         0,
         file_iterator,
         configuration,
@@ -495,6 +502,7 @@ StorageObjectStorageSource::ReaderHolder StorageObjectStorageSource::createReade
 }
 
 StorageObjectStorageSource::ReaderHolder StorageObjectStorageSource::createReader(
+    const StorageID & storage_id,
     size_t processor,
     const std::shared_ptr<IObjectIterator> & file_iterator,
     const StorageObjectStorageConfigurationPtr & configuration,
@@ -590,7 +598,7 @@ StorageObjectStorageSource::ReaderHolder StorageObjectStorageSource::createReade
         else
         {
             compression_method = chooseCompressionMethod(object_info->getFileName(), configuration->compression_method);
-            read_buf = createReadBuffer(object_info->relative_path_with_metadata, object_storage, context_, log);
+            read_buf = createReadBuffer(storage_id, object_info->relative_path_with_metadata, object_storage, context_, log);
         }
 
         Block initial_header = read_from_format_info.format_header;
@@ -713,6 +721,7 @@ std::future<StorageObjectStorageSource::ReaderHolder> StorageObjectStorageSource
 }
 
 std::unique_ptr<ReadBufferFromFileBase> createReadBuffer(
+    const StorageID & /*storage_id*/,
     RelativePathWithMetadata & object_info,
     const ObjectStoragePtr & object_storage,
     const ContextPtr & context_,
@@ -1128,12 +1137,14 @@ StorageObjectStorageSource::ReaderHolder::operator=(ReaderHolder && other) noexc
 }
 
 StorageObjectStorageSource::ReadTaskIterator::ReadTaskIterator(
+    const StorageID & storage_id_,
     const ClusterFunctionReadTaskCallback & callback_,
     size_t max_threads_count,
     bool is_archive_,
     ObjectStoragePtr object_storage_,
     ContextPtr context_)
     : WithContext(context_)
+    , storage_id(storage_id_)
     , callback(callback_)
     , is_archive(is_archive_)
     , object_storage(object_storage_)
@@ -1212,7 +1223,7 @@ ObjectInfoPtr StorageObjectStorageSource::ReadTaskIterator::createObjectInfoInAr
         {
             archive_reader = DB::createArchiveReader(
                 path_to_archive,
-                [=, this]() { return createReadBuffer(archive_object->relative_path_with_metadata, object_storage, getContext(), log); },
+                [=, this]() { return createReadBuffer(StorageID(), archive_object->relative_path_with_metadata, object_storage, getContext(), log); },
                 archive_object->getObjectMetadata()->size_bytes);
 
             archive_readers.emplace(path_to_archive, archive_reader);
@@ -1271,7 +1282,7 @@ StorageObjectStorageSource::ArchiveIterator::createArchiveReader(ObjectInfoPtr o
         /* path_to_archive */
         object_info->getPath(),
         /* archive_read_function */ [=, this]()
-        { return createReadBuffer(object_info->relative_path_with_metadata, object_storage, getContext(), log); },
+        { return createReadBuffer(StorageID(), object_info->relative_path_with_metadata, object_storage, getContext(), log); },
         /* archive_size */ size);
 }
 

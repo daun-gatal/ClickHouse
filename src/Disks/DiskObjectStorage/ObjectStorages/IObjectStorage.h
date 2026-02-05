@@ -97,6 +97,7 @@ extern const int NOT_IMPLEMENTED;
 
 class ReadBufferFromFileBase;
 class WriteBufferFromFileBase;
+struct StorageID;
 
 using ObjectAttributes = std::map<std::string, std::string>;
 

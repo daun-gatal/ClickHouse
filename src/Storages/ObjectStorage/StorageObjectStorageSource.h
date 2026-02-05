@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <Common/re2.h>
+#include "Interpreters/StorageID.h"
 #include <Interpreters/Context_fwd.h>
 #include <Interpreters/ClusterFunctionReadTask.h>
 #include <IO/Archives/IArchiveReader.h>
@@ -26,6 +27,7 @@ public:
     class ArchiveIterator;
 
     StorageObjectStorageSource(
+        const StorageID & storage_id_,
         String name_,
         ObjectStoragePtr object_storage_,
         StorageObjectStorageConfigurationPtr configuration,
@@ -48,6 +50,7 @@ public:
     void onFinish() override { parser_shared_resources->finishStream(); }
 
     static std::shared_ptr<IObjectIterator> createFileIterator(
+        const StorageID & storage_id,
         StorageObjectStorageConfigurationPtr configuration,
         const StorageObjectStorageQuerySettings & query_settings,
         ObjectStoragePtr object_storage,
@@ -68,6 +71,7 @@ public:
         const StorageObjectStorageConfiguration & configuration, const ObjectInfo & object_info, bool include_connection_info = true);
 
 protected:
+    const StorageID storage_id;
     const String name;
     ObjectStoragePtr object_storage;
     const StorageObjectStorageConfigurationPtr configuration;
@@ -123,6 +127,7 @@ protected:
 
     /// Recreate ReadBuffer and Pipeline for each file.
     static ReaderHolder createReader(
+        const StorageID & storage_id,
         size_t processor,
         const std::shared_ptr<IObjectIterator> & file_iterator,
         const StorageObjectStorageConfigurationPtr & configuration,
@@ -149,6 +154,7 @@ class StorageObjectStorageSource::ReadTaskIterator : public IObjectIterator, pri
 {
 public:
     ReadTaskIterator(
+        const StorageID & storage_id_,
         const ClusterFunctionReadTaskCallback & callback_,
         size_t max_threads_count,
         bool is_archive_,
@@ -160,6 +166,7 @@ public:
     size_t estimatedKeysCount() override { return buffer.size(); }
 
 private:
+    const StorageID storage_id;
     ObjectInfoPtr createObjectInfoInArchive(const std::string & path_to_archive, const std::string & path_in_archive);
 
     ClusterFunctionReadTaskCallback callback;

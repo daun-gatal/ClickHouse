@@ -234,7 +234,8 @@ void KeeperSnapshotManagerS3::uploadSnapshotImpl(const SnapshotFileInfo & snapsh
             lock_file,
             "",
             request_settings_2,
-            {}
+            {},
+            StorageID()
         };
 
         std::string read_uuid;

@@ -6,6 +6,7 @@
 #include <Storages/ObjectStorage/StorageObjectStorage.h>
 #include <Storages/ObjectStorage/StorageObjectStorageSource.h>
 #include <Storages/ObjectStorage/Utils.h>
+#include "Interpreters/StorageID.h"
 
 namespace DB
 {
@@ -141,7 +142,7 @@ std::unique_ptr<ReadBuffer> ReadBufferIterator::recreateLastReadBuffer()
 
     const auto & path = current_object_info->isArchive() ? current_object_info->getPathToArchive() : current_object_info->getPath();
     auto impl
-        = createReadBuffer(current_object_info->relative_path_with_metadata, object_storage, context, getLogger("ReadBufferIterator"));
+        = createReadBuffer(StorageID(), current_object_info->relative_path_with_metadata, object_storage, context, getLogger("ReadBufferIterator"));
 
     const auto compression_method = chooseCompressionMethod(current_object_info->getFileName(), configuration->compression_method);
     const auto zstd_window = static_cast<int>(context->getSettingsRef()[Setting::zstd_window_log_max]);
@@ -267,6 +268,7 @@ ReadBufferIterator::Data ReadBufferIterator::next()
         {
             compression_method = chooseCompressionMethod(filename, configuration->compression_method);
             read_buf = createReadBuffer(
+                StorageID(),
                 current_object_info->relative_path_with_metadata, object_storage, getContext(), getLogger("ReadBufferIterator"));
         }
 

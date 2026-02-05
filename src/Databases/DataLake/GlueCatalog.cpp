@@ -22,6 +22,7 @@
 #include <Common/CurrentMetrics.h>
 #include <Core/Settings.h>
 #include <Interpreters/Context.h>
+#include <Interpreters/StorageID.h>
 
 #include <DataTypes/IDataType.h>
 #include <DataTypes/DataTypeArray.h>
@@ -92,6 +93,10 @@ namespace CurrentMetrics
 {
     extern const Metric MarkCacheBytes;
     extern const Metric MarkCacheFiles;
+}
+
+namespace DB
+{
 }
 
 namespace DataLake
@@ -515,7 +520,7 @@ GlueCatalog::ObjectStorageWithPath GlueCatalog::createObjectStorageForEarlyTable
     auto configuration = std::make_shared<DB::StorageS3IcebergConfiguration>(storage_settings);
     DB::StorageObjectStorageConfiguration::initialize(*configuration, args, getContext(), false);
 
-    auto object_storage = configuration->createObjectStorage(getContext(), true, {});
+    auto object_storage = configuration->createObjectStorage(getContext(), true, {}, DB::StorageID{});
 
     /// Parse S3 path to extract bucket and table path
     String table_path = s3_location;

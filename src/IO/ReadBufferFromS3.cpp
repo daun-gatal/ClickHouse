@@ -61,6 +61,7 @@ ReadBufferFromS3::ReadBufferFromS3(
     const String & version_id_,
     const S3::S3RequestSettings & request_settings_,
     const ReadSettings & settings_,
+    const StorageID & storage_id_,
     bool use_external_buffer_,
     size_t offset_,
     size_t read_until_position_,
@@ -79,6 +80,7 @@ ReadBufferFromS3::ReadBufferFromS3(
     , use_external_buffer(use_external_buffer_)
     , restricted_seek(restricted_seek_)
     , credentials_refresh_callback(credentials_refresh_callback_)
+    , storage_id(storage_id_)
 {
     file_size = file_size_;
 }
@@ -99,13 +101,14 @@ bool ReadBufferFromS3::nextImpl()
 
     if (impl)
     {
+#if 0
         fiu_do_on(FailPoints::s3_read_buffer_throw_expired_token,
         {
             throw Exception(
                 ErrorCodes::S3_ERROR,
                 "Unable to parse ExceptionName: ExpiredToken Message: The provided token has expired. This error happened for S3 disk");
         });
-
+#endif
         if (impl->isResultReleased())
         {
             if (read_until_position)
@@ -157,7 +160,15 @@ bool ReadBufferFromS3::nextImpl()
         {
             if (!impl)
             {
+                auto new_client = credentials_refresh_callback(storage_id);
+                LOG_DEBUG(log, "init update client {}", reinterpret_cast<const void*>(client_ptr.get()));
+                client_ptr = std::move(new_client);
+
                 impl = initialize(attempt);
+
+                for (size_t i = 0; i < next_calls; ++i)
+                    impl->next();
+                next_calls = 0;
 
                 if (use_external_buffer)
                 {
@@ -174,6 +185,7 @@ bool ReadBufferFromS3::nextImpl()
 
             /// Try to read a next portion of data.
             next_result = impl->next();
+            next_calls += 1;
             break;
         }
         catch (...)
@@ -294,19 +306,22 @@ bool ReadBufferFromS3::processException(size_t read_offset, size_t attempt) cons
 
     if (auto * s3_exception = current_exception_cast<S3Exception *>())
     {
-        if (s3_exception->isAccessTokenExpiredError())
+        
         {
-            auto new_client = credentials_refresh_callback();
+            auto new_client = credentials_refresh_callback(storage_id);
+            LOG_DEBUG(log, "update client {} {}", reinterpret_cast<const void*>(client_ptr.get()), static_cast<Int32>(s3_exception->getS3ErrorCode()));
             client_ptr = std::move(new_client);
+            impl.reset();
             return true;
         }
-
+#if 0
         /// It doesn't make sense to retry Access Denied or No Such Key
         if (!s3_exception->isRetryableError())
         {
             s3_exception->addMessage("while reading key: {}, from bucket: {}", key, bucket);
             return false;
         }
+#endif
     }
 
     /// It doesn't make sense to retry allocator errors
@@ -503,6 +518,7 @@ Aws::S3::Model::GetObjectResult ReadBufferFromS3::sendRequest(size_t attempt, si
     // We do not know in advance how many bytes we are going to consume, to avoid blocking estimated it from below
     CurrentThread::IOSchedulingScope io_scope(read_settings.io_scheduling);
     CurrentThread::ReadThrottlingScope read_throttling_scope(read_settings.remote_throttler);
+    LOG_DEBUG(log, "get object from client {}", reinterpret_cast<const void*>(client_ptr.get()));
     Aws::S3::Model::GetObjectOutcome outcome = client_ptr->GetObject(req);
 
     if (outcome.IsSuccess())

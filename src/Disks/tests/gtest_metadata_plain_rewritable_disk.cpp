@@ -107,7 +107,7 @@ size_t writeObject(const std::shared_ptr<IObjectStorage> & object_storage, const
 std::string readObject(const std::shared_ptr<IObjectStorage> & object_storage, const std::string & remote_path)
 {
     StoredObject object(remote_path);
-    auto buffer = object_storage->readObject(object, getReadSettings(), /*read_hint=*/std::nullopt);
+    auto buffer = object_storage->readObject(object, getReadSettings(), std::nullopt);
 
     String content;
     readStringUntilEOF(content, *buffer);

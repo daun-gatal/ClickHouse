@@ -57,7 +57,7 @@ struct StorageObjectStorageQuerySettings
 class StorageObjectStorageConfiguration
 {
 public:
-    using CredentialsConfigurationCallback = std::function<std::shared_ptr<DataLake::IStorageCredentials>()>;
+    using CredentialsConfigurationCallback = std::function<std::shared_ptr<DataLake::IStorageCredentials>(const DB::StorageID &)>;
 
     StorageObjectStorageConfiguration() = default;
     virtual ~StorageObjectStorageConfiguration() = default;
@@ -137,7 +137,7 @@ public:
     virtual void check(ContextPtr context);
     virtual void validateNamespace(const String & /* name */) const {}
 
-    virtual ObjectStoragePtr createObjectStorage(ContextPtr context, bool is_readonly, CredentialsConfigurationCallback refresh_credentials_callback) = 0;
+    virtual ObjectStoragePtr createObjectStorage(ContextPtr context, bool is_readonly, CredentialsConfigurationCallback refresh_credentials_callback, const StorageID & storage_id) = 0;
     virtual bool isStaticConfiguration() const { return true; }
 
     virtual bool isDataLakeConfiguration() const { return false; }

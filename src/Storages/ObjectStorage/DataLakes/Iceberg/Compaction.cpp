@@ -240,7 +240,7 @@ static void writeDataFiles(
             sample_block, data_file->data_object_info, object_storage, format_settings, context);
 
         RelativePathWithMetadata relative_path(data_file->data_object_info->getPath());
-        auto read_buffer = createReadBuffer(relative_path, object_storage, context, getLogger("IcebergCompaction"));
+        auto read_buffer = createReadBuffer(StorageID(), relative_path, object_storage, context, getLogger("IcebergCompaction"));
 
         const Settings & settings = context->getSettingsRef();
         auto parser_shared_resources = std::make_shared<FormatParserSharedResources>(

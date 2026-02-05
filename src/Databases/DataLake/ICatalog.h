@@ -131,7 +131,7 @@ class ICatalog
 {
 public:
     using Namespaces = std::vector<std::string>;
-    using CredentialsRefreshCallback = std::function<std::shared_ptr<DataLake::IStorageCredentials>()>;
+    using CredentialsRefreshCallback = std::function<std::shared_ptr<DataLake::IStorageCredentials>(const DB::StorageID &)>;
 
     explicit ICatalog(const std::string & warehouse_) : warehouse(warehouse_) {}
 
@@ -185,7 +185,7 @@ public:
 
     virtual CredentialsRefreshCallback getCredentialsConfigurationCallback()
     {
-        return [] () -> std::shared_ptr<DataLake::IStorageCredentials>
+        return [] (const DB::StorageID & /*storage_id*/) -> std::shared_ptr<DataLake::IStorageCredentials>
         {
             return nullptr;
         };

@@ -43,7 +43,7 @@ namespace ErrorCodes
 }
 
 #define REQUEST_SETTINGS(DECLARE, ALIAS) \
-    DECLARE(UInt64, max_single_read_retries, 4, "", 0) \
+    DECLARE(UInt64, max_single_read_retries, 7, "", 0) \
     DECLARE(UInt64, request_timeout_ms, S3::DEFAULT_REQUEST_TIMEOUT_MS, "", 0) \
     DECLARE(UInt64, list_object_keys_size, S3::DEFAULT_LIST_OBJECT_KEYS_SIZE, "", 0) \
     DECLARE(Bool, allow_native_copy, S3::DEFAULT_ALLOW_NATIVE_COPY, "", 0) \

@@ -100,7 +100,6 @@ struct StorageID
         }
     };
 
-private:
     StorageID() = default;
 };
 

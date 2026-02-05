@@ -66,6 +66,7 @@ String StorageObjectStorage::getPathSample(ContextPtr context)
         local_distributed_processing = false;
 
     auto file_iterator = StorageObjectStorageSource::createFileIterator(
+        getStorageID(),
         configuration,
         query_settings,
         object_storage,
@@ -454,6 +455,7 @@ void StorageObjectStorage::read(
     configuration->modifyFormatSettings(modified_format_settings.value(), *local_context);
 
     auto read_step = std::make_unique<ReadFromObjectStorageStep>(
+        getStorageID(),
         object_storage,
         configuration,
         column_names,
@@ -603,6 +605,7 @@ std::unique_ptr<ReadBufferIterator> StorageObjectStorage::createReadBufferIterat
     const ContextPtr & context)
 {
     auto file_iterator = StorageObjectStorageSource::createFileIterator(
+        StorageID{},
         configuration,
         configuration->getQuerySettings(context),
         object_storage,

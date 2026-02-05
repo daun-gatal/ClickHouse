@@ -9,6 +9,7 @@
 #include <Core/Defines.h>
 #include <Storages/ObjectStorage/Utils.h>
 #include <Processors/Formats/IInputFormat.h>
+#include "Interpreters/StorageID.h"
 
 namespace DB
 {
@@ -111,7 +112,7 @@ ObjectInfoPtr ObjectIteratorSplitByBuckets::next(size_t id)
         auto splitter = FormatFactory::instance().getSplitter(format);
         if (splitter)
         {
-            auto buffer = createReadBuffer(last_object_info->relative_path_with_metadata, object_storage, getContext(), log);
+            auto buffer = createReadBuffer(StorageID(), last_object_info->relative_path_with_metadata, object_storage, getContext(), log);
             size_t bucket_size = getContext()->getSettingsRef()[Setting::cluster_table_function_buckets_batch_size];
             auto file_bucket_info = splitter->splitToBuckets(bucket_size, *buffer, format_settings);
             for (const auto & file_bucket : file_bucket_info)

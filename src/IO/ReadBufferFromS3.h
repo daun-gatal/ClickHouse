@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IO/S3Settings.h>
+#include "Interpreters/StorageID.h"
 #include "config.h"
 
 #if USE_AWS_S3
@@ -37,12 +38,13 @@ private:
     std::string stop_reason;
     std::string release_reason;
 
-    std::unique_ptr<S3::ReadBufferFromGetObjectResult> impl;
+    mutable std::unique_ptr<S3::ReadBufferFromGetObjectResult> impl;
+    mutable size_t next_calls = 0;
 
     LoggerPtr log = getLogger("ReadBufferFromS3");
 
 public:
-    using S3CredentialsRefreshCallback = std::function<std::unique_ptr<const S3::Client>()>;
+    using S3CredentialsRefreshCallback = std::function<std::unique_ptr<const S3::Client>(const DB::StorageID &)>;
 
     ReadBufferFromS3(
         std::shared_ptr<const S3::Client> client_ptr_,
@@ -51,12 +53,13 @@ public:
         const String & version_id_,
         const S3::S3RequestSettings & request_settings_,
         const ReadSettings & settings_,
+        const StorageID & storage_id_,
         bool use_external_buffer = false,
         size_t offset_ = 0,
         size_t read_until_position_ = 0,
         bool restricted_seek_ = false,
         std::optional<size_t> file_size = std::nullopt,
-        const S3CredentialsRefreshCallback & credentials_refresh_callback_ = [] {return nullptr;}
+        const S3CredentialsRefreshCallback & credentials_refresh_callback_ = [] (const DB::StorageID &) {return nullptr;}
         );
 
     ~ReadBufferFromS3() override = default;
@@ -115,6 +118,7 @@ private:
     bool read_all_range_successfully = false;
 
     const S3CredentialsRefreshCallback credentials_refresh_callback;
+    StorageID storage_id;
 };
 
 }

@@ -21,7 +21,8 @@ std::unique_ptr<S3::Client> getClient(
     ContextPtr context,
     bool for_disk_s3,
     std::optional<std::string> opt_disk_name = {},
-    std::function<std::shared_ptr<DataLake::IStorageCredentials>()> refresh_credentials_callback = [] {return nullptr;});
+    std::function<std::shared_ptr<DataLake::IStorageCredentials>(const StorageID &)> refresh_credentials_callback = [] (const StorageID &) {return nullptr;},
+    const StorageID & storage_id = StorageID());
 
 std::unique_ptr<S3::Client> getClient(
     const S3::URI & url_,
@@ -29,7 +30,8 @@ std::unique_ptr<S3::Client> getClient(
     ContextPtr context,
     bool for_disk_s3,
     std::optional<std::string> opt_disk_name = {},
-    std::function<std::shared_ptr<DataLake::IStorageCredentials>()> refresh_credentials_callback = [] {return nullptr;});
+    std::function<std::shared_ptr<DataLake::IStorageCredentials>(const StorageID &)> refresh_credentials_callback = [] (const StorageID &) {return nullptr;},
+    const StorageID & storage_id = StorageID());
 }
 
 #endif

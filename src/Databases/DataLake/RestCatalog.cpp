@@ -1,5 +1,6 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/Net/HTTPRequest.h>
+#include "Common/Exception.h"
 #include "Common/Logger.h"
 #include "Common/logger_useful.h"
 #include <Common/setThreadName.h>
@@ -726,6 +727,7 @@ bool RestCatalog::getTableMetadataImpl(
                 if (config_object->has(storage_endpoint_str))
                     storage_endpoint = config_object->get(storage_endpoint_str).extract<String>();
 
+                LOG_DEBUG(log, "initial tokens {} {} {}", access_key_id, secret_access_key, session_token);
                 result.setStorageCredentials(
                     std::make_shared<S3Credentials>(access_key_id, secret_access_key, session_token));
 
@@ -962,14 +964,15 @@ void RestCatalog::dropTable(const String & namespace_name, const String & table_
 
 ICatalog::CredentialsRefreshCallback RestCatalog::getCredentialsConfigurationCallback()
 {
-    return [this] () -> std::shared_ptr<IStorageCredentials>
+    return [this] (const DB::StorageID & storage_id) -> std::shared_ptr<IStorageCredentials>
     {
         LOG_DEBUG(log, "Update credentials in the catalog");
 
         DB::HTTPHeaderEntries headers;
         headers.emplace_back("X-Iceberg-Access-Delegation", "vended-credentials");
 
-        auto [namespace_name, table_name] = DataLake::parseTableName(getTables()[0]);
+        const auto & table = storage_id.getTableName();
+        auto [namespace_name, table_name] = DataLake::parseTableName(table);
         const std::string endpoint = std::filesystem::path(NAMESPACES_ENDPOINT) / encodeNamespaceForURI(namespace_name) / "tables" / table_name;
         auto buf = createReadBuffer(config.prefix / endpoint, /* params */{}, headers);
 

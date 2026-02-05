@@ -89,7 +89,7 @@ StorageObjectStorageQuerySettings StorageAzureConfiguration::getQuerySettings(co
     };
 }
 
-ObjectStoragePtr StorageAzureConfiguration::createObjectStorage(ContextPtr context, bool is_readonly, CredentialsConfigurationCallback /*refresh_credentials_callback*/) /// NOLINT
+ObjectStoragePtr StorageAzureConfiguration::createObjectStorage(ContextPtr context, bool is_readonly, CredentialsConfigurationCallback /*refresh_credentials_callback*/, const StorageID & /*storage_id*/) /// NOLINT
 {
     assertInitialized();
 

@@ -1,6 +1,7 @@
 #include <Disks/DiskObjectStorage/ObjectStorages/S3/S3ObjectStorage.h>
 #include <Common/setThreadName.h>
 #include <Common/ObjectStorageKey.h>
+#include "Interpreters/StorageID.h"
 
 #if USE_AWS_S3
 
@@ -195,6 +196,7 @@ std::unique_ptr<ReadBufferFromFileBase> S3ObjectStorage::readObject( /// NOLINT
         uri.version_id,
         settings_ptr->request_settings,
         patchSettings(read_settings),
+        storage_id_for_credentials_refresh,
         read_settings.remote_read_buffer_use_external_buffer,
         /* offset */0,
         /* read_until_position */0,
@@ -467,7 +469,7 @@ ObjectMetadata S3ObjectStorage::getObjectMetadata(const std::string & path, bool
     }
     catch (const DB::Exception &)
     {
-        auto new_client = credentials_refresh_callback();
+        auto new_client = credentials_refresh_callback(storage_id_for_credentials_refresh);
         client.set(std::move(new_client));
         object_info = S3::getObjectInfo(*client.get(), uri.bucket, path, /*version_id=*/ {}, /*with_metadata=*/ true, /*with_tags=*/ with_tags);
     }
@@ -525,7 +527,7 @@ void S3ObjectStorage::copyObjectToAnotherObjectStorage( // NOLINT
                 throw;
             else
             {
-                auto new_client = credentials_refresh_callback();
+                auto new_client = credentials_refresh_callback(storage_id_for_credentials_refresh);
                 client.set(std::move(new_client));
             }
             LOG_WARNING(getLogger("S3ObjectStorage"),

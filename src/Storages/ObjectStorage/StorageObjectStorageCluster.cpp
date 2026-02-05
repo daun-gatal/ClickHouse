@@ -39,6 +39,7 @@ String StorageObjectStorageCluster::getPathSample(ContextPtr context)
     /// We don't want to throw an exception if there are no files with specified path.
     query_settings.throw_on_zero_files_match = false;
     auto file_iterator = StorageObjectStorageSource::createFileIterator(
+        getStorageID(),
         configuration,
         query_settings,
         object_storage,
@@ -226,6 +227,7 @@ RemoteQueryExecutor::Extension StorageObjectStorageCluster::getTaskIteratorExten
     StorageMetadataPtr storage_metadata_snapshot) const
 {
     auto iterator = StorageObjectStorageSource::createFileIterator(
+        getStorageID(),
         configuration,
         configuration->getQuerySettings(local_context),
         object_storage,
