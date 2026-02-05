@@ -1011,7 +1011,6 @@ ICatalog::CredentialsRefreshCallback RestCatalog::getCredentialsConfigurationCal
             }
         }
 
-        
         auto [new_credentials, _] = getCredentialsAndEndpoint(config_object, location);
         return new_credentials;
     };

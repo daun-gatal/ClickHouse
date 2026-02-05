@@ -306,7 +306,7 @@ bool ReadBufferFromS3::processException(size_t read_offset, size_t attempt) cons
 
     if (auto * s3_exception = current_exception_cast<S3Exception *>())
     {
-        
+        if (s3_exception->isAccessTokenExpiredError())
         {
             auto new_client = client_refresh_callback(storage_id);
             LOG_DEBUG(log, "update client {} {}", reinterpret_cast<const void*>(client_ptr.get()), static_cast<Int32>(s3_exception->getS3ErrorCode()));
@@ -314,14 +314,13 @@ bool ReadBufferFromS3::processException(size_t read_offset, size_t attempt) cons
             impl.reset();
             return true;
         }
-#if 0
+
         /// It doesn't make sense to retry Access Denied or No Such Key
         if (!s3_exception->isRetryableError())
         {
             s3_exception->addMessage("while reading key: {}, from bucket: {}", key, bucket);
             return false;
         }
-#endif
     }
 
     /// It doesn't make sense to retry allocator errors
