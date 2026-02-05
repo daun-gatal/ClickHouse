@@ -234,7 +234,7 @@ struct Options
 /// Errors that are reluctantly allowed for IExecutableFunction::execute, but indicate that the
 /// function probably unnecessarily does typechecking at execution time instead of analysis time.
 /// This doesn't apply when any of the arguments has type Dynamic/Variant/Object.
-static const std::unordered_set<int> late_typecheck_errors = {
+const std::unordered_set<int> late_typecheck_errors = {
     ErrorCodes::BAD_TYPE_OF_FIELD,
     ErrorCodes::ILLEGAL_COLUMN,
     ErrorCodes::ILLEGAL_TYPE_OF_ARGUMENT,
@@ -502,7 +502,7 @@ function_arg_constraints = {
     {"arrayWithConstant", {{0, {.integer_at_most = 20}}}},
 };
 
-static constexpr size_t MEMORY_LIMIT_BYTES_PER_THREAD = 256 << 20;
+constexpr size_t MEMORY_LIMIT_BYTES_PER_THREAD = 256 << 20;
 
 size_t generateRandomNumberOfArgs()
 {
@@ -972,8 +972,8 @@ bool reportResults(const std::vector<FunctionStats> & function_stats, size_t stu
         stuck_threads,
         totals.get(S_OVERLOAD_OK), totals.get(S_OVERLOAD_ATTEMPTS),
         totals.get(S_EXEC_ROW_OK), totals.get(S_EXEC_ROW_ATTEMPTS),
-        totals.get(S_TIME_MAX_NS) / 1e9,
-        totals.get(S_MEMORY_PEAK) * 1. / (1ul << 20),
+        static_cast<double>(totals.get(S_TIME_MAX_NS)) / 1e9,
+        static_cast<double>(totals.get(S_MEMORY_PEAK)) / static_cast<double>(1ul << 20),
         function_counts);
 
     for (auto & [name, list] : function_lists)
@@ -996,7 +996,7 @@ bool reportResults(const std::vector<FunctionStats> & function_stats, size_t stu
         {
             if (i != 0)
                 out += ", ";
-            out += fmt::format("{} ({:.3f} {})", list[i].second, list[i].first / unit_value, unit_name);
+            out += fmt::format("{} ({:.3f} {})", list[i].second, static_cast<double>(list[i].first) / unit_value, unit_name);
         }
         LOG_INFO(logger, "top by {}: {}", what, out);
     };
@@ -1162,8 +1162,6 @@ struct FunctionsStressTestThread
             thread_status->memory_tracker.setHardLimit(MEMORY_LIMIT_BYTES_PER_THREAD);
             thread_status->untracked_memory = 0;
 
-            String error;
-
             auto handle_unexpected_exception = [&]
             {
                 String msg = fmt::format("{} {}", operation.describe(), getCurrentExceptionMessage(true));
@@ -1214,10 +1212,9 @@ struct FunctionsStressTestThread
                 {
                     auto lock = lockMutex();
                     /// Print all rows.
-                    if (operation.step > Operation::Step::ExecutingFunctionInBulk)
-                        operation.step = Operation::Step::ExecutingFunctionInBulk;
+                    operation.step = std::min(operation.step, Operation::Step::ExecutingFunctionInBulk);
                 }
-                LOG_INFO(logger, "testing function took {:.3}s: {}", ns / 1e9, operation.describe());
+                LOG_INFO(logger, "testing function took {:.3}s: {}", static_cast<double>(ns) / 1e9, operation.describe());
             }
             stats.max(S_TIME_MAX_NS, ns);
 
@@ -1251,12 +1248,12 @@ struct FunctionsStressTestThread
         thread_stop_cv.notify_all();
     }
 
-    void logCurrentOperation()
+    void logCurrentOperation() const
     {
         LOG_ERROR(logger, "(while {})", operation.describe());
     }
 
-    FunctionOverloadResolverPtr getOverloadResolver(const FunctionInfo & function_info)
+    FunctionOverloadResolverPtr getOverloadResolver(const FunctionInfo & function_info) const
     {
         if (function_info.overload_resolver)
             return function_info.overload_resolver;
@@ -1388,7 +1385,7 @@ struct FunctionsStressTestThread
                 if (!new_type->equals(*res.type))
                 {
                     bool ok = false;
-                    if (auto lc = typeid_cast<const DataTypeLowCardinality *>(res.type.get()))
+                    if (const auto * lc = typeid_cast<const DataTypeLowCardinality *>(res.type.get()))
                     {
                         if (lc->getDictionaryType()->equals(*new_type))
                         {
@@ -1409,8 +1406,7 @@ struct FunctionsStressTestThread
         }
 
         if (!res.column)
-
-        checkAndFixupColumn(res.column, res.type.get(), options.rows_per_batch, nullptr);
+            checkAndFixupColumn(res.column, res.type.get(), options.rows_per_batch, nullptr);
 
         return res;
     }
@@ -1772,7 +1768,7 @@ struct FunctionsStressTestThread
 
         if (mutable_result)
         {
-            chassert(mutable_result->size() > 0);
+            chassert(!mutable_result->empty());
             valid_args = operation.args;
             for (size_t i = 0; i < valid_args.size(); ++i)
                 valid_args[i].column = std::move(mutable_valid_args[i]);
@@ -1848,7 +1844,7 @@ struct FunctionsStressTestThread
             if (column->size() != options.rows_per_batch)
             {
                 /// Repeat some values to get to the standard number of rows.
-                chassert(column->size() > 0);
+                chassert(!column->empty());
                 chassert(column->size() < options.rows_per_batch);
                 auto indices_col = ColumnUInt64::create(options.rows_per_batch);
                 auto & indices = indices_col->getData();
@@ -1857,7 +1853,7 @@ struct FunctionsStressTestThread
                 column = column->index(*indices_col, 0);
                 chassert(column->size() == options.rows_per_batch);
             }
-            ColumnWithTypeAndName c(std::move(column), result_type, fmt::format("c{}", thread_local_rng()));
+            ColumnWithTypeAndName c(column, result_type, fmt::format("c{}", thread_local_rng()));
             if (additional_random_values.size() < 128)
                 additional_random_values.push_back(std::move(c));
             else
@@ -1997,7 +1993,7 @@ struct FunctionsStressTestThread
 extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-identifier"
-void __tsan_on_report(void * /*report*/)
+void __tsan_on_report(void * /*report*/) // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 {
     if (current_stress_thread)
         current_stress_thread->got_sanitizer_error = true;
