@@ -1198,9 +1198,10 @@ IdentifierResolveResult QueryAnalyzer::tryResolveIdentifierInParentScopes(const 
     {
         auto * subquery_node = resolved_identifier->as<QueryNode>();
         auto * union_node = resolved_identifier->as<UnionNode>();
+        auto * table_nope = resolved_identifier->as<TableNode>();
 
         /// Resolved to CTE in parent scope.
-        bool is_cte = (subquery_node && subquery_node->isCTE()) || (union_node && union_node->isCTE());
+        bool is_cte = (subquery_node && subquery_node->isCTE()) || (union_node && union_node->isCTE()) || (table_nope && table_nope->isMaterializedCTE());
         /// Resolved to lambda argument.
         bool is_table_from_expression_arguments = resolve_result.isResolvedFromExpressionArguments() &&
             resolved_identifier->getNodeType() == QueryTreeNodeType::TABLE;
@@ -2816,6 +2817,7 @@ ProjectionNames QueryAnalyzer::resolveExpressionNode(
                     auto * union_node = resolved_identifier_node->as<UnionNode>();
                     bool resolved_as_cte = (subquery_node && subquery_node->isCTE()) || (union_node && union_node->isCTE());
 
+                    /// Non-materialized CTEs must be resolved here
                     if (resolved_as_cte)
                     {
                         auto original_cte_node = resolved_identifier_node;
