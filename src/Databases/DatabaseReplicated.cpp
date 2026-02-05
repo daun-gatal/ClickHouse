@@ -1982,6 +1982,21 @@ void DatabaseReplicated::restoreDatabaseMetadataInKeeper(ContextPtr)
 {
     waitDatabaseStarted();
 
+    /// Stop the DDL worker before restoring metadata to prevent a race condition:
+    /// the old DDL worker may reconnect to ZooKeeper, read the intermediate state
+    /// (where table metadata has not been written yet), and mistakenly move local
+    /// tables to `_broken_replicated_tables`.
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        if (ddl_worker)
+        {
+            LOG_TRACE(log, "Stopping DDL worker before restoring database metadata in Keeper.");
+            ddl_worker->shutdown();
+            ddl_worker_initialized = false;
+            ddl_worker = nullptr;
+        }
+    }
+
     tryConnectToZooKeeperAndInitDatabase(LoadingStrictnessLevel::CREATE);
 
     try
