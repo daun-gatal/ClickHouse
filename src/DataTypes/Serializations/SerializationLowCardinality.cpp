@@ -41,6 +41,12 @@ SerializationLowCardinality::SerializationLowCardinality(const DataTypePtr & dic
 {
 }
 
+SerializationPtr SerializationLowCardinality::create(const DataTypePtr & dictionary_type_)
+{
+    auto ptr = SerializationPtr(new SerializationLowCardinality(dictionary_type_));
+    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+}
+
 String SerializationLowCardinality::getName() const
 {
     return "LowCardinality(" + dictionary_type->getName() + ", " + dict_inner_serialization->getName() + ")";

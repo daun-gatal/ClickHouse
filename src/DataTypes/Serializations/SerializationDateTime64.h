@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/SerializationDecimalBase.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/TimezoneMixin.h>
 
 namespace DB
@@ -8,8 +9,17 @@ namespace DB
 
 class SerializationDateTime64 final : public SerializationDecimalBase<DateTime64>, public TimezoneMixin
 {
-public:
+private:
     SerializationDateTime64(UInt32 scale_, const TimezoneMixin & time_zone_);
+
+public:
+    static SerializationPtr create(UInt32 scale_, const TimezoneMixin & time_zone_)
+    {
+        auto ptr = SerializationPtr(new SerializationDateTime64(scale_, time_zone_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationDateTime64() override;
 
     String getName() const override;
 

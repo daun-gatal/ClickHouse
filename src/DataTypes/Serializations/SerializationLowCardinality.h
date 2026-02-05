@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 namespace DB
 {
@@ -14,8 +15,10 @@ private:
     DataTypePtr dictionary_type;
     SerializationPtr dict_inner_serialization;
 
-public:
     explicit SerializationLowCardinality(const DataTypePtr & dictionary_type);
+
+public:
+    static SerializationPtr create(const DataTypePtr & dictionary_type);
 
     String getName() const override;
 

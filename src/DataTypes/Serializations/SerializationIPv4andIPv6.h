@@ -2,6 +2,7 @@
 
 #include <IO/ReadHelpers.h>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <base/TypeName.h>
 
 namespace DB
@@ -10,7 +11,16 @@ namespace DB
 template <typename IPv>
 class SerializationIP : public SimpleTextSerialization
 {
+private:
+    SerializationIP() = default;
+
 public:
+    static SerializationPtr create()
+    {
+        auto ptr = SerializationPtr(new SerializationIP<IPv>());
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
     String getName() const override { return String(TypeName<IPv>); }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;

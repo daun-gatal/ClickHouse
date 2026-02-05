@@ -159,7 +159,7 @@ void SerializationSubObject::deserializeBinaryBulkStatePrefix(
     }
 
     settings.path.push_back(Substream::ObjectSharedData);
-    sub_object_state->shared_data_serialization = std::make_shared<SerializationSubObjectSharedData>(
+    sub_object_state->shared_data_serialization = SerializationSubObjectSharedData::create(
         structure_state_concrete->shared_data_serialization_version,
         structure_state_concrete->shared_data_buckets,
         paths_prefix,

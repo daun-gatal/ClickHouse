@@ -1,14 +1,24 @@
 #pragma once
 
 #include <DataTypes/Serializations/SerializationNumber.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <Common/DateLUT.h>
 
 namespace DB
 {
 class SerializationDate32 final : public SerializationNumber<Int32>
 {
-public:
+private:
     explicit SerializationDate32(const DateLUTImpl & time_zone_ = DateLUT::instance());
+
+public:
+    static SerializationPtr create(const DateLUTImpl & time_zone_ = DateLUT::instance())
+    {
+        auto ptr = SerializationPtr(new SerializationDate32(time_zone_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationDate32() override;
 
     String getName() const override;
 

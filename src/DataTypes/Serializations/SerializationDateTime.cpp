@@ -24,9 +24,19 @@ String SerializationDateTime::getName() const
     return "DateTime";
 }
 
+SerializationDateTime::~SerializationDateTime()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationTime::getName() const
 {
     return "Time";
+}
+
+SerializationTime::~SerializationTime()
+{
+    SerializationObjectPool::instance().remove(getName());
 }
 
 namespace

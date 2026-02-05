@@ -19,7 +19,7 @@ SerializationObjectDynamicPath::SerializationObjectDynamicPath(
     : SerializationWrapper(nested_)
     , path(path_)
     , path_subcolumn(path_subcolumn_)
-    , dynamic_serialization(std::make_shared<SerializationDynamic>())
+    , dynamic_serialization(SerializationDynamic::create())
     , dynamic_type(dynamic_type_)
     , subcolumn_type(subcolumn_type_)
 {
@@ -116,7 +116,7 @@ void SerializationObjectDynamicPath::deserializeBinaryBulkStatePrefix(
     if (dynamic_path_state->read_from_shared_data)
     {
         settings.path.push_back(Substream::ObjectSharedData);
-        dynamic_path_state->shared_data_path_serialization = std::make_shared<SerializationObjectSharedDataPath>(
+        dynamic_path_state->shared_data_path_serialization = SerializationObjectSharedDataPath::create(
             nested_serialization,
             object_structure_state->shared_data_serialization_version,
             path,

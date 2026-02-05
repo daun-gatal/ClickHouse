@@ -17,6 +17,11 @@ String SerializationNothing::getName() const
     return "Nothing";
 }
 
+SerializationNothing::~SerializationNothing()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationNothing::throwNoSerialization()
 {
     throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Serialization is not implemented for type Nothing");

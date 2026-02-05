@@ -8,7 +8,7 @@ namespace DB
 
 SerializationStringSize::SerializationStringSize(MergeTreeStringSerializationVersion version_)
     : version(version_)
-    , serialization_string(version)
+    , serialization_string(SerializationString::create(version))
 {
 }
 
@@ -127,7 +127,7 @@ void SerializationStringSize::deserializeWithStringData(
         double avg_value_size_hint
             = settings.get_avg_value_size_hint_callback ? settings.get_avg_value_size_hint_callback(settings.path) : 0.0;
 
-        serialization_string.deserializeBinaryBulk(*string_state.column->assumeMutable(), *stream, rows_offset, limit, avg_value_size_hint);
+        serialization_string->deserializeBinaryBulk(*string_state.column->assumeMutable(), *stream, rows_offset, limit, avg_value_size_hint);
 
         num_read_rows = string_state.column->size() - prev_size;
         addColumnWithNumReadRowsToSubstreamsCache(cache, settings.path, string_state.column, num_read_rows);

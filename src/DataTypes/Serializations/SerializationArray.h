@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 namespace DB
 {
@@ -10,8 +11,16 @@ class SerializationArray final : public SimpleTextSerialization
 private:
     SerializationPtr nested;
 
-public:
     explicit SerializationArray(const SerializationPtr & nested_) : nested(nested_) {}
+
+public:
+    static SerializationPtr create(const SerializationPtr & nested_)
+    {
+        auto ptr = SerializationPtr(new SerializationArray(nested_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationArray() override;
 
     String getName() const override;
 

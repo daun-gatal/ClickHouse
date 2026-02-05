@@ -48,6 +48,11 @@ String SerializationTuple::getName() const
     return result;
 }
 
+SerializationTuple::~SerializationTuple()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationTuple::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings & settings) const
 {
     const auto & tuple = field.safeGet<Tuple>();

@@ -122,7 +122,7 @@ void SerializationVariantElementNullMap::deserializeBinaryBulkWithMultipleStream
         /// Don't skip rows_offset rows now, because we want to store discriminators without applied rows_offset in cache.
         if (discriminators_state->mode.value == SerializationVariant::DiscriminatorsSerializationMode::BASIC)
         {
-            SerializationNumber<ColumnVariant::Discriminator>().deserializeBinaryBulk(
+            SerializationNumber<ColumnVariant::Discriminator>::create()->deserializeBinaryBulk(
                 *variant_element_null_map_state->discriminators->assumeMutable(), *discriminators_stream, 0, rows_offset + limit, 0);
         }
         else
@@ -199,7 +199,7 @@ DataTypePtr SerializationVariantElementNullMap::VariantNullMapSubcolumnCreator::
 
 SerializationPtr SerializationVariantElementNullMap::VariantNullMapSubcolumnCreator::create(const DB::SerializationPtr &, const DataTypePtr &) const
 {
-    return std::make_shared<SerializationVariantElementNullMap>(variant_element_name, global_variant_discriminator);
+    return SerializationVariantElementNullMap::create(variant_element_name, global_variant_discriminator);
 }
 
 ColumnPtr SerializationVariantElementNullMap::VariantNullMapSubcolumnCreator::create(const DB::ColumnPtr &) const

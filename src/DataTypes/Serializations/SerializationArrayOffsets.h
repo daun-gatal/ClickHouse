@@ -1,5 +1,6 @@
 #pragma once
 
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/Serializations/SerializationNumber.h>
 
 namespace DB
@@ -8,7 +9,16 @@ namespace DB
 /// Class for deserialization of Array offsets as a separate subcolumn.
 class SerializationArrayOffsets : public SerializationNumber<UInt64>
 {
+private:
+    SerializationArrayOffsets() = default;
+
 public:
+    static SerializationPtr create()
+    {
+        auto ptr = SerializationPtr(new SerializationArrayOffsets());
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
     String getName() const override;
 
     void deserializeBinaryBulkWithMultipleStreams(

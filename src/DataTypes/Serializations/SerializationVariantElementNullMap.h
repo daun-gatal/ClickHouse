@@ -1,5 +1,6 @@
 #pragma once
 
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
 #include <DataTypes/DataTypeNullable.h>
 #include <Columns/ColumnNullable.h>
@@ -24,10 +25,17 @@ class SerializationVariantElement;
 /// but differs in that there is no need to read the actual data of the variant, only discriminators.
 class SerializationVariantElementNullMap final : public SimpleTextSerialization
 {
-public:
+private:
     SerializationVariantElementNullMap(const String & variant_element_name_, ColumnVariant::Discriminator variant_discriminator_)
         : variant_element_name(variant_element_name_), variant_discriminator(variant_discriminator_)
     {
+    }
+
+public:
+    static SerializationPtr create(const String & variant_element_name_, ColumnVariant::Discriminator variant_discriminator_)
+    {
+        auto ptr = SerializationPtr(new SerializationVariantElementNullMap(variant_element_name_, variant_discriminator_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
     }
 
     String getName() const override

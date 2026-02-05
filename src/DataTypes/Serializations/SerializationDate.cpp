@@ -15,6 +15,11 @@ String SerializationDate::getName() const
     return "Date";
 }
 
+SerializationDate::~SerializationDate()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationDate::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const
 {
     writeDateText(DayNum(assert_cast<const ColumnUInt16 &>(column).getData()[row_num]), ostr, time_zone);

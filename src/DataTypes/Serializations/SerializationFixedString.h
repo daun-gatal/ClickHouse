@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <Common/PODArray.h>
 
 namespace DB
@@ -11,8 +12,17 @@ class SerializationFixedString : public ISerialization
 private:
     size_t n;
 
-public:
     explicit SerializationFixedString(size_t n_) : n(n_) {}
+
+public:
+    static SerializationPtr create(size_t n_)
+    {
+        auto ptr = SerializationPtr(new SerializationFixedString(n_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationFixedString() override;
+
     size_t getN() const { return n; }
 
     String getName() const override;

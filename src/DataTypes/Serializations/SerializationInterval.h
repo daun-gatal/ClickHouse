@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 #include <DataTypes/DataTypeInterval.h>
 #include <Formats/FormatSettings.h>
@@ -12,8 +13,15 @@ namespace DB
 
 class SerializationInterval : public SerializationNumber<typename DataTypeInterval::FieldType>
 {
-public:
+private:
     explicit SerializationInterval(IntervalKind kind_);
+
+public:
+    static SerializationPtr create(IntervalKind kind_)
+    {
+        auto ptr = SerializationPtr(new SerializationInterval(kind_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
 
     String getName() const override;
 

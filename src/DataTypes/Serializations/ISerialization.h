@@ -57,8 +57,10 @@ struct MergeTreeSettings;
  */
 class ISerialization : private boost::noncopyable, public std::enable_shared_from_this<ISerialization>
 {
-public:
+protected:
     ISerialization() = default;
+
+public:
     virtual ~ISerialization() = default;
 
     /// Get the name of the serialization (used as a unique identifier/hash).

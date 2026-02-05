@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/SerializationDecimalBase.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <Common/DateLUT.h>
 
 class DateLUTImpl;
@@ -10,9 +11,22 @@ namespace DB
 
 class SerializationTime64 final : public SerializationDecimalBase<Time64>
 {
-public:
+private:
     explicit SerializationTime64(UInt32 scale_);
     explicit SerializationTime64(UInt32 scale_, const DataTypeTime64 & /*time_type*/);
+
+public:
+    static SerializationPtr create(UInt32 scale_)
+    {
+        auto ptr = SerializationPtr(new SerializationTime64(scale_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    static SerializationPtr create(UInt32 scale_, const DataTypeTime64 & time_type)
+    {
+        auto ptr = SerializationPtr(new SerializationTime64(scale_, time_type));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
 
     String getName() const override;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <typeinfo>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
 #include <Columns/ColumnDecimal.h>
 
@@ -22,7 +23,7 @@ public:
 
     String getName() const override
     {
-        return "Decimal(" + std::to_string(precision) + ", " + std::to_string(scale) + ")";
+        return String(typeid(T).name()) + "_Decimal(" + std::to_string(precision) + ", " + std::to_string(scale) + ")";
     }
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;

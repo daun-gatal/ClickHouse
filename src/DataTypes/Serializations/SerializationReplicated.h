@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 namespace DB
 {
@@ -11,8 +12,15 @@ namespace DB
 /// implementation of serializeBinaryBulkWithMultipleStreams/deserializeBinaryBulkWithMultipleStreams).
 class SerializationReplicated final : public ISerialization
 {
-public:
+private:
     explicit SerializationReplicated(const SerializationPtr & nested_);
+
+public:
+    static SerializationPtr create(const SerializationPtr & nested_)
+    {
+        auto ptr = SerializationPtr(new SerializationReplicated(nested_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
 
     String getName() const override;
 

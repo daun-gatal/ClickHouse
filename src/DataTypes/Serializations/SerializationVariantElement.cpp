@@ -138,7 +138,7 @@ void SerializationVariantElement::deserializeBinaryBulkWithMultipleStreams(
         /// We will apply rows_offset on discriminators later.
         if (discriminators_state->mode.value == SerializationVariant::DiscriminatorsSerializationMode::BASIC)
         {
-            SerializationNumber<ColumnVariant::Discriminator>().deserializeBinaryBulk(
+            SerializationNumber<ColumnVariant::Discriminator>::create()->deserializeBinaryBulk(
                 *variant_element_state->discriminators->assumeMutable(), *discriminators_stream, 0, rows_offset + limit, 0);
         }
         else
@@ -342,7 +342,7 @@ std::pair<size_t, size_t> SerializationVariantElement::deserializeCompactDiscrim
         }
         else
         {
-            SerializationNumber<ColumnVariant::Discriminator>().deserializeBinaryBulk(discriminators, *stream, 0, limit_in_granule, 0);
+            SerializationNumber<ColumnVariant::Discriminator>::create()->deserializeBinaryBulk(discriminators, *stream, 0, limit_in_granule, 0);
             size_t start = discriminators_data.size() - limit_in_granule;
             size_t skipped_rows = std::min(rows_offset, limit_in_granule);
 
@@ -399,7 +399,7 @@ DataTypePtr SerializationVariantElement::VariantSubcolumnCreator::create(const D
 
 SerializationPtr SerializationVariantElement::VariantSubcolumnCreator::create(const SerializationPtr & prev, const DataTypePtr &) const
 {
-    return std::make_shared<SerializationVariantElement>(prev, variant_element_name, global_variant_discriminator);
+    return SerializationVariantElement::create(prev, variant_element_name, global_variant_discriminator);
 }
 
 ColumnPtr SerializationVariantElement::VariantSubcolumnCreator::create(const DB::ColumnPtr & prev) const

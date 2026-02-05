@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 namespace DB
 {
@@ -18,8 +19,17 @@ struct DeserializeBinaryBulkStateStringWithoutSizeStream : public ISerialization
 
 class SerializationString final : public ISerialization
 {
-public:
+private:
     explicit SerializationString(MergeTreeStringSerializationVersion version_ = MergeTreeStringSerializationVersion::SINGLE_STREAM);
+
+public:
+    static SerializationPtr create(MergeTreeStringSerializationVersion version_ = MergeTreeStringSerializationVersion::SINGLE_STREAM)
+    {
+        auto ptr = SerializationPtr(new SerializationString(version_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationString() override;
 
     String getName() const override;
 

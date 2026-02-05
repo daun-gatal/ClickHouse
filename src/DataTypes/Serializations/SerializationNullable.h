@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <DataTypes/Serializations/SerializationObjectPool.h>
 
 namespace DB
 {
@@ -14,12 +15,20 @@ private:
     /// Used in Sparse columns where the null map is implicitly derived from sparse offsets.
     bool use_default_null_map;
 
-public:
     explicit SerializationNullable(const SerializationPtr & nested_, bool use_default_null_map_ = false)
         : nested(nested_)
         , use_default_null_map(use_default_null_map_)
     {
     }
+
+public:
+    static SerializationPtr create(const SerializationPtr & nested_, bool use_default_null_map_ = false)
+    {
+        auto ptr = SerializationPtr(new SerializationNullable(nested_, use_default_null_map_));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    }
+
+    ~SerializationNullable() override;
 
     const SerializationPtr & getNested() const { return nested; }
 

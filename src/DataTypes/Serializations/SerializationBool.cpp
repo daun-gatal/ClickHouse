@@ -24,6 +24,11 @@ String SerializationBool::getName() const
     return "Bool";
 }
 
+SerializationBool::~SerializationBool()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 namespace
 {
 
