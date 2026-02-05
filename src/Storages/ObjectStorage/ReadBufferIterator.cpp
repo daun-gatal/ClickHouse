@@ -6,7 +6,7 @@
 #include <Storages/ObjectStorage/StorageObjectStorage.h>
 #include <Storages/ObjectStorage/StorageObjectStorageSource.h>
 #include <Storages/ObjectStorage/Utils.h>
-#include "Interpreters/StorageID.h"
+#include <Interpreters/StorageID.h>
 
 namespace DB
 {

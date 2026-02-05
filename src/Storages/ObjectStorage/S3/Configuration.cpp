@@ -155,7 +155,6 @@ StorageObjectStorageQuerySettings StorageS3Configuration::getQuerySettings(const
 
 ObjectStoragePtr StorageS3Configuration::createObjectStorage(ContextPtr context, bool /* is_readonly */, CredentialsConfigurationCallback refresh_credentials_callback, const StorageID & storage_id) /// NOLINT
 {
-    std::cerr << "createObjectStorage " << storage_id.getFullTableName() << '\n';
     assertInitialized();
 
     if (!headers_from_ast.empty())

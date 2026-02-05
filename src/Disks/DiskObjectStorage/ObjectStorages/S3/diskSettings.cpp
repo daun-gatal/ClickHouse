@@ -1,5 +1,6 @@
 #include <memory>
 #include <Disks/DiskObjectStorage/ObjectStorages/S3/diskSettings.h>
+#include "Interpreters/Context_fwd.h"
 
 #if USE_AWS_S3
 
@@ -85,6 +86,7 @@ namespace S3RequestSetting
 namespace ErrorCodes
 {
 extern const int NO_ELEMENTS_IN_CONFIG;
+extern const int LOGICAL_ERROR;
 }
 
 std::unique_ptr<S3::Client> getClient(
@@ -213,14 +215,19 @@ getClient(
     String secret_access_key = auth_settings[S3AuthSetting::secret_access_key];
     String session_token = auth_settings[S3AuthSetting::session_token];
 
-    auto updated_credentials = refresh_credentials_callback(storage_id);
-    if (updated_credentials)
+    if (refresh_credentials_callback)
     {
-        auto s3_updated_credentials = std::static_pointer_cast<DataLake::S3Credentials>(updated_credentials);
-        access_key_id = s3_updated_credentials->getAccessKeyId();
-        secret_access_key = s3_updated_credentials->getSecretAccessKey();
-        session_token = s3_updated_credentials->getSessionToken();
-        LOG_DEBUG(getLogger("getClient"), "Got new access tokens {} {} {}", access_key_id, secret_access_key, session_token);
+        auto updated_credentials = refresh_credentials_callback(storage_id);
+        if (updated_credentials)
+        {
+            auto s3_updated_credentials = std::dynamic_pointer_cast<DataLake::S3Credentials>(updated_credentials);
+            if (!s3_updated_credentials)
+                throw Exception(ErrorCodes::LOGICAL_ERROR, "New credentials doesn't below to S3");
+            access_key_id = s3_updated_credentials->getAccessKeyId();
+            secret_access_key = s3_updated_credentials->getSecretAccessKey();
+            session_token = s3_updated_credentials->getSessionToken();
+            LOG_DEBUG(getLogger("getClient"), "Got new access tokens");
+        }
     }
     return S3::ClientFactory::instance().create(
         client_configuration,

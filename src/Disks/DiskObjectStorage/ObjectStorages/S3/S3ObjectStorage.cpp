@@ -1,7 +1,6 @@
 #include <Disks/DiskObjectStorage/ObjectStorages/S3/S3ObjectStorage.h>
 #include <Common/setThreadName.h>
 #include <Common/ObjectStorageKey.h>
-#include "Interpreters/StorageID.h"
 
 #if USE_AWS_S3
 
@@ -18,6 +17,7 @@
 #include <IO/S3/getObjectInfo.h>
 #include <IO/S3/copyS3File.h>
 #include <IO/S3/deleteFileFromS3.h>
+#include <Interpreters/StorageID.h>
 #include <Interpreters/Context.h>
 #include <Common/quoteString.h>
 #include <Common/threadPoolCallbackRunner.h>

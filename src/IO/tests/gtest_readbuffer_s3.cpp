@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <IO/S3/Credentials.h>
-#include "Interpreters/StorageID.h"
 #include "config.h"
 
 #if USE_AWS_S3
@@ -15,6 +14,7 @@
 #include <Disks/IO/AsynchronousBoundedReadBuffer.h>
 #include <Disks/IO/CachedOnDiskReadBufferFromFile.h>
 #include <Interpreters/Cache/FileCache.h>
+#include <Interpreters/StorageID.h>
 #include <Interpreters/Cache/FileCacheFactory.h>
 #include <Common/tests/gtest_global_context.h>
 #include <Common/Priority.h>

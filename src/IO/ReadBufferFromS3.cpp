@@ -67,7 +67,7 @@ ReadBufferFromS3::ReadBufferFromS3(
     size_t read_until_position_,
     bool restricted_seek_,
     std::optional<size_t> file_size_,
-    const S3CredentialsRefreshCallback & credentials_refresh_callback_)
+    const S3CredentialsRefreshCallback & client_refresh_callback_)
     : ReadBufferFromFileBase()
     , client_ptr(std::move(client_ptr_))
     , bucket(bucket_)
@@ -79,7 +79,7 @@ ReadBufferFromS3::ReadBufferFromS3(
     , read_settings(settings_)
     , use_external_buffer(use_external_buffer_)
     , restricted_seek(restricted_seek_)
-    , credentials_refresh_callback(credentials_refresh_callback_)
+    , client_refresh_callback(client_refresh_callback_)
     , storage_id(storage_id_)
 {
     file_size = file_size_;
@@ -160,7 +160,7 @@ bool ReadBufferFromS3::nextImpl()
         {
             if (!impl)
             {
-                auto new_client = credentials_refresh_callback(storage_id);
+                auto new_client = client_refresh_callback(storage_id);
                 LOG_DEBUG(log, "init update client {}", reinterpret_cast<const void*>(client_ptr.get()));
                 client_ptr = std::move(new_client);
 
@@ -308,7 +308,7 @@ bool ReadBufferFromS3::processException(size_t read_offset, size_t attempt) cons
     {
         
         {
-            auto new_client = credentials_refresh_callback(storage_id);
+            auto new_client = client_refresh_callback(storage_id);
             LOG_DEBUG(log, "update client {} {}", reinterpret_cast<const void*>(client_ptr.get()), static_cast<Int32>(s3_exception->getS3ErrorCode()));
             client_ptr = std::move(new_client);
             impl.reset();

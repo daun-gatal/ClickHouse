@@ -1,5 +1,4 @@
 #include <Backups/BackupIO_S3.h>
-#include "Interpreters/StorageID.h"
 
 #if USE_AWS_S3
 #include <Core/Settings.h>
@@ -15,6 +14,7 @@
 #include <IO/S3/Client.h>
 #include <IO/S3/Credentials.h>
 #include <Disks/IDisk.h>
+#include <Interpreters/StorageID.h>
 
 #include <Poco/Util/AbstractConfiguration.h>
 

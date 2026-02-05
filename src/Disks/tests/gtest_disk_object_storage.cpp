@@ -10,7 +10,7 @@
 #include <IO/ReadHelpers.h>
 #include <IO/ReadBuffer.h>
 
-#include "Common/Exception.h"
+#include <Common/Exception.h>
 #include <Common/tests/gtest_global_context.h>
 #include <Common/Config/ConfigProcessor.h>
 #include <Common/FailPoint.h>

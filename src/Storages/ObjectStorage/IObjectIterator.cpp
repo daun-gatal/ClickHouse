@@ -9,7 +9,7 @@
 #include <Core/Defines.h>
 #include <Storages/ObjectStorage/Utils.h>
 #include <Processors/Formats/IInputFormat.h>
-#include "Interpreters/StorageID.h"
+#include <Interpreters/StorageID.h>
 
 namespace DB
 {

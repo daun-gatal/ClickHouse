@@ -158,6 +158,8 @@ private:
         Poco::JSON::Object::Ptr request_body,
         const String & method = Poco::Net::HTTPRequest::HTTP_POST,
         bool ignore_result = false) const;
+
+    std::pair<std::shared_ptr<IStorageCredentials>, String> getCredentialsAndEndpoint(Poco::JSON::Object::Ptr object, const String & location) const;
 };
 
 }

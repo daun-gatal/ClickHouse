@@ -1,5 +1,4 @@
 
-#include "Interpreters/StorageID.h"
 #include "config.h"
 #if USE_AVRO
 
@@ -13,6 +12,7 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Stringifier.h>
 #include <Common/Exception.h>
+#include <Interpreters/StorageID.h>
 
 
 #include <Core/NamesAndTypes.h>

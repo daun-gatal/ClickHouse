@@ -1,7 +1,6 @@
 #pragma once
 
 #include <IO/S3Settings.h>
-#include "Interpreters/StorageID.h"
 #include "config.h"
 
 #if USE_AWS_S3
@@ -13,6 +12,7 @@
 #include <IO/ReadSettings.h>
 #include <IO/ReadBufferFromFileBase.h>
 #include <Disks/DiskObjectStorage/ObjectStorages/IObjectStorage.h>
+#include <Interpreters/StorageID.h>
 
 #include <aws/s3/model/GetObjectResult.h>
 
@@ -59,7 +59,7 @@ public:
         size_t read_until_position_ = 0,
         bool restricted_seek_ = false,
         std::optional<size_t> file_size = std::nullopt,
-        const S3CredentialsRefreshCallback & credentials_refresh_callback_ = [] (const DB::StorageID &) {return nullptr;}
+        const S3CredentialsRefreshCallback & client_refresh_callback_ = [] (const DB::StorageID &) {return nullptr;}
         );
 
     ~ReadBufferFromS3() override = default;
@@ -117,7 +117,7 @@ private:
 
     bool read_all_range_successfully = false;
 
-    const S3CredentialsRefreshCallback credentials_refresh_callback;
+    const S3CredentialsRefreshCallback client_refresh_callback;
     StorageID storage_id;
 };
 

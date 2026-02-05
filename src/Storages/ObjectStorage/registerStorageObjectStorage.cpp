@@ -16,7 +16,7 @@
 #include <Storages/ObjectStorage/StorageObjectStorageDefinitions.h>
 #include <Storages/StorageFactory.h>
 #include <Poco/Logger.h>
-#include "Interpreters/StorageID.h"
+#include <Interpreters/StorageID.h>
 #include <Disks/DiskType.h>
 
 namespace DB

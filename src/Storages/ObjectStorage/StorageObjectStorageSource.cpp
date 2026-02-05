@@ -34,7 +34,7 @@
 #include <boost/operators.hpp>
 #include <Common/SipHash.h>
 #include <Common/parseGlobs.h>
-#include "Interpreters/StorageID.h"
+#include <Interpreters/StorageID.h>
 #include <Storages/ObjectStorage/IObjectIterator.h>
 #if ENABLE_DISTRIBUTED_CACHE
 #include <DistributedCache/DistributedCacheRegistry.h>
@@ -483,7 +483,6 @@ void StorageObjectStorageSource::addNumRowsToCache(const ObjectInfo & object_inf
 
 StorageObjectStorageSource::ReaderHolder StorageObjectStorageSource::createReader()
 {
-    std::cerr << "StorageObjectStorageSource " << storage_id.getFullTableName() << '\n';
     return createReader(
         storage_id,
         0,

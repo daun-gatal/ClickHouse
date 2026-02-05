@@ -4,7 +4,7 @@
 #include <Storages/ObjectStorage/StorageObjectStorage.h>
 #include <Processors/QueryPlan/Optimizations/QueryPlanOptimizationSettings.h>
 #include <Storages/StorageInMemoryMetadata.h>
-#include "Interpreters/StorageID.h"
+#include <Interpreters/StorageID.h>
 
 namespace DB
 {
