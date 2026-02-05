@@ -669,7 +669,7 @@ auto SequentialGenerator = [](auto stride = 1)
     return [=](auto i)
     {
         using ValueType = decltype(i);
-        return static_cast<ValueType>(stride * i);
+        return static_cast<ValueType>(static_cast<ValueType>(stride) * i);
     };
 };
 
