@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Common/SharedMutex.h>
 #include <DataTypes/Serializations/ISerialization.h>
 
 #include <shared_mutex>
@@ -61,7 +62,7 @@ public:
 private:
     SerializationObjectPool() = default;
 
-    mutable std::shared_mutex mutex;
+    mutable SharedMutex mutex;
     std::unordered_map<String, SerializationPtr> cache;
 };
 
