@@ -1,3 +1,5 @@
+-- Tags: no-random-detach
+
 DROP TABLE IF EXISTS src;
 DROP TABLE IF EXISTS dst;
 

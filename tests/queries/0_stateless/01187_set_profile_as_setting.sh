@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tags: no-random-settings
+# Tags: no-random-settings, no-random-detach
 
 CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # reset --log_comment, because the test has to use the readonly mode

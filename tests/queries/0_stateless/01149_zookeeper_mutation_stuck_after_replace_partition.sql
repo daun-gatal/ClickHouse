@@ -1,4 +1,4 @@
--- Tags: zookeeper
+-- Tags: zookeeper, no-random-detach
 
 SET insert_keeper_fault_injection_probability=0; -- disable fault injection; part ids are non-deterministic in case of insert retries
 

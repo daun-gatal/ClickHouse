@@ -1703,6 +1703,9 @@ class TestCase:
 
     def add_effective_settings(self, client_options):
         new_options = ""
+        if self.randomize_detach:
+            new_options += f" --reattach_tables_before_query_execution_probability {self.reattach_tables_probability}"
+
         if self.effective_settings:
             http_params = self.http_format_settings(self.effective_settings)
             if len(self.base_url_params) == 0:
@@ -1738,10 +1741,12 @@ class TestCase:
         os.environ["CLICKHOUSE_CLIENT_OPT"] = self.base_client_options
 
     def add_info_about_settings(self, description):
+        if self.randomize_detach:
+            description += f"\nRandomization of DETACH/ATTACH tables is used with probability: {self.reattach_tables_probability}\n"
         if self.effective_settings:
-            description += f"\nSettings used in the test: {self.cli_format_settings(self.effective_settings)}"
+            description += f"\nSettings used in the test: {self.cli_format_settings(self.effective_settings)}\n"
         if self.effective_merge_tree_settings:
-            description += f"\n\nMergeTree settings used in test: {self.cli_format_settings(self.effective_merge_tree_settings)}"
+            description += f"\nMergeTree settings used in test: {self.cli_format_settings(self.effective_merge_tree_settings)}\n"
 
         return description + "\n"
 
@@ -1787,10 +1792,15 @@ class TestCase:
         self.testcase_args = None
         self.runs_count = 0
 
+        has_no_random_detach_tag = self.tags and "no-random-detach" in self.tags
         has_no_random_settings_tag = self.tags and "no-random-settings" in self.tags
         has_no_random_merge_tree_settings_tag = (
             self.tags and "no-random-merge-tree-settings" in self.tags
         )
+
+        self.randomize_detach = not (args.no_random_detach or has_no_random_detach_tag)
+        if self.randomize_detach:
+            self.reattach_tables_probability = args.reattach_tables_probability
 
         allow_random_settings = not (args.no_random_settings or has_no_random_settings_tag)
         # If test contains SHOW CREATE TABLE do not
@@ -4738,6 +4748,18 @@ def parse_args():
         action="store_true",
         default=False,
         help="Disable MergeTree settings randomization",
+    )
+    parser.add_argument(
+        "--no-random-detach",
+        action="store_true",
+        default=False,
+        help="Disable randomization of DETACH/ATTACH",
+    )
+    parser.add_argument(
+        "--reattach-tables-probability",
+        type=float,
+        default=1.0,
+        help="The probability of reattaching tables before execution of query if it's enabled",
     )
     parser.add_argument(
         "--llvm-coverage",
