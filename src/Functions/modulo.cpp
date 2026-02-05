@@ -132,7 +132,7 @@ struct ModuloByConstantImpl
                 {
                     /// Sign-extend the result to match the behavior of %, to make the const and non-const
                     /// versions of the modulo function behave the same way.
-                    ResultType sign_ext = -static_cast<ResultType>((a < 0) & (r != 0));
+                    ResultType sign_ext = static_cast<ResultType>(-static_cast<ResultType>((a < 0) & (r != 0)));
                     r |= sign_ext & ~static_cast<ResultType>(mask);
                 }
                 dst[i] = r;

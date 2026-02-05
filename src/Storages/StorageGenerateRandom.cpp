@@ -131,7 +131,7 @@ T fuzzyRandomInteger(pcg64 & rng)
     /// Otherwise near-zero values for 64-bit types would effectively never be generated, and many code paths wouldn't be hit.
     /// Set the remaining upper bits to either all 0 or all 1 (i.e. negative number close to 0).
     size_t num_bits = rng() % (sizeof(T) * 8);
-    T low_mask = (T(1) << num_bits) - 1;
+    T low_mask = static_cast<T>((T(1) << num_bits) - 1);
     T sign = -(number >> (sizeof(T) * 8 - 1)); // fill all 64 bits with copies of the sign bit
     return (number & low_mask) | (sign & ~low_mask);
 }
@@ -203,7 +203,7 @@ void appendFuzzyRandomString(ColumnString::Chars & out, size_t max_length, pcg64
                 UInt64 scale = rng() % 11;
                 s += fmt::format(" {}:{}:{}", hour, minute, second);
                 if (scale > 0)
-                    s += fmt::format(".{:0{}}", rng() % intExp10(scale), static_cast<int>(scale));
+                    s += fmt::format(".{:0{}}", rng() % intExp10(static_cast<int>(scale)), static_cast<int>(scale));
             }
             out.insert(out.end(), s.begin(), s.end());
             break;
