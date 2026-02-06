@@ -611,10 +611,10 @@ SerializationByName IMergeTreeDataPart::constructSerializations(
     SerializationByName custom_serializations;
     for (const auto & column : columns)
     {
-        auto it = infos.find(column.name);
-        auto serialization = it == infos.end()
-            ? IDataType::getSerialization(column, infos.getSettings())
-            : IDataType::getSerialization(column, *it->second);
+        auto ptr = infos.tryGet(column.name);
+        auto serialization = ptr
+            ? IDataType::getSerialization(column, *ptr)
+            : IDataType::getSerialization(column, infos.getSettings());
 
         custom_serializations.emplace(column.name, serialization);
 

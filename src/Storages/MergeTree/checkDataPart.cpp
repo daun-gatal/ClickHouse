@@ -216,10 +216,10 @@ static IMergeTreeDataPart::Checksums checkDataPart(
 
     auto get_serialization = [&serialization_infos](const auto & column)
     {
-        auto it = serialization_infos.find(column.name);
-        return it == serialization_infos.end()
-            ? column.type->getSerialization(serialization_infos.getSettings())
-            : column.type->getSerialization(*it->second);
+        auto ptr = serialization_infos.tryGet(column.name);
+        return ptr
+            ? column.type->getSerialization(*ptr)
+            : column.type->getSerialization(serialization_infos.getSettings());
     };
 
     /// This function calculates only checksum of file content (compressed or uncompressed).

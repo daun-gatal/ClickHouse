@@ -720,7 +720,7 @@ private:
     /// In compact parts order of columns is necessary (shared across parts with same columns)
     std::shared_ptr<const NameToNumber> column_name_to_position;
 
-    /// TODO: Make the serialization and serialization_infos also shared across parts with same columns
+    /// The serialization and serialization_infos are not shared across parts.
     /// Currently that's difficult, because of the non-obvious way how to hash or compare these objects.
 
     /// Map from name of column to its serialization info.
