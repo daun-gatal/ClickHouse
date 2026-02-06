@@ -602,7 +602,7 @@ bool CachedOnDiskReadBufferFromFile::predownload(FileSegment & file_segment)
 
                 watch.stop();
                 auto elapsed = watch.elapsedMicroseconds();
-                ProfileEvents::increment(ProfileEvents::CachedReadBufferReadFromSourceMicroseconds, watch.elapsedMicroseconds());
+                ProfileEvents::increment(ProfileEvents::CachedReadBufferReadFromSourceMicroseconds, elapsed);
             }
 
             if (!bytes_to_predownload || !has_more_data)
