@@ -328,7 +328,11 @@ bool ParserSelectQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
             /// ORDER BY ALL
             auto * identifier = order_expression_list->children[0]->as<ASTOrderByElement>()->children[0]->as<ASTIdentifier>();
             if (identifier != nullptr && Poco::toUpper(identifier->name()) == "ALL")
+            {
                 select_query->order_by_all = true;
+                /// Normalize the identifier to uppercase to match the formatter output (ORDER BY ALL).
+                identifier->setShortName("ALL");
+            }
         }
     }
 
