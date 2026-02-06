@@ -9,6 +9,8 @@ class DateLUTImpl;
 namespace DB
 {
 
+class DataTypeTime64;
+
 class SerializationTime64 final : public SerializationDecimalBase<Time64>
 {
 private:
