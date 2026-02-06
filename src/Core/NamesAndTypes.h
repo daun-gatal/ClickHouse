@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/Names.h>
+#include <Common/AllocatorWithMemoryTracking.h>
 #include <DataTypes/IDataType.h>
 #include <base/types.h>
 
