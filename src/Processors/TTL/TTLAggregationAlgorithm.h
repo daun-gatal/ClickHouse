@@ -2,6 +2,8 @@
 
 #include <Processors/TTL/ITTLAlgorithm.h>
 #include <Interpreters/Aggregator.h>
+#include <Interpreters/ExpressionActions.h>
+#include <Core/SortDescription.h>
 #include <Storages/MergeTree/MergeTreeData.h>
 
 namespace DB
@@ -38,6 +40,25 @@ private:
     ColumnRawPtrs key_columns;
     Aggregator::AggregateColumns columns_for_aggregator;
     bool no_more_keys = false;
+
+    /// Columns that are modified by SET and required by the sorting key expression.
+    /// When SET changes these columns, the sorting key may change, violating sort order.
+    NameSet sorting_key_columns_to_clamp;
+
+    /// Sorting key expression (for computing sort key from source columns)
+    ExpressionActionsPtr sorting_key_expression;
+
+    /// Sort description for lexicographic comparison of sorting key columns
+    SortDescription sort_description;
+
+    /// First and last row's values for columns in sorting_key_columns_to_clamp
+    /// (first row = min sort key, last row = max sort key within the group)
+    std::unordered_map<String, Field> first_row_values;
+    std::unordered_map<String, Field> last_row_values;
+    bool has_first_row = false;
+
+    /// For cross-block sort order verification
+    Columns last_block_sort_key_columns;
 };
 
 }

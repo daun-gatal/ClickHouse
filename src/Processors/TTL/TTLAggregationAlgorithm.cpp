@@ -1,13 +1,22 @@
 #include <Core/Settings.h>
+#include <Core/SortDescription.h>
 #include <DataTypes/DataTypeLowCardinality.h>
 #include <Interpreters/Context.h>
 #include <Interpreters/ExpressionActions.h>
 #include <Processors/TTL/TTLAggregationAlgorithm.h>
+#include <Storages/KeyDescription.h>
+#include <Storages/StorageInMemoryMetadata.h>
 
 #include <unordered_set>
 
 namespace DB
 {
+
+namespace ErrorCodes
+{
+    extern const int BAD_TTL_EXPRESSION;
+}
+
 namespace Setting
 {
     extern const SettingsBool compile_aggregate_expressions;
@@ -74,6 +83,42 @@ TTLAggregationAlgorithm::TTLAggregationAlgorithm(
         settings[Setting::serialize_string_in_memory_with_zero_byte]);
 
     aggregator = std::make_unique<Aggregator>(header, params);
+
+    /// Determine which SET columns affect the sorting key.
+    /// If SET modifies a column that the sorting key expression depends on,
+    /// the result row's sorting key may fall outside the original group's range,
+    /// violating the sort invariant. We detect this and clamp such columns.
+    auto metadata = storage_.getInMemoryMetadataPtr();
+    if (metadata->hasSortingKey())
+    {
+        const auto & sorting_key = metadata->getSortingKey();
+        sorting_key_expression = sorting_key.expression;
+
+        /// Build sort description from sorting key
+        for (size_t i = 0; i < sorting_key.column_names.size(); ++i)
+        {
+            int direction = (sorting_key.reverse_flags.empty() || !sorting_key.reverse_flags[i]) ? 1 : -1;
+            sort_description.push_back(SortColumnDescription(sorting_key.column_names[i], direction));
+        }
+
+        /// Columns required as inputs for the sorting key expression
+        Names required_columns = sorting_key.expression->getRequiredColumns();
+        NameSet required_columns_set(required_columns.begin(), required_columns.end());
+
+        /// Find SET columns that are also required by the sorting key
+        for (const auto & set_part : description.set_parts)
+        {
+            if (required_columns_set.contains(set_part.column_name))
+                sorting_key_columns_to_clamp.insert(set_part.column_name);
+        }
+
+        /// If no SET columns affect the sorting key, disable clamping
+        if (sorting_key_columns_to_clamp.empty())
+        {
+            sorting_key_expression = nullptr;
+            sort_description.clear();
+        }
+    }
 
     if (isMaxTTLExpired())
         new_ttl_info.ttl_finished = true;
@@ -160,6 +205,19 @@ void TTLAggregationAlgorithm::execute(Block & block)
                     auto & column = aggregate_columns[header.getPositionByName(name)];
                     column->insertFrom(*values_column, i);
                 }
+
+                /// Track first/last row values for columns that need clamping
+                if (!sorting_key_columns_to_clamp.empty())
+                {
+                    for (const auto & col_name : sorting_key_columns_to_clamp)
+                    {
+                        const IColumn * values_column = block.getByName(col_name).column.get();
+                        if (!has_first_row)
+                            values_column->get(i, first_row_values[col_name]);
+                        values_column->get(i, last_row_values[col_name]);
+                    }
+                    has_first_row = true;
+                }
             }
             else
             {
@@ -180,6 +238,65 @@ void TTLAggregationAlgorithm::execute(Block & block)
     }
 
     block = header.cloneWithColumns(std::move(result_columns));
+
+    /// Verify sort order is maintained after TTL aggregation + SET.
+    /// If SET modified columns used by the sorting key expression,
+    /// the clamping above should have prevented violations, but we check anyway.
+    if (sorting_key_expression && block.rows() > 0)
+    {
+        Block sort_key_block = block.cloneWithColumns(block.getColumns());
+        sorting_key_expression->execute(sort_key_block);
+
+        /// Check consecutive rows within this block
+        for (size_t i = 1; i < sort_key_block.rows(); ++i)
+        {
+            for (const auto & sort_col : sort_description)
+            {
+                const IColumn & col = *sort_key_block.getByName(sort_col.column_name).column;
+                int cmp = col.compareAt(i - 1, i, col, sort_col.nulls_direction) * sort_col.direction;
+                if (cmp > 0)
+                {
+                    throw Exception(ErrorCodes::BAD_TTL_EXPRESSION,
+                        "Sort order violation after TTL GROUP BY aggregation: "
+                        "the SET clause modifies columns used in the sorting key expression. "
+                        "Consider removing or adjusting the SET clause in the TTL expression "
+                        "to avoid changing columns that affect the ORDER BY key");
+                }
+                if (cmp < 0)
+                    break;
+            }
+        }
+
+        /// Check continuity with the previous block
+        if (!last_block_sort_key_columns.empty())
+        {
+            for (size_t j = 0; j < sort_description.size(); ++j)
+            {
+                const auto & sort_col = sort_description[j];
+                const IColumn & cur_col = *sort_key_block.getByName(sort_col.column_name).column;
+                int cmp = last_block_sort_key_columns[j]->compareAt(0, 0, cur_col, sort_col.nulls_direction) * sort_col.direction;
+                if (cmp > 0)
+                {
+                    throw Exception(ErrorCodes::BAD_TTL_EXPRESSION,
+                        "Sort order violation after TTL GROUP BY aggregation: "
+                        "the SET clause modifies columns used in the sorting key expression. "
+                        "Consider removing or adjusting the SET clause in the TTL expression "
+                        "to avoid changing columns that affect the ORDER BY key");
+                }
+                if (cmp < 0)
+                    break;
+            }
+        }
+
+        /// Save last row for cross-block comparison (stored in sort_description order)
+        size_t last_row = sort_key_block.rows() - 1;
+        last_block_sort_key_columns.clear();
+        for (const auto & sort_col : sort_description)
+        {
+            const auto & col = sort_key_block.getByName(sort_col.column_name).column;
+            last_block_sort_key_columns.push_back(col->cut(last_row, 1));
+        }
+    }
 
     /// If some rows were aggregated we have to recalculate ttl info's
     if (some_rows_were_aggregated)
@@ -241,6 +358,130 @@ void TTLAggregationAlgorithm::finalizeAggregates(MutableColumns & result_columns
                 }
             }
 
+            /// Clamp SET-modified columns if they affect the sorting key.
+            /// After aggregation + SET, the result row's sorting key must stay within
+            /// [first_row_key, last_row_key] of the original group. If it falls outside,
+            /// replace the SET-modified source columns with first/last row's original values.
+            if (!sorting_key_columns_to_clamp.empty() && has_first_row)
+            {
+                for (size_t row = 0; row < agg_block.rows(); ++row)
+                {
+                    /// Build a temporary block with the result's source columns to compute sorting key
+                    auto build_sort_key_block = [&](const std::function<Field(const String &)> & get_value) -> Block
+                    {
+                        Block tmp;
+                        for (const auto & required_col : sorting_key_expression->getRequiredColumnsWithTypes())
+                        {
+                            auto col = required_col.type->createColumn();
+                            col->insert(get_value(required_col.name));
+                            tmp.insert({std::move(col), required_col.type, required_col.name});
+                        }
+                        sorting_key_expression->execute(tmp);
+                        return tmp;
+                    };
+
+                    /// Get current result values for the required columns
+                    auto get_result_value = [&](const String & col_name) -> Field
+                    {
+                        /// For columns modified by SET, use the SET result
+                        for (const auto & it : description.set_parts)
+                        {
+                            if (it.column_name == col_name)
+                            {
+                                Field val;
+                                agg_block.getByName(it.expression_result_column_name).column->get(row, val);
+                                return val;
+                            }
+                        }
+                        /// For GROUP BY key columns, use the aggregated key
+                        if (agg_block.has(col_name))
+                        {
+                            Field val;
+                            agg_block.getByName(col_name).column->get(row, val);
+                            return val;
+                        }
+                        /// Fallback to first_row_values if available
+                        if (auto it = first_row_values.find(col_name); it != first_row_values.end())
+                            return it->second;
+                        return Field();
+                    };
+
+                    Block result_key_block = build_sort_key_block(get_result_value);
+
+                    Block first_key_block = build_sort_key_block([&](const String & col_name) -> Field
+                    {
+                        if (auto it = first_row_values.find(col_name); it != first_row_values.end())
+                            return it->second;
+                        return get_result_value(col_name);
+                    });
+
+                    Block last_key_block = build_sort_key_block([&](const String & col_name) -> Field
+                    {
+                        if (auto it = last_row_values.find(col_name); it != last_row_values.end())
+                            return it->second;
+                        return get_result_value(col_name);
+                    });
+
+                    /// Compare result sorting key with min (first row) and max (last row)
+                    auto compare_sort_keys = [&](const Block & lhs, const Block & rhs) -> int
+                    {
+                        for (const auto & sort_col : sort_description)
+                        {
+                            const IColumn & lhs_col = *lhs.getByName(sort_col.column_name).column;
+                            const IColumn & rhs_col = *rhs.getByName(sort_col.column_name).column;
+                            int cmp = lhs_col.compareAt(0, 0, rhs_col, sort_col.nulls_direction) * sort_col.direction;
+                            if (cmp != 0)
+                                return cmp;
+                        }
+                        return 0;
+                    };
+
+                    bool need_clamp = false;
+                    const std::unordered_map<String, Field> * clamp_source = nullptr;
+
+                    if (compare_sort_keys(result_key_block, first_key_block) < 0)
+                    {
+                        need_clamp = true;
+                        clamp_source = &first_row_values;
+                    }
+                    else if (compare_sort_keys(result_key_block, last_key_block) > 0)
+                    {
+                        need_clamp = true;
+                        clamp_source = &last_row_values;
+                    }
+
+                    if (need_clamp)
+                    {
+                        for (const auto & col_name : sorting_key_columns_to_clamp)
+                        {
+                            /// Find the SET part for this column and replace its value in agg_block
+                            for (const auto & it : description.set_parts)
+                            {
+                                if (it.column_name == col_name)
+                                {
+                                    auto & col_with_type = agg_block.getByName(it.expression_result_column_name);
+                                    auto mutable_col = col_with_type.column->assumeMutable();
+                                    auto replacement = col_with_type.type->createColumn();
+                                    for (size_t r = 0; r < agg_block.rows(); ++r)
+                                    {
+                                        if (r == row)
+                                            replacement->insert(clamp_source->at(col_name));
+                                        else
+                                        {
+                                            Field val;
+                                            mutable_col->get(r, val);
+                                            replacement->insert(val);
+                                        }
+                                    }
+                                    col_with_type.column = std::move(replacement);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             /// Since there might be intersecting columns between GROUP BY and SET, we prioritize
             /// the SET values over the GROUP BY because doing it the other way causes unexpected
             /// results.
@@ -264,6 +505,11 @@ void TTLAggregationAlgorithm::finalizeAggregates(MutableColumns & result_columns
             }
         }
     }
+
+    /// Reset first/last row tracking for the next group
+    has_first_row = false;
+    first_row_values.clear();
+    last_row_values.clear();
 
     aggregation_result.invalidate();
 }
