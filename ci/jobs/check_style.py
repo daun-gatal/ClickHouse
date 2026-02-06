@@ -355,15 +355,34 @@ def _get_catch_block_lines(lines, catch_line_idx):
 
 
 def check_catch_all(files) -> str:
-    """Find ``catch (...)`` blocks with completely empty bodies.
+    """Find ``catch (...)`` blocks that silently swallow exceptions.
 
-    Flags catch-all blocks whose body contains nothing but whitespace
-    (no statements, no comments), and that are not inside destructors.
-    A comment containing the word 'Ok' near the catch suppresses the warning.
+    Flags catch-all blocks that do none of the following:
+    * rethrow (``throw;``),
+    * throw a different exception (``throw ...``),
+    * log the error (``tryLogCurrentException``, ``LOG_*``, ``std::cerr``),
+    * terminate (``std::terminate``, ``abort``, ``exit``),
+    * save the exception (``current_exception``),
+    * have a comment containing the word 'Ok'.
+
+    Also skips blocks inside destructors and poco.
     """
     violations = []
     catch_pattern = re.compile(r"\bcatch\s*\(\s*\.\.\.\s*\)")
     ok_pattern = re.compile(r"(//|/\*).*\bok\b", re.IGNORECASE)
+
+    # Patterns that indicate the exception is handled somehow
+    handled_patterns = [
+        re.compile(r"\bthrow\b"),
+        re.compile(r"\btryLogCurrentException\b"),
+        re.compile(r"\bLOG_(ERROR|WARNING|FATAL)\b"),
+        re.compile(r"\bgetLogger\b"),
+        re.compile(r"\bstd::cerr\b"),
+        re.compile(r"\bstd::terminate\b"),
+        re.compile(r"\babort\s*\("),
+        re.compile(r"\bexit\s*\("),
+        re.compile(r"\bcurrent_exception\b"),
+    ]
 
     for file_path in files:
         if "/poco/" in file_path:
@@ -386,13 +405,9 @@ def check_catch_all(files) -> str:
                 continue
 
             block_lines = _get_catch_block_lines(lines, i)
-
-            # Only flag completely empty bodies (nothing but braces and whitespace)
             body = "".join(block_lines)
-            body_without_braces = body.replace("{", "").replace("}", "")
-            # Remove the catch (...) part itself
-            body_without_braces = catch_pattern.sub("", body_without_braces)
-            if body_without_braces.strip():
+
+            if any(p.search(body) for p in handled_patterns):
                 continue
 
             if _is_in_destructor(lines, i):
@@ -406,9 +421,8 @@ def check_catch_all(files) -> str:
 
             violations.append(
                 f"{file_path}:{i + 1}: "
-                "catch (...) with empty body. "
-                "Silently swallowing all exceptions hides bugs and makes debugging difficult. "
-                "Either handle the exception or add a comment containing 'Ok' to suppress this warning."
+                "catch (...) that silently swallows exceptions. "
+                "Either handle the exception (log, rethrow, save) or add a comment containing 'Ok' to suppress this warning."
             )
 
     return "\n".join(violations)
