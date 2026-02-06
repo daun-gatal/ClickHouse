@@ -1178,13 +1178,17 @@ static void reattachTablesUsedInQuery(const ASTPtr & query, ContextMutablePtr co
         auto detach_query = fmt::format("DETACH TABLE {}", full_name);
         auto attach_query = fmt::format("ATTACH TABLE {}", full_name);
 
-        auto detach = executeQuery(detach_query, context, QueryFlags{.internal = true}).second;
-        executeTrivialBlockIO(detach, context);
+        {
+            auto detach = executeQuery(detach_query, context, QueryFlags{.internal = true}).second;
+            executeTrivialBlockIO(detach, context);
+        }
 
         database->waitDetachedTableNotInUse(uuid);
 
-        auto attach = executeQuery(attach_query, context, QueryFlags{.internal = true}).second;
-        executeTrivialBlockIO(attach, context);
+        {
+            auto attach = executeQuery(attach_query, context, QueryFlags{.internal = true}).second;
+            executeTrivialBlockIO(attach, context);
+        }
     }
 
     context->setSettings(old_settings);
