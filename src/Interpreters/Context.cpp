@@ -4130,6 +4130,8 @@ std::shared_ptr<IcebergMetadataFilesCache> Context::getIcebergMetadataFilesCache
 
 void Context::clearIcebergMetadataFilesCache() const
 {
+    LOG_INFO(getLogger("DDDBG"), "Context::clearIcebergMetadataFilesCache");
+
     auto cache = getIcebergMetadataFilesCache();
 
     /// Clear the cache without holding context mutex to avoid blocking context for a long time
