@@ -1,4 +1,4 @@
--- Tags: shard, no-parallel
+-- Tags: shard, no-parallel, no-random-detach
 
 create database if not exists shard_0;
 create database if not exists shard_1;
