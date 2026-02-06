@@ -2,8 +2,11 @@
 #include <Core/Settings.h>
 #include <IO/NullWriteBuffer.h>
 #include <Poco/Util/Application.h>
+#include <Common/HashTable/HashTableKeyHolder.h>
+#include <base/wide_integer_to_string.h>
 
 #include <Processors/QueryPlan/Optimizations/RuntimeDataflowStatistics.h>
+#include <base/types.h>
 
 #ifdef OS_LINUX
 #    include <unistd.h>
@@ -1244,10 +1247,13 @@ void NO_INLINE Aggregator::executeImplBatch(
 
     if (is_simple_count)
     {
+        // LOG_DEBUG(log, "uwu3 HashMap size {}", method.data.size());
+
         if (all_keys_are_const)
         {
             if (!no_more_keys)
             {
+                // LOG_DEBUG(log, "uwu4 HashMap size {}", method.data.size());
                 auto emplace_result = state.emplaceKey(method.data, 0, *aggregates_pool);
                 if (emplace_result.isInserted())
                     getInlineCountState(emplace_result.getMapped()) = row_end - row_begin;
@@ -1279,7 +1285,31 @@ void NO_INLINE Aggregator::executeImplBatch(
                     }
                 }
 
+                // auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
+                // using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
+                // if constexpr (std::is_same_v<KeyType, UInt128>)
+                // {
+                //     // UInt64 current_key = keyHolderGetKey(key_holder);
+                //     // UInt64 assumed_limit = 10000;
+                //     //
+                //     // if (current_key > assumed_limit)
+                //     //     return;
+                //     LOG_DEBUG(log, "uwu key_holder element {}", keyHolderGetKey(key_holder));
+                // }
+
                 auto emplace_result = state.emplaceKey(method.data, i, *aggregates_pool);
+                if (emplace_result.isInserted())
+                {
+                    auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
+                    Field key_field(keyHolderGetKey(key_holder));
+
+                    method.pqueue.push(key_field);
+                    using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
+                    if constexpr (std::is_same_v<KeyType, UInt64>)
+                        LOG_DEBUG(log, "current key: {}", keyHolderGetKey(key_holder));
+                }
+                LOG_DEBUG(log, "pqueue state: size: {}, max: {}", method.pqueue.size(), method.pqueue.empty() ? 0 : method.pqueue.top());
+
                 if (emplace_result.isInserted())
                     getInlineCountState(emplace_result.getMapped()) = 1;
                 else
@@ -1300,6 +1330,8 @@ void NO_INLINE Aggregator::executeImplBatch(
 
         return;
     }
+
+    // LOG_DEBUG(log, "uwu HashMap size {}", method.data.size());
 
     /// NOTE: only row_end-row_start is required, but:
     /// - this affects only optimize_aggregation_in_order,
@@ -1349,6 +1381,19 @@ void NO_INLINE Aggregator::executeImplBatch(
                 }
             }
 
+            // auto && key_holder = state.getKeyHolder(i + prefetch_look_ahead, *aggregates_pool);
+            // using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
+            // if constexpr (std::is_same_v<KeyType, UInt64>)
+            // {
+            //     // UInt64 current_key = keyHolderGetKey(key_holder);
+            //     // UInt64 assumed_limit = 10000;
+            //     //
+            //     // if (current_key > assumed_limit)
+            //     //     return;
+            //     LOG_DEBUG(log, "uwu key_holder element {}", keyHolderGetKey(key_holder));
+            // }
+
+            // LOG_DEBUG(log, "uwu2 HashMap size {}", method.data.size());
             auto emplace_result = state.emplaceKey(method.data, i, *aggregates_pool);
 
             /// If a new key is inserted, initialize the states of the aggregate functions, and possibly something related to the key.

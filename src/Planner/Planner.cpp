@@ -625,6 +625,31 @@ void addAggregationStep(QueryPlan & query_plan,
     SortDescription sort_description_for_merging;
     SortDescription group_by_sort_description;
 
+    {
+        bool match = true;
+
+        SortDescription sort_description_for_group_by_limit_pushdown = query_analysis_result.sort_description;
+        if (sort_description_for_group_by_limit_pushdown.size() != aggregation_analysis_result.aggregation_keys.size())
+            match = false;
+
+        for (size_t i = 0; i < sort_description_for_group_by_limit_pushdown.size(); ++i)
+        {
+            if (!match)
+                break;
+
+            if (sort_description_for_group_by_limit_pushdown[i].column_name != aggregation_analysis_result.aggregation_keys[i])
+            {
+                match = false;
+                break;
+            }
+        }
+
+        if (!query_analysis_result.limit_length)
+            match = false;
+
+        LOG_DEBUG(getLogger("uwu"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
+    }
+
     if (settings[Setting::force_aggregation_in_order])
     {
         group_by_sort_description = getSortDescriptionFromNames(aggregation_analysis_result.aggregation_keys);

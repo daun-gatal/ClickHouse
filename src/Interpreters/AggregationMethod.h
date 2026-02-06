@@ -1,4 +1,5 @@
 #pragma once
+#include <queue>
 #include <vector>
 #include <Common/ColumnsHashing.h>
 
@@ -17,6 +18,7 @@ struct AggregationMethodOneNumber
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
 
     AggregationMethodOneNumber() = default;
 
@@ -60,6 +62,7 @@ struct AggregationMethodString
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodString() = default;
 
@@ -96,6 +99,7 @@ struct AggregationMethodStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodStringNoCache() = default;
 
@@ -129,6 +133,7 @@ struct AggregationMethodFixedString
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodFixedString() = default;
 
@@ -162,6 +167,7 @@ struct AggregationMethodFixedStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodFixedStringNoCache() = default;
 
@@ -196,6 +202,7 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
     using Key = typename Base::Key;
     using Mapped = typename Base::Mapped;
     using Base::data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     template <bool use_cache>
     using BaseStateImpl = typename Base::template StateImpl<use_cache>;
@@ -233,6 +240,7 @@ struct AggregationMethodKeysFixed
     static constexpr bool has_low_cardinality = has_low_cardinality_;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodKeysFixed() = default;
 
@@ -280,6 +288,7 @@ struct AggregationMethodSerialized
     using Mapped = typename Data::mapped_type;
 
     Data data;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
 
     AggregationMethodSerialized() = default;
 
