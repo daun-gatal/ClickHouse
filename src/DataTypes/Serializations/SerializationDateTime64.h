@@ -16,7 +16,7 @@ public:
     static SerializationPtr create(UInt32 scale_, const TimezoneMixin & time_zone_)
     {
         auto ptr = SerializationPtr(new SerializationDateTime64(scale_, time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationDateTime64() override;

@@ -29,7 +29,7 @@ public:
         std::unique_ptr<JSONExtractTreeNode<Parser>> json_extract_tree_)
     {
         auto ptr = SerializationPtr(new SerializationJSON(typed_paths_types_, paths_to_skip_, path_regexps_to_skip_, dynamic_type_, std::move(json_extract_tree_)));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     void serializeTextEscaped(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;

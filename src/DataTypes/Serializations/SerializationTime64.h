@@ -21,13 +21,13 @@ public:
     static SerializationPtr create(UInt32 scale_)
     {
         auto ptr = SerializationPtr(new SerializationTime64(scale_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     static SerializationPtr create(UInt32 scale_, const DataTypeTime64 & time_type)
     {
         auto ptr = SerializationPtr(new SerializationTime64(scale_, time_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     String getName() const override;

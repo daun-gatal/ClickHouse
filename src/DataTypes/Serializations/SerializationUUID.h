@@ -15,7 +15,7 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationUUID());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationUUID() override;

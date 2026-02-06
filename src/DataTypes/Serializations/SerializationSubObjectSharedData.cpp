@@ -34,7 +34,7 @@ SerializationPtr SerializationSubObjectSharedData::create(
     const DataTypePtr & dynamic_type_)
 {
     auto ptr = SerializationPtr(new SerializationSubObjectSharedData(serialization_version_, buckets_, paths_prefix_, dynamic_type_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
 }
 
 String SerializationSubObjectSharedData::getName() const

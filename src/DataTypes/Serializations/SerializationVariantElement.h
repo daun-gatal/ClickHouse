@@ -32,7 +32,7 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & variant_element_name_, ColumnVariant::Discriminator variant_discriminator_)
     {
         auto ptr = SerializationPtr(new SerializationVariantElement(nested_, variant_element_name_, variant_discriminator_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     String getName() const override

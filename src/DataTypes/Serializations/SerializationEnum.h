@@ -37,13 +37,13 @@ public:
     static SerializationPtr create(const std::shared_ptr<const DataTypeEnum<Type>> & enum_type)
     {
         auto ptr = SerializationPtr(new SerializationEnum(enum_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     static SerializationPtr create(const Values & values_)
     {
         auto ptr = SerializationPtr(new SerializationEnum(values_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationEnum() override;

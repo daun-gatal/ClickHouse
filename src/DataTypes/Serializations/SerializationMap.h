@@ -22,7 +22,7 @@ public:
     static SerializationPtr create(const SerializationPtr & key_type_, const SerializationPtr & value_type_, const SerializationPtr & nested_)
     {
         auto ptr = SerializationPtr(new SerializationMap(key_type_, value_type_, nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationMap() override;

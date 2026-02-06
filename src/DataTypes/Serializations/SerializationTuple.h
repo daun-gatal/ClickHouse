@@ -23,7 +23,7 @@ public:
     static SerializationPtr create(const ElementSerializations & elems_, bool has_explicit_names_)
     {
         auto ptr = SerializationPtr(new SerializationTuple(elems_, has_explicit_names_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationTuple() override;

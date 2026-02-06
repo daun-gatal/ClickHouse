@@ -22,7 +22,7 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & name_, SubstreamType substream_type_)
     {
         auto ptr = SerializationPtr(new SerializationNamed(nested_, name_, substream_type_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     String getName() const override

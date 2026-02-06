@@ -25,7 +25,7 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, bool use_default_null_map_ = false)
     {
         auto ptr = SerializationPtr(new SerializationNullable(nested_, use_default_null_map_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationNullable() override;

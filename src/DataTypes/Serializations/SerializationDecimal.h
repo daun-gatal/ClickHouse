@@ -19,7 +19,7 @@ public:
     static SerializationPtr create(UInt32 precision_, UInt32 scale_)
     {
         auto ptr = SerializationPtr(new SerializationDecimal(precision_, scale_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     ~SerializationDecimal() override;

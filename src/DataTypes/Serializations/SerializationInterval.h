@@ -20,7 +20,7 @@ public:
     static SerializationPtr create(IntervalKind kind_)
     {
         auto ptr = SerializationPtr(new SerializationInterval(kind_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     String getName() const override;

@@ -20,7 +20,7 @@ public:
         return cache;
     }
 
-    SerializationPtr getOrCreate(const String & key, SerializationPtr serialization)
+    SerializationPtr getOrCreate(const String & key, SerializationPtr && serialization)
     {
         std::unique_lock lock(mutex);
 

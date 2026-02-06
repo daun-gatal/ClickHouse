@@ -17,7 +17,7 @@ public:
     static SerializationPtr create(MergeTreeStringSerializationVersion version_)
     {
         auto ptr = SerializationPtr(new SerializationStringSize(version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), ptr);
+        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
     String getName() const override;
