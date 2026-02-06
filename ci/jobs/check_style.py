@@ -288,6 +288,132 @@ def check_pylint():
     return out
 
 
+def _is_in_destructor(lines, catch_line_idx):
+    """Check if the catch at the given line index is inside a destructor.
+
+    Walks backwards from the catch, tracking brace depth.  When depth goes
+    negative we have reached an enclosing scope's opening brace.  If that
+    scope is a control-flow block (``if``/``else``/``for``/``while``/``try``
+    /``switch``/``do``/``catch``) we reset and keep looking for the actual
+    function scope.  Once a non-control-flow scope is found we check whether
+    it is a destructor (``~Name``).
+    """
+    control_flow_re = re.compile(
+        r"^\s*(if\b|else\b|for\b|while\b|try\b|switch\b|do\b|catch\b)"
+    )
+    depth = 0
+    for i in range(catch_line_idx - 1, -1, -1):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+        depth += line.count("}") - line.count("{")
+        if depth < 0:
+            # Crossed into an enclosing scope.  Determine its kind.
+            is_control_flow = control_flow_re.match(stripped) is not None
+            if not is_control_flow:
+                for j in range(i - 1, max(i - 3, -1), -1):
+                    prev = lines[j].strip()
+                    if not prev or prev.startswith("//"):
+                        continue
+                    if control_flow_re.match(prev):
+                        is_control_flow = True
+                    break
+
+            if is_control_flow:
+                # Skip this control-flow scope and keep looking outward.
+                depth = 0
+                continue
+
+            # Looks like a function (or class/namespace) scope.
+            for j in range(i, max(i - 6, -1), -1):
+                if re.search(r"~\w+", lines[j]):
+                    return True
+                if j < i and (lines[j].strip() == "" or "}" in lines[j]):
+                    break
+            return False
+    return False
+
+
+def _get_catch_block_lines(lines, catch_line_idx):
+    """Return lines from the catch statement through the closing brace."""
+    result = []
+    depth = 0
+    started = False
+    for i in range(catch_line_idx, len(lines)):
+        line = lines[i]
+        result.append(line)
+        for ch in line:
+            if ch == "{":
+                started = True
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if started and depth == 0:
+                    return result
+    return result
+
+
+def check_catch_all(files) -> str:
+    """Find ``catch (...)`` blocks with completely empty bodies.
+
+    Flags catch-all blocks whose body contains nothing but whitespace
+    (no statements, no comments), and that are not inside destructors.
+    A comment containing the word 'Ok' near the catch suppresses the warning.
+    """
+    violations = []
+    catch_pattern = re.compile(r"\bcatch\s*\(\s*\.\.\.\s*\)")
+    ok_pattern = re.compile(r"(//|/\*).*\bok\b", re.IGNORECASE)
+
+    for file_path in files:
+        if "/poco/" in file_path:
+            continue
+
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+        except OSError:
+            continue
+
+        for i, line in enumerate(lines):
+            catch_match = catch_pattern.search(line)
+            if not catch_match:
+                continue
+
+            # Skip if the catch is inside a single-line comment
+            comment_pos = line.find("//")
+            if comment_pos >= 0 and comment_pos < catch_match.start():
+                continue
+
+            block_lines = _get_catch_block_lines(lines, i)
+
+            # Only flag completely empty bodies (nothing but braces and whitespace)
+            body = "".join(block_lines)
+            body_without_braces = body.replace("{", "").replace("}", "")
+            # Remove the catch (...) part itself
+            body_without_braces = catch_pattern.sub("", body_without_braces)
+            if body_without_braces.strip():
+                continue
+
+            if _is_in_destructor(lines, i):
+                continue
+
+            # Check for an 'Ok' comment in the block and a few lines before
+            context_start = max(0, i - 2)
+            all_lines = lines[context_start:i] + block_lines
+            if any(ok_pattern.search(cl) for cl in all_lines):
+                continue
+
+            violations.append(
+                f"{file_path}:{i + 1}: "
+                "catch (...) with empty body. "
+                "Silently swallowing all exceptions hides bugs and makes debugging difficult. "
+                "Either handle the exception or add a comment containing 'Ok' to suppress this warning."
+            )
+
+    return "\n".join(violations)
+
+
 def check_file_names(files):
     files_set = set()
     for file in files:
@@ -392,6 +518,15 @@ if __name__ == "__main__":
                     "path": "./",
                     "exclude_paths": ["contrib/", "metadata/", "programs/server/data"],
                 },
+            )
+        )
+    testname = "catch_all"
+    if testpattern.lower() in testname.lower():
+        results.append(
+            run_check_concurrent(
+                check_name=testname,
+                check_function=check_catch_all,
+                files=cpp_files,
             )
         )
     testname = "cpp"
