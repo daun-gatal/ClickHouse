@@ -28,10 +28,9 @@ public:
 
     void initializePipeline(QueryPipelineBuilder & pipeline, const BuildQueryPipelineSettings &) override;
 
-private:
-    /// Fail fast if estimated number of rows to read exceeds the limit
-    void checkLimits(size_t rows);
+    QueryPlanStepPtr clone() const override;
 
+private:
     Pipe makePipe();
 
     const Names column_names;

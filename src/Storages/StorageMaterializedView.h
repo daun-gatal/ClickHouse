@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <Parsers/IAST_fwd.h>
 
 #include <Common/CurrentThread.h>
@@ -20,7 +21,8 @@ public:
         const ASTCreateQuery & query,
         const ColumnsDescription & columns_,
         LoadingStrictnessLevel mode,
-        const String & comment);
+        const String & comment,
+        bool is_restore_from_backup);
 
     std::string getName() const override { return "MaterializedView"; }
     bool isView() const override { return true; }
@@ -100,11 +102,24 @@ public:
 
     void backupData(BackupEntriesCollector & backup_entries_collector, const String & data_path_in_backup, const std::optional<ASTs> & partitions) override;
     void restoreDataFromBackup(RestorerFromBackup & restorer, const String & data_path_in_backup, const std::optional<ASTs> & partitions) override;
+    void finalizeRestoreFromBackup() override;
     bool supportsBackupPartition() const override;
+
+    static String generateInnerTableName(const StorageID & view_id);
 
     std::optional<UInt64> totalRows(ContextPtr query_context) const override;
     std::optional<UInt64> totalBytes(ContextPtr query_context) const override;
     std::optional<UInt64> totalBytesUncompressed(const Settings & settings) const override;
+
+    std::optional<String> getCoordinationPath() const
+    {
+        if (!refresher.ptr)
+            return std::nullopt;
+        return refresher.ptr->getCoordinationPath();
+    }
+
+    bool isRefreshable() const { return refresher.ptr != nullptr; }
+    bool isAppendRefreshStrategy() const { return isRefreshable() && fixed_uuid; }
 
 private:
     mutable std::mutex target_table_id_mutex;
@@ -129,7 +144,7 @@ private:
     /// form the insert-select query.
     /// out_temp_table_id may be assigned before throwing an exception, in which case the caller
     /// must drop the temp table before rethrowing.
-    std::tuple<std::shared_ptr<ASTInsertQuery>, std::unique_ptr<CurrentThread::QueryScope>>
+    std::tuple<boost::intrusive_ptr<ASTInsertQuery>, CurrentThread::QueryScope>
     prepareRefresh(bool append, ContextMutablePtr refresh_context, std::optional<StorageID> & out_temp_table_id) const;
     std::optional<StorageID> exchangeTargetTable(StorageID fresh_table, ContextPtr refresh_context) const;
     void dropTempTable(StorageID table, ContextMutablePtr refresh_context, String & out_exception);
