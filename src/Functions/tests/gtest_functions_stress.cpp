@@ -6,6 +6,7 @@
 #include <thread>
 
 #include <base/phdr_cache.h>
+#include <base/scope_guard.h>
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnConst.h>
 #include <Columns/ColumnLowCardinality.h>
@@ -1141,7 +1142,11 @@ struct FunctionsStressTestThread
         for (size_t i = 0; i < function_stats.size(); ++i)
             function_stats[i].function_idx = i;
         current_stress_thread = this;
-        SCOPE_EXIT({ chassert(current_stress_thread == this); current_stress_thread = nullptr; });
+        auto current_stress_thread_guard = make_scope_guard([&]
+        {
+            chassert(current_stress_thread == this);
+            current_stress_thread = nullptr;
+        });
 
         while (!thread_should_stop.load(std::memory_order_relaxed))
         {
