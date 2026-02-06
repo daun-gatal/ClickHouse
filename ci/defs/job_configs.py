@@ -1140,6 +1140,19 @@ class JobConfigs:
         command="python3 ./ci/jobs/libfuzzer_test_check.py 'libFuzzer tests'",
         requires=[ArtifactNames.ARM_FUZZERS, ArtifactNames.FUZZERS_CORPUS],
     )
+    parser_memory_check_job = Job.Config(
+        name=JobNames.PARSER_MEMORY_CHECK,
+        runs_on=RunnerLabels.ARM_SMALL,
+        run_in_docker="clickhouse/test-base",
+        command="python3 ./ci/jobs/parser_memory_check.py",
+        requires=[ArtifactNames.PARSER_MEMORY_PROFILER],
+        digest_config=Job.CacheDigestConfig(
+            include_paths=[
+                "./ci/jobs/parser_memory_check.py",
+                "./utils/parser-memory-profiler/",
+            ],
+        ),
+    )
     vector_search_stress_job = Job.Config(
         name="Vector Search Stress",
         runs_on=RunnerLabels.ARM_MEDIUM,
