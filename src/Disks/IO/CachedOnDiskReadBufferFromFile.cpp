@@ -1100,8 +1100,6 @@ bool CachedOnDiskReadBufferFromFile::nextImplStep()
 
     swap.reset();
 
-    current_file_segment_counters.increment(ProfileEvents::FileSegmentUsedBytes, available());
-
     if (size == 0 && file_offset_of_buffer_end < read_until_position)
     {
         size_t cache_file_size = getFileSizeFromReadBuffer(*implementation_buffer);
