@@ -3,7 +3,7 @@ from praktika import Workflow
 from ci.defs.defs import BASE_BRANCH, DOCKERS, SECRETS, ArtifactConfigs, JobNames
 from ci.defs.job_configs import JobConfigs
 from ci.jobs.scripts.workflow_hooks.filter_job import should_skip_job
-from ci.jobs.scripts.workflow_hooks.trusted import can_be_trusted
+from ci.jobs.scripts.workflow_hooks.trusted import can_be_tested
 
 ALL_FUNCTIONAL_TESTS = [job.name for job in JobConfigs.functional_tests_jobs]
 
@@ -73,6 +73,10 @@ workflow = Workflow.Config(
         ],
         *[
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
+            for job in JobConfigs.functional_tests_jobs_azure
+        ],
+        *[
+            job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
             for job in JobConfigs.integration_test_jobs_required[:]
         ],
         *[
@@ -139,7 +143,7 @@ workflow = Workflow.Config(
     enable_open_issues_check=True,
     enable_slack_feed=True,
     pre_hooks=[
-        can_be_trusted,
+        can_be_tested,
         "python3 ./ci/jobs/scripts/workflow_hooks/store_data.py",
         "python3 ./ci/jobs/scripts/workflow_hooks/pr_labels_and_category.py",
         "python3 ./ci/jobs/scripts/workflow_hooks/version_log.py",
