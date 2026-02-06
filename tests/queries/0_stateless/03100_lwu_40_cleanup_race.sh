@@ -87,7 +87,10 @@ $CLICKHOUSE_CLIENT --query "
 # (removing it from the replication queue) before the MUTATE_PART entry
 # can be selected. havePendingPatchPartsForMutation blocks mutations
 # while unprocessed GET_PART entries for patch parts remain in the queue.
-$CLICKHOUSE_CLIENT --query "SYSTEM SYNC REPLICA t_lwu_cleanup_1"
+# Use LIGHTWEIGHT mode because DEFAULT would also wait for the MUTATE_PART
+# entry, which is itself blocked by havePendingPatchPartsForMutation
+# until the patch GET_PART is processed, creating a circular wait.
+$CLICKHOUSE_CLIENT --query "SYSTEM SYNC REPLICA t_lwu_cleanup_1 LIGHTWEIGHT"
 
 wait_for_mutation "t_lwu_cleanup_1" "0000000000"
 
