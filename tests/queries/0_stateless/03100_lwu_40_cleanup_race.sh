@@ -83,6 +83,12 @@ $CLICKHOUSE_CLIENT --query "
     SYSTEM START MERGES t_lwu_cleanup_1;
 "
 
+# Ensure that the GET_PART entry for the patch part is processed
+# (removing it from the replication queue) before the MUTATE_PART entry
+# can be selected. havePendingPatchPartsForMutation blocks mutations
+# while unprocessed GET_PART entries for patch parts remain in the queue.
+$CLICKHOUSE_CLIENT --query "SYSTEM SYNC REPLICA t_lwu_cleanup_1"
+
 wait_for_mutation "t_lwu_cleanup_1" "0000000000"
 
 $CLICKHOUSE_CLIENT --query "SYSTEM START CLEANUP t_lwu_cleanup_1"
