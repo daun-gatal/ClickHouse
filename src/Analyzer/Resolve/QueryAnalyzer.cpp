@@ -3640,6 +3640,7 @@ void QueryAnalyzer::initializeTableExpressionData(const QueryTreeNodePtr & table
         const auto & columns_description = storage_snapshot->metadata->getColumns();
 
         std::vector<std::pair<std::string, ColumnNodePtr>> alias_columns_to_resolve;
+        std::vector<ColumnNodePtr> alias_subcolumns;
         ColumnNameToColumnNodeMap column_name_to_column_node;
         column_name_to_column_node.reserve(column_names_and_types.size());
 
@@ -3667,6 +3668,10 @@ void QueryAnalyzer::initializeTableExpressionData(const QueryTreeNodePtr & table
             {
                 auto column_node = std::make_shared<ColumnNode>(column_name_and_type, table_expression_node);
                 column_name_to_column_node.emplace(column_name_and_type.name, column_node);
+
+                // Subcolumns are always in the end of columns list, so the source column expression is already built.
+                if (column_name_and_type.isSubcolumn() && column_name_to_column_node[column_name_and_type.getNameInStorage()]->hasExpression())
+                    alias_subcolumns.emplace_back(column_node);
             }
         }
 
@@ -3696,6 +3701,21 @@ void QueryAnalyzer::initializeTableExpressionData(const QueryTreeNodePtr & table
             if (!resolved_expression->getResultType()->equals(*alias_column_to_resolve->getResultType()))
                 resolved_expression = buildCastFunction(resolved_expression, alias_column_to_resolve->getResultType(), scope.context, true);
             table_expression_data.column_name_to_column_node[alias_column_to_resolve_name] = alias_column_to_resolve;
+        }
+
+        if (!alias_subcolumns.empty())
+        {
+            std::string get_subcolumn_function_name = "getSubcolumn";
+            auto get_subcolumn_function = FunctionFactory::instance().get(get_subcolumn_function_name, scope.context);
+            for (auto & subcolumn: alias_subcolumns)
+            {
+                auto column = subcolumn->getColumn();
+                auto subcolumn_expression = std::make_shared<FunctionNode>(get_subcolumn_function_name);
+                subcolumn_expression->getArguments().getNodes().emplace_back(table_expression_data.column_name_to_column_node[column.getNameInStorage()]->getExpression());
+                subcolumn_expression->getArguments().getNodes().emplace_back(std::make_shared<ConstantNode>(column.getSubcolumnName(), std::make_shared<DataTypeString>()));
+                subcolumn_expression->resolveAsFunction(get_subcolumn_function->build(subcolumn_expression->getArgumentColumns()));
+                subcolumn->setExpression(std::move(subcolumn_expression));
+            }
         }
     }
     else if (query_node || union_node)

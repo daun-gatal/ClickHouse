@@ -1,0 +1,15 @@
+1	abc
+2
+Expression ((Project names + (Projection + (Change column names to column identifiers + Compute alias columns))))
+Actions: INPUT :: 0 -> c Int32 : 0
+         COLUMN Const(UInt64) -> arr.size0 UInt64 : 1
+Positions: 1
+  ReadFromStorageLog
+2	[1,2]	['a','b']
+Expression ((Project names + (Projection + (Change column names to column identifiers + Compute alias columns))))
+Actions: INPUT :: 0 -> c Int32 : 0
+         COLUMN Const(UInt64) -> n.size0 UInt64 : 1
+         COLUMN Const(Array(Int8)) -> n.a Array(Int8) : 2
+         COLUMN Const(Array(String)) -> n.b Array(String) : 3
+Positions: 1 2 3
+  ReadFromMemoryStorage
