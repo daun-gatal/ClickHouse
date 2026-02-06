@@ -29,28 +29,19 @@ private:
     std::vector<uint16_t> name_sorted_index;
 
     /// Value-to-name lookup strategy
-    /// For Enum8: always direct (max 256 bytes)
-    /// For Enum16: direct if range <= 4096, else binary search
+    /// For Enum8: always direct (max 512 bytes)
+    /// For Enum16: direct if range <= 1024, else binary search
     bool use_direct_value_lookup = true;
 
     /// Direct lookup array: value_to_index[value - min_value] = index into values
     /// Only used when use_direct_value_lookup = true
-    T min_value{};
-    T max_value{};
+    /// Min/max values accessed via values.front()/back().second since values is sorted
     std::vector<uint16_t> value_to_index;
 
-    /// Sorted indices for binary search on values (used when use_direct_value_lookup = false)
-    /// value_sorted_index[i] = index into values, sorted by value
-    std::vector<uint16_t> value_sorted_index;
-
     static constexpr uint16_t INVALID_INDEX = 65535;
-    static constexpr size_t DIRECT_LOOKUP_THRESHOLD = 4096;
+    static constexpr size_t DIRECT_LOOKUP_THRESHOLD = 1024;
 
     void buildLookupStructures();
-
-    /// Binary search helpers
-    std::string_view getNameAt(size_t idx) const { return values[idx].first; }
-    T getValueAt(size_t idx) const { return values[idx].second; }
 
 public:
     explicit EnumValues(const Values & values_);
@@ -81,9 +72,6 @@ public:
     std::unordered_set<String> getSetOfAllNames(bool to_lower) const;
 
     std::unordered_set<T> getSetOfAllValues() const;
-
-    /// Memory usage estimation
-    size_t memoryUsage() const;
 };
 
 }

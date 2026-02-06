@@ -4,6 +4,8 @@
 #include <Core/Field.h>
 #include <IO/ReadHelpers.h>
 #include <IO/WriteHelpers.h>
+#include <algorithm>
+#include <numeric>
 
 
 namespace DB
@@ -42,8 +44,7 @@ void EnumValues<T>::buildLookupStructures()
 
     /// Build name-sorted index for binary search on names
     name_sorted_index.resize(n);
-    for (size_t i = 0; i < n; ++i)
-        name_sorted_index[i] = static_cast<uint16_t>(i);
+    std::iota(name_sorted_index.begin(), name_sorted_index.end(), static_cast<uint16_t>(0));
 
     ::sort(name_sorted_index.begin(), name_sorted_index.end(), [this](uint16_t a, uint16_t b)
     {
@@ -73,17 +74,15 @@ void EnumValues<T>::buildLookupStructures()
         }
     }
 
-    /// Find min/max values
-    min_value = values.front().second;
-    max_value = values.back().second;
-
     /// Decide strategy for value-to-name lookup
     /// Cast to Int32 first to avoid signed overflow when computing range (e.g., 127 - (-128) for Enum8)
-    size_t range = static_cast<size_t>(static_cast<Int32>(max_value) - static_cast<Int32>(min_value)) + 1;
+    T min_val = values.front().second;
+    T max_val = values.back().second;
+    size_t range = static_cast<size_t>(static_cast<Int32>(max_val) - static_cast<Int32>(min_val)) + 1;
 
     if constexpr (sizeof(T) == 1)
     {
-        /// Enum8: always use direct lookup (max 256 bytes)
+        /// Enum8: always use direct lookup (max 512 bytes)
         use_direct_value_lookup = true;
     }
     else
@@ -99,18 +98,11 @@ void EnumValues<T>::buildLookupStructures()
         for (size_t i = 0; i < n; ++i)
         {
             /// Cast to Int32 first to avoid signed overflow (e.g., 1 - (-128) for Enum8)
-            size_t idx = static_cast<size_t>(static_cast<Int32>(values[i].second) - static_cast<Int32>(min_value));
+            size_t idx = static_cast<size_t>(static_cast<Int32>(values[i].second) - static_cast<Int32>(min_val));
             value_to_index[idx] = static_cast<uint16_t>(i);
         }
     }
-    else
-    {
-        /// Build value-sorted index for binary search
-        /// Since values are already sorted by value, the index is just 0, 1, 2, ...
-        value_sorted_index.resize(n);
-        for (size_t i = 0; i < n; ++i)
-            value_sorted_index[i] = static_cast<uint16_t>(i);
-    }
+    /// For non-direct lookup, we search directly on values (already sorted by value)
 }
 
 template <typename T>
@@ -118,29 +110,23 @@ bool EnumValues<T>::hasValue(T value) const
 {
     if (use_direct_value_lookup)
     {
-        if (value < min_value || value > max_value)
+        T min_val = values.front().second;
+        T max_val = values.back().second;
+        if (value < min_val || value > max_val)
             return false;
         /// Cast to Int32 first to avoid signed overflow
-        size_t idx = static_cast<size_t>(static_cast<Int32>(value) - static_cast<Int32>(min_value));
+        size_t idx = static_cast<size_t>(static_cast<Int32>(value) - static_cast<Int32>(min_val));
         return value_to_index[idx] != INVALID_INDEX;
     }
     else
     {
-        /// Binary search on values (values are sorted by value)
-        size_t lo = 0;
-        size_t hi = values.size();
-        while (lo < hi)
-        {
-            size_t mid = lo + (hi - lo) / 2;
-            T mid_val = values[mid].second;
-            if (mid_val < value)
-                lo = mid + 1;
-            else if (mid_val > value)
-                hi = mid;
-            else
-                return true;
-        }
-        return false;
+        /// Early bounds check
+        if (value < values.front().second || value > values.back().second)
+            return false;
+        /// Binary search on values (already sorted by value)
+        auto it = std::lower_bound(values.begin(), values.end(), value,
+            [](const Value & v, T val) { return v.second < val; });
+        return it != values.end() && it->second == value;
     }
 }
 
@@ -158,10 +144,12 @@ bool EnumValues<T>::getNameForValue(T value, std::string_view & result) const
 {
     if (use_direct_value_lookup)
     {
-        if (value < min_value || value > max_value)
+        T min_val = values.front().second;
+        T max_val = values.back().second;
+        if (value < min_val || value > max_val)
             return false;
         /// Cast to Int32 first to avoid signed overflow
-        size_t arr_idx = static_cast<size_t>(static_cast<Int32>(value) - static_cast<Int32>(min_value));
+        size_t arr_idx = static_cast<size_t>(static_cast<Int32>(value) - static_cast<Int32>(min_val));
         uint16_t idx = value_to_index[arr_idx];
         if (idx == INVALID_INDEX)
             return false;
@@ -170,22 +158,16 @@ bool EnumValues<T>::getNameForValue(T value, std::string_view & result) const
     }
     else
     {
-        /// Binary search on values (values are sorted by value)
-        size_t lo = 0;
-        size_t hi = values.size();
-        while (lo < hi)
+        /// Early bounds check
+        if (value < values.front().second || value > values.back().second)
+            return false;
+        /// Binary search on values (already sorted by value)
+        auto it = std::lower_bound(values.begin(), values.end(), value,
+            [](const Value & v, T val) { return v.second < val; });
+        if (it != values.end() && it->second == value)
         {
-            size_t mid = lo + (hi - lo) / 2;
-            T mid_val = values[mid].second;
-            if (mid_val < value)
-                lo = mid + 1;
-            else if (mid_val > value)
-                hi = mid;
-            else
-            {
-                result = values[mid].first;
-                return true;
-            }
+            result = it->first;
+            return true;
         }
         return false;
     }
@@ -207,23 +189,13 @@ template <typename T>
 bool EnumValues<T>::tryGetValue(T & x, std::string_view field_name) const
 {
     /// Binary search on name-sorted index
-    size_t lo = 0;
-    size_t hi = name_sorted_index.size();
-    while (lo < hi)
-    {
-        size_t mid = lo + (hi - lo) / 2;
-        std::string_view mid_name = values[name_sorted_index[mid]].first;
+    auto it = std::lower_bound(name_sorted_index.begin(), name_sorted_index.end(), field_name,
+        [this](uint16_t idx, std::string_view name) { return values[idx].first < name; });
 
-        int cmp = mid_name.compare(field_name);
-        if (cmp < 0)
-            lo = mid + 1;
-        else if (cmp > 0)
-            hi = mid;
-        else
-        {
-            x = values[name_sorted_index[mid]].second;
-            return true;
-        }
+    if (it != name_sorted_index.end() && values[*it].first == field_name)
+    {
+        x = values[*it].second;
+        return true;
     }
 
     /// Fallback: try parsing as numeric value
@@ -279,28 +251,6 @@ bool EnumValues<T>::containsAll(const TValues & rhs_values) const
     };
 
     return std::all_of(rhs_values.begin(), rhs_values.end(), check);
-}
-
-template <typename T>
-size_t EnumValues<T>::memoryUsage() const
-{
-    size_t total = sizeof(*this);
-
-    /// values vector
-    total += values.capacity() * sizeof(Value);
-    for (const auto & v : values)
-        total += v.first.capacity();
-
-    /// name_sorted_index
-    total += name_sorted_index.capacity() * sizeof(uint16_t);
-
-    /// value_to_index or value_sorted_index
-    if (use_direct_value_lookup)
-        total += value_to_index.capacity() * sizeof(uint16_t);
-    else
-        total += value_sorted_index.capacity() * sizeof(uint16_t);
-
-    return total;
 }
 
 template bool EnumValues<Int8>::containsAll<EnumValues<Int8>::Values>(const EnumValues<Int8>::Values & rhs_values) const;
