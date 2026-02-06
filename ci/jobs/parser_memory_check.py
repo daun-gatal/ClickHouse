@@ -131,21 +131,22 @@ def generate_report(pr_results_file: str, master_results_file: str, report_file:
         })
     
     # Generate HTML report
+    # Note: CSS curly braces must be doubled to escape them for .format()
     html_content = """<!DOCTYPE html>
 <html>
 <head>
     <title>Parser Memory Profiler Report</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .regression { background: #ffcccc; }
-        .improvement { background: #ccffcc; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #4CAF50; color: white; }
-        tr:nth-child(even) { background: #f2f2f2; }
-        .query { font-family: monospace; font-size: 12px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        h1 {{ color: #333; }}
+        .summary {{ background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+        .regression {{ background: #ffcccc; }}
+        .improvement {{ background: #ccffcc; }}
+        table {{ border-collapse: collapse; width: 100%; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        th {{ background: #4CAF50; color: white; }}
+        tr:nth-child(even) {{ background: #f2f2f2; }}
+        .query {{ font-family: monospace; font-size: 12px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
     </style>
 </head>
 <body>
