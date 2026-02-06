@@ -63,7 +63,9 @@ def run_profiler(binary_path: str, queries_file: str, output_file: str) -> bool:
     with open(output_file, "w") as f:
         f.write("query_num\tquery\tlength\tbefore\tafter\tdiff\n")
         for r in results:
-            f.write(f"{r['query_num']}\t{r['query']}\t{r['length']}\t{r['before']}\t{r['after']}\t{r['diff']}\n")
+            # Replace tabs and newlines in query to avoid TSV parsing issues
+            safe_query = r['query'].replace('\t', ' ').replace('\n', ' ').replace('\r', '')
+            f.write(f"{r['query_num']}\t{safe_query}\t{r['length']}\t{r['before']}\t{r['after']}\t{r['diff']}\n")
     
     return len(results) > 0
 
@@ -78,11 +80,15 @@ def generate_report(pr_results_file: str, master_results_file: str, report_file:
             for line in f:
                 parts = line.strip().split("\t")
                 if len(parts) >= 6:
-                    query_num = int(parts[0])
-                    results[query_num] = {
-                        "query": parts[1],
-                        "diff": int(parts[5])
-                    }
+                    try:
+                        query_num = int(parts[0])
+                        diff = int(parts[5])
+                        results[query_num] = {
+                            "query": parts[1],
+                            "diff": diff
+                        }
+                    except (ValueError, IndexError) as e:
+                        print(f"Warning: Failed to parse line: {line[:100]}... Error: {e}")
         return results
     
     pr_results = load_results(pr_results_file)
