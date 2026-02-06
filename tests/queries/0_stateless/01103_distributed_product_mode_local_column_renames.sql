@@ -1,4 +1,4 @@
--- Tags: distributed, no-parallel
+-- Tags: distributed, no-parallel, no-random-detach
 
 CREATE DATABASE IF NOT EXISTS test_01103;
 USE test_01103;

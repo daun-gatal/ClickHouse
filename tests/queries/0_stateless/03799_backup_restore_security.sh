@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Tags: no-random-detach
 
 # Test for security fixes related to BACKUP and RESTORE operations:
 # 1. RESTORE should be forbidden in readonly mode

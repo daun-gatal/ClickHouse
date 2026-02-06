@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 
 SET enable_analyzer = 1;
 

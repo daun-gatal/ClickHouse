@@ -1,4 +1,4 @@
--- Tags: no-parallel-replicas, no-replicated-database
+-- Tags: no-parallel-replicas, no-replicated-database, no-random-detach
 -- no-parallel-replicas: profile events may differ with parallel replicas.
 -- no-replicated-database: fails due to additional shard.
 

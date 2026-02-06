@@ -1,4 +1,4 @@
--- Tags: no-parallel, no-random-settings, no-object-storage
+-- Tags: no-parallel, no-random-settings, no-object-storage, no-random-detach
 -- add_minmax_index_for_numeric_columns=0: More opened files
 
 -- Does additional index analysis round that the test doesn't expect

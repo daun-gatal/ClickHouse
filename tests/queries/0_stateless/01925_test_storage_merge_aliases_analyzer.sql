@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 
 drop table if exists merge;
 set enable_analyzer = 1;

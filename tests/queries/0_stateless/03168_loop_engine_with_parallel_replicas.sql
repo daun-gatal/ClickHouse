@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 
 DROP DATABASE IF EXISTS 03147_db;
 CREATE DATABASE IF NOT EXISTS 03147_db;

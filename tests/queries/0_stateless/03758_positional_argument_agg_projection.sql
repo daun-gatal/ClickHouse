@@ -1,3 +1,4 @@
+-- Tags: no-random-detach
 DROP TABLE IF EXISTS test;
 
 CREATE TABLE test

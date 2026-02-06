@@ -2690,10 +2690,10 @@ Another use case of `prefer_global_in_and_join` is accessing tables created by 
 )", 0) \
     DECLARE(Bool, reattach_tables_before_query_execution, false, R"(
 For testing purposes only. Detach and attach back all tables that are used in a query before its execution.
-)", 0) \
+)", EXPERIMENTAL) \
     DECLARE(Float, reattach_tables_before_query_execution_probability, 0., R"(
 For testing purposes only. The probability of enabling `reattach_tables_before_query_execution` if it's disabled.
-)", 0) \
+)", EXPERIMENTAL) \
     DECLARE(Bool, enable_vertical_final, true, R"(
 If enable, remove duplicated rows during FINAL by marking rows as deleted and filtering them later instead of merging rows
 )", 0) \

@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 -- Tag no-parallel: Depends on the query condition cache content (queries executed in parallel may overflow the cache size or straight away call "clear cache")
 
 DROP TABLE IF EXISTS t;

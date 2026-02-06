@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 -- Tag no-parallel: Messes with internal cache
 
 SYSTEM CLEAR QUERY CACHE;

@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-detach
 -- no-parallel: test loads/unloads PKs of all tables, this affects expected results if the test runs in parallel
 
 DROP TABLE IF EXISTS test;

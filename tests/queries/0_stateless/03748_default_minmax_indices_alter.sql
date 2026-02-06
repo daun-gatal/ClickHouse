@@ -1,3 +1,4 @@
+-- Tags: no-random-detach
 -- { echoOn }
 DROP TABLE IF EXISTS t_implicit;
 

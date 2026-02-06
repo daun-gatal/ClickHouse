@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Tags: no-random-detach
 
 # This test tests 2 things with and without the direct read optimization:
 # 1. That short ngrams (parsing words shorter than the ngram length N) return an empty set when tokenized
