@@ -43,5 +43,5 @@ SELECT number % 3 AS `all`, number FROM numbers(9) ORDER BY `all`, number LIMIT 
 -- ORDER BY `all` with enable_order_by_all = 0 should still work as a column reference
 SELECT -number AS `all` FROM numbers(5) ORDER BY `all` SETTINGS enable_order_by_all = 0;
 
--- ORDER BY ALL with enable_order_by_all = 0 treats ALL as a column name, but no such column exists
-SELECT -number AS `all` FROM numbers(5) ORDER BY ALL SETTINGS enable_order_by_all = 0; -- { serverError UNKNOWN_IDENTIFIER }
+-- ORDER BY ALL with enable_order_by_all = 0 is an error
+SELECT -number AS `all` FROM numbers(5) ORDER BY ALL SETTINGS enable_order_by_all = 0; -- { serverError BAD_ARGUMENTS }

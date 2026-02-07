@@ -310,8 +310,13 @@ QueryTreeNodePtr QueryTreeBuilder::buildSelectExpression(
     current_query_tree->setIsLimitByAll(select_query_typed.limit_by_all);
     /// order_by_all flag in AST is set w/o consideration of `enable_order_by_all` setting
     /// since SETTINGS section has not been parsed yet, - so, check the setting here
-    if (enable_order_by_all)
-        current_query_tree->setIsOrderByAll(select_query_typed.order_by_all);
+    if (select_query_typed.order_by_all)
+    {
+        if (enable_order_by_all)
+            current_query_tree->setIsOrderByAll(true);
+        else
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "ORDER BY ALL is not allowed when `enable_order_by_all` setting is disabled");
+    }
     current_query_tree->setOriginalAST(select_query);
 
     auto current_context = current_query_tree->getContext();
@@ -399,7 +404,7 @@ QueryTreeNodePtr QueryTreeBuilder::buildSelectExpression(
         current_query_tree->getQualify() = buildExpression(qualify_expression, current_context);
 
     auto select_order_by_list = select_query_typed.orderBy();
-    if (select_order_by_list)
+    if (select_order_by_list && !select_query_typed.order_by_all)
         current_query_tree->getOrderByNode() = buildSortList(select_order_by_list, current_context);
 
     auto interpolate_list = select_query_typed.interpolate();
