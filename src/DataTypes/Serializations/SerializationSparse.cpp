@@ -22,9 +22,19 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
+SerializationSparse::~SerializationSparse()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationSparse::getName() const
 {
     return "Sparse(" + nested->getName() + ")";
+}
+
+SerializationSparseNullMap::~SerializationSparseNullMap()
+{
+    SerializationObjectPool::instance().remove(getName());
 }
 
 String SerializationSparseNullMap::getName() const

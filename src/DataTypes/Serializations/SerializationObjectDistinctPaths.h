@@ -27,6 +27,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationObjectDistinctPaths() override;
+
     String getName() const override;
 
     void enumerateStreams(

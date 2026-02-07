@@ -19,6 +19,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationArrayOffsets() override;
+
     String getName() const override;
 
     void deserializeBinaryBulkWithMultipleStreams(

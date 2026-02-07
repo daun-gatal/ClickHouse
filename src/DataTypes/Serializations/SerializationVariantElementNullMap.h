@@ -38,6 +38,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationVariantElementNullMap() override;
+
     String getName() const override
     {
         return "VariantElementNullMap(" + variant_element_name + ", " + std::to_string(variant_discriminator) + ")";

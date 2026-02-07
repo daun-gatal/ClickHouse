@@ -22,6 +22,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationObjectDynamicPath() override;
+
     String getName() const override
     {
         return "ObjectDynamicPath(" + nested_serialization->getName() + ", " + path + ", " + path_subcolumn + ")";

@@ -31,6 +31,11 @@ namespace ErrorCodes
     extern const int INCORRECT_DATA;
 }
 
+SerializationVariant::~SerializationVariant()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationVariant::getName() const
 {
     return variant_name;

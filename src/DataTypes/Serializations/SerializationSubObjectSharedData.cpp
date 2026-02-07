@@ -37,6 +37,11 @@ SerializationPtr SerializationSubObjectSharedData::create(
     return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
 }
 
+SerializationSubObjectSharedData::~SerializationSubObjectSharedData()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationSubObjectSharedData::getName() const
 {
     return "SubObjectSharedData(" + std::to_string(static_cast<int>(serialization_version.value)) + ", " + std::to_string(buckets) + ", " + paths_prefix + ")";

@@ -61,6 +61,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationQBit() override;
+
     String getName() const override;
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;

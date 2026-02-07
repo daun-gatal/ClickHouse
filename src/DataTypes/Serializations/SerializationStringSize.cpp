@@ -12,6 +12,11 @@ SerializationStringSize::SerializationStringSize(MergeTreeStringSerializationVer
 {
 }
 
+SerializationStringSize::~SerializationStringSize()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationStringSize::getName() const
 {
     return "StringSize(" + std::to_string(static_cast<int>(version)) + ")";

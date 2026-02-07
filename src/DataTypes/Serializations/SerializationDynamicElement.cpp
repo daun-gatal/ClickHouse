@@ -38,6 +38,11 @@ struct DeserializeBinaryBulkStateDynamicElement : public ISerialization::Deseria
     }
 };
 
+SerializationDynamicElement::~SerializationDynamicElement()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationDynamicElement::enumerateStreams(
     DB::ISerialization::EnumerateStreamsSettings & settings,
     const DB::ISerialization::StreamCallback & callback,

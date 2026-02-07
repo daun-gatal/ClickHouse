@@ -21,6 +21,11 @@ SerializationReplicated::SerializationReplicated(const SerializationPtr & nested
 {
 }
 
+SerializationReplicated::~SerializationReplicated()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationReplicated::getName() const
 {
     return "Replicated(" + nested->getName() + ")";

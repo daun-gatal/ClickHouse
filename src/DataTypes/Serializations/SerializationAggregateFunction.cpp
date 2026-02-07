@@ -24,6 +24,11 @@ namespace ErrorCodes
     extern const int BAD_ARGUMENTS;
 }
 
+SerializationAggregateFunction::~SerializationAggregateFunction()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationAggregateFunction::getName() const
 {
     return "AggregateFunction(" + function->getName() + ", " + type_name + ", " + std::to_string(version) + ")";

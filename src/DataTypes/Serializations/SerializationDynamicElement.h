@@ -32,6 +32,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationDynamicElement() override;
+
     String getName() const override
     {
         return "DynamicElement(" + nested_serialization->getName() + ", " + dynamic_element_name + ", " + nested_subcolumn + ", " + std::to_string(is_null_map_subcolumn) + ")";

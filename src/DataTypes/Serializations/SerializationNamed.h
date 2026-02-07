@@ -25,6 +25,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationNamed() override;
+
     String getName() const override
     {
         return "Named(" + nested_serialization->getName() + ", " + name + ", " + std::to_string(static_cast<int>(substream_type)) + ")";

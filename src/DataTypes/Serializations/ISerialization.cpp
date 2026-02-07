@@ -31,6 +31,8 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
+ISerialization::~ISerialization() = default;
+
 ISerialization::KindStack ISerialization::getKindStack(const IColumn & column)
 {
     if (const auto * column_sparse = typeid_cast<const ColumnSparse *>(&column))

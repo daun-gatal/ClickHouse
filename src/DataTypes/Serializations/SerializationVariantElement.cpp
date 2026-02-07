@@ -39,6 +39,11 @@ struct SerializationVariantElement::DeserializeBinaryBulkStateVariantElement : p
     }
 };
 
+SerializationVariantElement::~SerializationVariantElement()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationVariantElement::enumerateStreams(
     DB::ISerialization::EnumerateStreamsSettings & settings,
     const DB::ISerialization::StreamCallback & callback,

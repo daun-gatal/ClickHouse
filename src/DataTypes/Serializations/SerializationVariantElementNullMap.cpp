@@ -36,6 +36,11 @@ struct DeserializeBinaryBulkStateVariantElementNullMap : public ISerialization::
     }
 };
 
+SerializationVariantElementNullMap::~SerializationVariantElementNullMap()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 void SerializationVariantElementNullMap::enumerateStreams(
     DB::ISerialization::EnumerateStreamsSettings & settings,
     const DB::ISerialization::StreamCallback & callback,

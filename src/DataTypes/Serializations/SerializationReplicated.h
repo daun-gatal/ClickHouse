@@ -22,6 +22,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationReplicated() override;
+
     String getName() const override;
 
     KindStack getKindStack() const override;

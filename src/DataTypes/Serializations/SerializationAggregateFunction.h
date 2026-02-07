@@ -28,6 +28,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationAggregateFunction() override;
+
     String getName() const override;
 
     /// NOTE These two functions for serializing single values are incompatible with the functions below.

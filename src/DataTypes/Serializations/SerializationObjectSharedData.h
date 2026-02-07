@@ -79,6 +79,8 @@ private:
 public:
     static SerializationPtr create(SerializationVersion serialization_version_, const DataTypePtr & dynamic_type_, size_t buckets_);
 
+    ~SerializationObjectSharedData() override;
+
     String getName() const override;
 
     void enumerateStreams(

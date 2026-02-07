@@ -61,7 +61,9 @@ protected:
     ISerialization() = default;
 
 public:
-    virtual ~ISerialization() = default;
+    /// Must be overrided in the "leaf" derivatives. The following line must be called:
+    /// SerializationObjectPool::instance().remove(getName());
+    virtual ~ISerialization() = 0;
 
     /// Get the name of the serialization (used as a unique identifier/hash).
     virtual String getName() const = 0;

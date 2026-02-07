@@ -23,6 +23,8 @@ private:
 public:
     static SerializationPtr create(SerializationObjectSharedData::SerializationVersion serialization_version_, size_t buckets_, const String & paths_prefix_, const DataTypePtr & dynamic_type_);
 
+    ~SerializationSubObjectSharedData() override;
+
     String getName() const override;
 
     void enumerateStreams(

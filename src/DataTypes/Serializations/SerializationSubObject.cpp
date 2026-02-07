@@ -22,6 +22,11 @@ SerializationSubObject::SerializationSubObject(
 {
 }
 
+SerializationSubObject::~SerializationSubObject()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationSubObject::getName() const
 {
     return "SubObject(" + paths_prefix + ", " + dynamic_type->getName() + ")";

@@ -28,6 +28,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationSubObject() override;
+
     String getName() const override;
 
     void enumerateStreams(

@@ -25,10 +25,7 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
-    String getName() const override
-    {
-        return "ObjectTypedPath(" + nested_serialization->getName() + ", " + path + ")";
-    }
+    ~SerializationObjectTypedPath() override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

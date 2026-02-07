@@ -36,6 +36,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationSparse() override;
+
     String getName() const override;
 
     KindStack getKindStack() const override;
@@ -154,6 +156,8 @@ public:
         auto ptr = SerializationPtr(new SerializationSparseNullMap());
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
+
+    ~SerializationSparseNullMap() override;
 
     String getName() const override;
 

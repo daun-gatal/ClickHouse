@@ -20,6 +20,8 @@ public:
         return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
     }
 
+    ~SerializationStringSize() override;
+
     String getName() const override;
 
     void enumerateStreams(

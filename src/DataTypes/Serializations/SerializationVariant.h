@@ -79,6 +79,8 @@ private:
 public:
     static SerializationPtr create(const DataTypes & variant_types_, const String & variant_name_);
 
+    ~SerializationVariant() override;
+
     String getName() const override;
 
     void enumerateStreams(

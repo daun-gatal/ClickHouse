@@ -4,6 +4,11 @@
 namespace DB
 {
 
+SerializationArrayOffsets::~SerializationArrayOffsets()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationArrayOffsets::getName() const
 {
     return "ArrayOffsets";

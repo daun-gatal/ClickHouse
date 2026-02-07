@@ -19,6 +19,11 @@ SerializationObjectDistinctPaths::SerializationObjectDistinctPaths(const std::ve
     shared_data_paths_serialization = shared_data_type->getSubcolumnSerialization("paths", shared_data_type->getDefaultSerialization());
 }
 
+SerializationObjectDistinctPaths::~SerializationObjectDistinctPaths()
+{
+    SerializationObjectPool::instance().remove(getName());
+}
+
 String SerializationObjectDistinctPaths::getName() const
 {
     String result = "ObjectDistinctPaths(";
