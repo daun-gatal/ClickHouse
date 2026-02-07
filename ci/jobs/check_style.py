@@ -46,7 +46,7 @@ def run_check_concurrent(check_name, check_function, files, nproc=NPROC):
         status=Result.Status.SUCCESS if not results else Result.Status.FAILED,
         start_time=stop_watch.start_time,
         duration=stop_watch.duration,
-        info=f"errors: {results}" if results else "",
+        info="\n".join(results) if results else "",
     )
     return result
 
@@ -288,15 +288,15 @@ def check_pylint():
     return out
 
 
-def _is_in_destructor(lines, catch_line_idx):
-    """Check if the catch at the given line index is inside a destructor.
+def _find_enclosing_function_lines(lines, catch_line_idx):
+    """Return signature lines of the function enclosing the catch at *catch_line_idx*.
 
     Walks backwards from the catch, tracking brace depth.  When depth goes
     negative we have reached an enclosing scope's opening brace.  If that
     scope is a control-flow block (``if``/``else``/``for``/``while``/``try``
     /``switch``/``do``/``catch``) we reset and keep looking for the actual
-    function scope.  Once a non-control-flow scope is found we check whether
-    it is a destructor (``~Name``).
+    function scope.  Returns a list of up to 6 source lines around the
+    opening brace (the signature area), or an empty list if nothing is found.
     """
     control_flow_re = re.compile(
         r"^\s*(if\b|else\b|for\b|while\b|try\b|switch\b|do\b|catch\b)"
@@ -326,13 +326,50 @@ def _is_in_destructor(lines, catch_line_idx):
                 continue
 
             # Looks like a function (or class/namespace) scope.
+            sig = []
             for j in range(i, max(i - 6, -1), -1):
-                if re.search(r"~\w+", lines[j]):
-                    return True
                 if j < i and (lines[j].strip() == "" or "}" in lines[j]):
                     break
-            return False
-    return False
+                sig.append(lines[j])
+            return sig
+
+    # Handle function-try blocks: "Type func(...) try { ... } catch (...) { ... }"
+    # In this pattern there is no separate function opening brace, so the loop
+    # above never reaches depth < 0.  Re-scan for a bare ``try`` at depth 0.
+    depth = 0
+    for i in range(catch_line_idx - 1, -1, -1):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+        depth += line.count("}") - line.count("{")
+        if depth < 0:
+            break
+        if depth == 0 and re.match(r"^\s*try\b", stripped):
+            sig = []
+            for j in range(i - 1, max(i - 7, -1), -1):
+                s = lines[j].strip()
+                if not s or s.startswith("//"):
+                    continue
+                if "}" in lines[j]:
+                    break
+                sig.append(lines[j])
+            return sig
+    return []
+
+
+def _is_in_destructor(lines, catch_line_idx):
+    """Check if the catch at the given line index is inside a destructor."""
+    sig = _find_enclosing_function_lines(lines, catch_line_idx)
+    return any(re.search(r"~\w+", l) for l in sig)
+
+
+def _is_in_main_or_fuzzer(lines, catch_line_idx):
+    """Check if the catch is inside ``main`` or ``LLVMFuzzerTestOneInput``."""
+    sig = _find_enclosing_function_lines(lines, catch_line_idx)
+    return any(
+        re.search(r"\b(main|LLVMFuzzerTestOneInput)\b", l) for l in sig
+    )
 
 
 def _get_catch_block_lines(lines, catch_line_idx):
@@ -365,7 +402,8 @@ def check_catch_all(files) -> str:
     * save the exception (``current_exception``),
     * have a comment containing the word 'Ok'.
 
-    Also skips blocks inside destructors and poco.
+    Also skips blocks inside destructors, ``main``/``LLVMFuzzerTestOneInput``,
+    and poco.
     """
     violations = []
     catch_pattern = re.compile(r"\bcatch\s*\(\s*\.\.\.\s*\)")
@@ -411,6 +449,9 @@ def check_catch_all(files) -> str:
                 continue
 
             if _is_in_destructor(lines, i):
+                continue
+
+            if _is_in_main_or_fuzzer(lines, i):
                 continue
 
             # Check for an 'Ok' comment in the block and a few lines before
