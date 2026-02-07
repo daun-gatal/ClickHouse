@@ -1,15 +1,13 @@
 #pragma once
 
-#include <condition_variable>
-#include <stdatomic.h>
+#include <Columns/ColumnString.h>
+#include <Processors/Chunk.h>
 #include <Processors/Sinks/SinkToStorage.h>
 #include <rocksdb/db.h>
 #include <rocksdb/status.h>
 #include <Common/CurrentThread.h>
-#include <Common/ThreadStatus.h>
 #include <Common/ThreadPool.h>
-#include <Columns/ColumnString.h>
-#include <Processors/Chunk.h>
+#include <Common/ThreadStatus.h>
 
 
 namespace DB
@@ -27,14 +25,11 @@ using StorageMetadataPtr = std::shared_ptr<const StorageInMemoryMetadata>;
 class EmbeddedRocksDBBulkSink : public SinkToStorage, public WithContext
 {
 public:
-    EmbeddedRocksDBBulkSink(
-        ContextPtr context_,
-        StorageEmbeddedRocksDB & storage_,
-        const StorageMetadataPtr & metadata_snapshot_);
+    EmbeddedRocksDBBulkSink(ContextPtr context_, StorageEmbeddedRocksDB & storage_, const StorageMetadataPtr & metadata_snapshot_);
 
     ~EmbeddedRocksDBBulkSink() override;
 
-    void consume(Chunk chunk) override;
+    void consume(Chunk & chunk) override;
 
     void onFinish() override;
 
@@ -49,11 +44,11 @@ private:
     bool isEnoughSize(const std::vector<Chunk> & input_chunks) const;
     bool isEnoughSize(const Chunk & chunk) const;
     /// Serialize chunks to rocksdb key-value pairs
+    template <bool with_timestamp>
     std::pair<ColumnString::Ptr, ColumnString::Ptr> serializeChunks(std::vector<Chunk> && input_chunks) const;
 
     StorageEmbeddedRocksDB & storage;
     StorageMetadataPtr metadata_snapshot;
-    size_t primary_key_pos = 0;
     Serializations serializations;
 
     /// For squashing chunks

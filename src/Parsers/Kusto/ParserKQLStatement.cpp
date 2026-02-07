@@ -1,13 +1,14 @@
 #include <Parsers/ASTExpressionList.h>
 #include <Parsers/ASTSelectWithUnionQuery.h>
 #include <Parsers/CommonParsers.h>
+#include <Parsers/ExpressionElementParsers.h>
 #include <Parsers/IParserBase.h>
-#include <Parsers/Kusto/KustoFunctions/KQLFunctionFactory.h>
 #include <Parsers/Kusto/ParserKQLQuery.h>
 #include <Parsers/Kusto/ParserKQLStatement.h>
 #include <Parsers/Kusto/Utilities.h>
 #include <Parsers/ParserSetQuery.h>
 #include <Parsers/ASTLiteral.h>
+
 
 namespace DB
 {
@@ -50,10 +51,10 @@ bool ParserKQLWithUnionQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & exp
         return true;
     }
 
-    auto list_node = std::make_shared<ASTExpressionList>();
+    auto list_node = make_intrusive<ASTExpressionList>();
     list_node->children.push_back(kql_query);
 
-    auto select_with_union_query = std::make_shared<ASTSelectWithUnionQuery>();
+    auto select_with_union_query = make_intrusive<ASTSelectWithUnionQuery>();
     node = select_with_union_query;
     select_with_union_query->list_of_selects = list_node;
     select_with_union_query->children.push_back(select_with_union_query->list_of_selects);
@@ -63,6 +64,8 @@ bool ParserKQLWithUnionQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & exp
 
 bool ParserKQLTableFunction::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
 {
+    /// TODO: This code is idiotic, see https://github.com/ClickHouse/ClickHouse/issues/61742
+
     ParserToken lparen(TokenType::OpeningRoundBracket);
 
     ASTPtr string_literal;
@@ -101,13 +104,16 @@ bool ParserKQLTableFunction::parseImpl(Pos & pos, ASTPtr & node, Expected & expe
         ++pos;
     }
 
-    Tokens token_kql(kql_statement.data(), kql_statement.data() + kql_statement.size());
-    IParser::Pos pos_kql(token_kql, pos.max_depth, pos.max_backtracks);
+    Tokens tokens_kql(kql_statement.data(), kql_statement.data() + kql_statement.size(), 0, true);
+    IParser::Pos pos_kql(tokens_kql, pos.max_depth, pos.max_backtracks);
+
     Expected kql_expected;
     kql_expected.enable_highlighting = false;
     if (!ParserKQLWithUnionQuery().parse(pos_kql, node, kql_expected))
         return false;
+
     ++pos;
     return true;
 }
+
 }
