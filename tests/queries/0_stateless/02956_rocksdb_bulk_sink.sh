@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tags: no-ordinary-database, use-rocksdb, no-random-settings, no-msan
+# Tags: no-ordinary-database, use-rocksdb, no-random-settings, no-msan, no-random-detach
 # msan: too slow
 
 CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

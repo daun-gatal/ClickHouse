@@ -1,3 +1,5 @@
+-- Tags: no-random-detach
+
 -- Check MergeTree declaration in new format
 CREATE TABLE check_system_tables
   (
