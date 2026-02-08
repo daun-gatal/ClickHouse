@@ -1011,6 +1011,31 @@ def test_postgres_date32_array(started_cluster):
     cursor.execute("DROP TABLE test_date32_array")
 
 
+def test_postgres_dropped_and_readded_generated_column(started_cluster):
+    """Regression test for https://github.com/ClickHouse/ClickHouse/issues/63161
+    PostgreSQL tables with dropped and re-added generated columns have
+    non-contiguous attnum values in pg_attribute, which caused a LOGICAL_ERROR
+    about unexpected adnum when fetching the table structure."""
+    cursor = started_cluster.postgres_conn.cursor()
+    table_name = "test_dropped_generated_col"
+    cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+    cursor.execute(f"CREATE TABLE {table_name} (id integer PRIMARY KEY)")
+    cursor.execute(
+        f"ALTER TABLE {table_name} ADD COLUMN val integer GENERATED ALWAYS AS (id + 1) STORED"
+    )
+    cursor.execute(f"ALTER TABLE {table_name} DROP COLUMN val")
+    cursor.execute(
+        f"ALTER TABLE {table_name} ADD COLUMN val integer GENERATED ALWAYS AS (id + 2) STORED"
+    )
+    cursor.execute(f"INSERT INTO {table_name} (id) VALUES (1), (2), (3)")
+
+    table_func = f"postgresql('{started_cluster.postgres_ip}:{started_cluster.postgres_port}', 'postgres', '{table_name}', 'postgres', '{pg_pass}')"
+    result = node1.query(f"SELECT * FROM {table_func} ORDER BY id")
+    assert result == "1\t3\n2\t4\n3\t5\n"
+
+    cursor.execute(f"DROP TABLE {table_name}")
+
+
 if __name__ == "__main__":
     cluster.start()
     input("Cluster created, press any key to destroy...")
