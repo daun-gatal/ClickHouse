@@ -58,5 +58,3 @@ FORMAT Null;
 
 DROP TABLE test_left;
 DROP TABLE test_right;
-
-
