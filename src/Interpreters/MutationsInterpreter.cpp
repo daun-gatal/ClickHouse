@@ -40,14 +40,19 @@
 #include <Analyzer/QueryTreeBuilder.h>
 #include <Analyzer/QueryTreePassManager.h>
 #include <Analyzer/QueryNode.h>
+#include <Analyzer/Resolve/QueryAnalyzer.h>
 #include <Analyzer/TableNode.h>
 #include <Interpreters/InterpreterSelectQueryAnalyzer.h>
 #include <Interpreters/Context.h>
+#include <Planner/CollectSets.h>
+#include <Planner/CollectTableExpressionData.h>
+#include <Planner/Utils.h>
 #include <Parsers/makeASTForLogicalFunction.h>
 #include <Common/logger_useful.h>
 #include <Common/quoteString.h>
 #include <Storages/MergeTree/MergeTreeDataPartType.h>
 #include <Storages/MergeTree/MergeTreeSettings.h>
+#include <Storages/StorageDummy.h>
 #include <Storages/StorageDistributed.h>
 #include <Storages/StorageMerge.h>
 
@@ -138,6 +143,113 @@ QueryTreeNodePtr prepareQueryAffectedQueryTree(const std::vector<MutationCommand
     query_tree_pass_manager.run(query_tree);
 
     return query_tree;
+}
+
+struct MutationExpressionAnalysisResult
+{
+    ActionsDAG actions_dag;
+    PreparedSetsPtr prepared_sets;
+};
+
+ColumnsDescription buildDummyColumnsDescription(const NamesAndTypesList & input_columns)
+{
+    ColumnsDescription dummy_columns;
+    NameSet inserted_columns;
+    for (const auto & column : input_columns)
+    {
+        if (!inserted_columns.emplace(column.name).second)
+            continue;
+
+        dummy_columns.add(ColumnDescription(column.name, column.type), /*after_column=*/ "", /*first=*/ false, /*add_subcolumns=*/ false);
+    }
+
+    return dummy_columns;
+}
+
+ColumnsWithTypeAndName buildInputColumns(const NamesAndTypesList & input_columns)
+{
+    ColumnsWithTypeAndName result;
+    result.reserve(input_columns.size());
+    NameSet inserted_columns;
+
+    for (const auto & column : input_columns)
+    {
+        if (!inserted_columns.emplace(column.name).second)
+            continue;
+
+        result.emplace_back(nullptr, column.type, column.name);
+    }
+
+    return result;
+}
+
+MutationExpressionAnalysisResult analyzeMutationExpression(
+    const ASTPtr & expression_ast,
+    const NamesAndTypesList & input_columns,
+    const VirtualColumnsDescription & virtual_columns,
+    const ContextPtr & context,
+    bool execute_scalar_subqueries)
+{
+    auto analysis_context = Context::createCopy(context);
+    auto expression_query_tree = buildQueryTree(expression_ast, analysis_context);
+
+    auto storage = std::make_shared<StorageDummy>(StorageID{"dummy", "dummy"}, buildDummyColumnsDescription(input_columns));
+    storage->setVirtuals(virtual_columns);
+    QueryTreeNodePtr table_expression = std::make_shared<TableNode>(storage, analysis_context);
+
+    QueryAnalyzer analyzer(/*only_analyze=*/!execute_scalar_subqueries);
+    analyzer.resolve(expression_query_tree, table_expression, analysis_context);
+
+    GlobalPlannerContextPtr global_planner_context = std::make_shared<GlobalPlannerContext>(
+        /*parallel_replicas_node=*/nullptr,
+        /*parallel_replicas_table=*/nullptr,
+        FiltersForTableExpressionMap{});
+    PlannerContextPtr planner_context = std::make_shared<PlannerContext>(analysis_context, std::move(global_planner_context), SelectQueryOptions{});
+
+    collectSourceColumns(expression_query_tree, planner_context, true /*keep_alias_columns*/);
+    collectSets(expression_query_tree, *planner_context);
+
+    ColumnNodePtrWithHashSet empty_correlated_columns_set;
+    auto [actions_dag, correlated_subtrees] = buildActionsDAGFromExpressionNode(
+        expression_query_tree,
+        buildInputColumns(input_columns),
+        planner_context,
+        empty_correlated_columns_set);
+    correlated_subtrees.assertEmpty("in mutation expression");
+
+    auto prepared_sets = std::make_shared<PreparedSets>(planner_context->getPreparedSets());
+    return MutationExpressionAnalysisResult{std::move(actions_dag), std::move(prepared_sets)};
+}
+
+NameSet getRequiredSourceColumnsWithAnalyzer(
+    const ASTPtr & expression_ast,
+    const NamesAndTypesList & input_columns,
+    const VirtualColumnsDescription & virtual_columns,
+    const ContextPtr & context)
+{
+    auto analysis_result = analyzeMutationExpression(
+        expression_ast,
+        input_columns,
+        virtual_columns,
+        context,
+        /*execute_scalar_subqueries=*/true);
+
+    NameSet required_source_columns;
+    for (const auto & required_column : analysis_result.actions_dag.getRequiredColumns())
+        required_source_columns.insert(required_column.name);
+
+    return required_source_columns;
+}
+
+ExpressionActionsChainSteps::ExpressionActionsStep & appendActionsDAGStep(
+    ExpressionActionsChain & chain,
+    ActionsDAG && actions_dag,
+    bool project_input)
+{
+    auto actions_and_flags = std::make_shared<ActionsAndProjectInputsFlag>(std::move(actions_dag), project_input);
+    auto * step = new ExpressionActionsChainSteps::ExpressionActionsStep(std::move(actions_and_flags));
+    chain.steps.emplace_back(step);
+    return *step;
 }
 
 ColumnDependencies getAllColumnDependencies(
@@ -396,6 +508,37 @@ static Names getAvailableColumnsWithVirtuals(StorageMetadataPtr metadata_snapsho
     return all_columns;
 }
 
+static NamesAndTypesList getColumnsForMutationExpressionAnalysis(
+    const NamesAndTypesList & available_columns,
+    const ASTPtr & expression_ast,
+    const VirtualColumnsDescription & virtual_columns)
+{
+    NamesAndTypesList result = available_columns;
+    NameSet result_set;
+    result_set.reserve(result.size());
+    for (const auto & column : result)
+        result_set.insert(column.name);
+
+    IdentifierNameSet identifiers;
+    expression_ast->collectIdentifierNames(identifiers);
+
+    const auto & common_virtual_columns = IStorage::getCommonVirtuals();
+    for (const auto & identifier : identifiers)
+    {
+        if (!result_set.emplace(identifier).second)
+            continue;
+
+        if (auto column = virtual_columns.tryGet(identifier))
+            result.emplace_back(column->name, column->type);
+        else if (auto common_column = common_virtual_columns.tryGet(identifier))
+            result.emplace_back(common_column->name, common_column->type);
+        else
+            result_set.erase(identifier);
+    }
+
+    return result;
+}
+
 MutationsInterpreter::MutationsInterpreter(
     StoragePtr storage_,
     StorageMetadataPtr metadata_snapshot_,
@@ -468,10 +611,10 @@ MutationsInterpreter::MutationsInterpreter(
     , logger(getLogger("MutationsInterpreter(" + source.getStorage()->getStorageID().getFullTableName() + ")"))
 {
     auto new_context = Context::createCopy(context_);
-    if (new_context->getSettingsRef()[Setting::allow_experimental_analyzer])
+    if (new_context->getSettingsRef()[Setting::allow_experimental_analyzer]
+        && !new_context->getSettingsRef()[Setting::validate_mutation_query])
     {
         new_context->setSetting("allow_experimental_analyzer", false);
-        LOG_TEST(logger, "Will use old analyzer to prepare mutation");
     }
     context = std::move(new_context);
 }
@@ -641,8 +784,10 @@ void MutationsInterpreter::prepare(bool dry_run)
 
     auto storage_snapshot = std::make_shared<StorageSnapshot>(*source.getStorage(), metadata_snapshot);
     auto options = GetColumnsOptions(GetColumnsOptions::AllPhysical).withVirtuals();
-
     auto all_columns = storage_snapshot->getColumnsByNames(options, available_columns);
+    const bool use_analyzer_for_validation
+        = context->getSettingsRef()[Setting::allow_experimental_analyzer]
+        && context->getSettingsRef()[Setting::validate_mutation_query];
     NameSet available_columns_set(available_columns.begin(), available_columns.end());
 
     NameSet updated_columns;
@@ -685,8 +830,25 @@ void MutationsInterpreter::prepare(bool dry_run)
                 auto query = column.default_desc.expression->clone();
                 /// Replace all subcolumns to the getSubcolumn() to get only top level columns as required source columns.
                 replaceSubcolumnsToGetSubcolumnFunctionInQuery(query, all_columns);
-                auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
-                for (const auto & dependency : syntax_result->requiredSourceColumns())
+                NameSet required_source_columns;
+                if (use_analyzer_for_validation)
+                {
+                    auto columns_for_expression_analysis
+                        = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
+                    required_source_columns = getRequiredSourceColumnsWithAnalyzer(
+                        query,
+                        columns_for_expression_analysis,
+                        *storage_snapshot->virtual_columns,
+                        context);
+                }
+                else
+                {
+                    auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
+                    for (const auto & dependency : syntax_result->requiredSourceColumns())
+                        required_source_columns.insert(dependency);
+                }
+
+                for (const auto & dependency : required_source_columns)
                     if (updated_columns.contains(dependency))
                         column_to_affected_materialized[dependency].push_back(column.name);
             }
@@ -925,8 +1087,24 @@ void MutationsInterpreter::prepare(bool dry_run)
             if (!source.hasSecondaryIndex(it->name, metadata_snapshot))
             {
                 auto query = (*it).expression_list_ast->clone();
-                auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
-                const auto required_columns = syntax_result->requiredSourceColumns();
+                Names required_columns;
+                if (use_analyzer_for_validation)
+                {
+                    auto columns_for_expression_analysis
+                        = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
+                    auto required_columns_set = getRequiredSourceColumnsWithAnalyzer(
+                        query,
+                        columns_for_expression_analysis,
+                        *storage_snapshot->virtual_columns,
+                        context);
+                    required_columns.assign(required_columns_set.begin(), required_columns_set.end());
+                }
+                else
+                {
+                    auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
+                    required_columns = syntax_result->requiredSourceColumns();
+                }
+
                 for (const auto & column : required_columns)
                     dependencies.emplace(column, ColumnDependency::SKIP_INDEX);
                 materialized_indices.emplace(command.index_name);
@@ -1302,7 +1480,6 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 {
     auto storage_snapshot = source.getStorageSnapshot(metadata_snapshot, context, settings.can_execute);
     auto options = GetColumnsOptions(GetColumnsOptions::AllPhysical).withVirtuals();
-
     auto all_columns = storage_snapshot->getColumnsByNames(options, available_columns);
 
     bool has_filters = false;
@@ -1359,73 +1536,175 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
     /// Now, calculate `expressions_chain` for each stage except the first.
     /// Do it backwards to propagate information about columns required as input for a stage to the previous stage.
+    const bool use_analyzer
+        = context->getSettingsRef()[Setting::allow_experimental_analyzer]
+        && context->getSettingsRef()[Setting::validate_mutation_query];
     for (int64_t i = prepared_stages.size() - 1; i >= 0; --i)
     {
         auto & stage = prepared_stages[i];
 
         ASTPtr all_asts = make_intrusive<ASTExpressionList>();
+        std::vector<std::pair<String, ASTPtr>> stage_updates;
+        stage_updates.reserve(stage.column_to_updated.size());
+        Names output_columns_in_order;
+        output_columns_in_order.reserve(stage.output_columns.size());
 
         for (const auto & ast : stage.filters)
             all_asts->children.push_back(ast);
 
         for (const auto & kv : stage.column_to_updated)
+        {
             all_asts->children.push_back(kv.second);
+            stage_updates.emplace_back(kv.first, kv.second);
+        }
 
         /// Add all output columns to prevent ExpressionAnalyzer from deleting them from source columns.
         for (const auto & column : stage.output_columns)
+        {
             all_asts->children.push_back(make_intrusive<ASTIdentifier>(column));
+            output_columns_in_order.push_back(column);
+        }
 
         /// Executing scalar subquery on that stage can lead to deadlock
         /// e.g. ALTER referencing the same table in scalar subquery
         bool execute_scalar_subqueries = !dry_run;
-        auto syntax_result = TreeRewriter(context).analyze(
-            all_asts, all_columns, source.getStorage(), storage_snapshot,
-            false, true, execute_scalar_subqueries);
-
-        stage.analyzer = std::make_unique<ExpressionAnalyzer>(all_asts, syntax_result, context);
 
         ExpressionActionsChain & actions_chain = stage.expressions_chain;
-
-        if (!stage.filters.empty())
+        stage.prepared_sets.reset();
+        auto build_actions_chain_with_legacy_analyzer = [&]
         {
-            auto ast = stage.filters.front();
-            if (stage.filters.size() > 1)
-                ast = makeASTForLogicalAnd(std::move(stage.filters));
+            auto syntax_result = TreeRewriter(context).analyze(
+                all_asts, all_columns, source.getStorage(), storage_snapshot,
+                false, true, execute_scalar_subqueries);
 
-            if (!actions_chain.steps.empty())
-                actions_chain.addStep();
+            ExpressionAnalyzer analyzer(all_asts, syntax_result, context);
+            stage.prepared_sets = analyzer.getPreparedSets();
 
-            stage.analyzer->appendExpression(actions_chain, ast, dry_run);
-            stage.filter_column_names.push_back(ast->getColumnName());
-        }
-
-        if (!stage.column_to_updated.empty())
-        {
-            if (!actions_chain.steps.empty())
-                actions_chain.addStep();
-
-            for (const auto & kv : stage.column_to_updated)
-                stage.analyzer->appendExpression(actions_chain, kv.second, dry_run);
-
-            auto & actions = actions_chain.getLastStep().actions();
-
-            for (const auto & kv : stage.column_to_updated)
+            if (!stage.filters.empty())
             {
-                auto column_name = kv.second->getColumnName();
-                const auto & dag_node = actions->dag.findInOutputs(column_name);
-                const auto & alias = actions->dag.addAlias(dag_node, kv.first);
-                actions->dag.addOrReplaceInOutputs(alias);
+                auto ast = stage.filters.front();
+                if (stage.filters.size() > 1)
+                    ast = makeASTForLogicalAnd(std::move(stage.filters));
+
+                if (!actions_chain.steps.empty())
+                    actions_chain.addStep();
+
+                analyzer.appendExpression(actions_chain, ast, dry_run);
+                stage.filter_column_names.push_back(ast->getColumnName());
             }
+
+            if (!stage.column_to_updated.empty())
+            {
+                if (!actions_chain.steps.empty())
+                    actions_chain.addStep();
+
+                for (const auto & kv : stage.column_to_updated)
+                    analyzer.appendExpression(actions_chain, kv.second, dry_run);
+
+                auto & actions = actions_chain.getLastStep().actions();
+
+                for (const auto & kv : stage.column_to_updated)
+                {
+                    auto column_name = kv.second->getColumnName();
+                    const auto & dag_node = actions->dag.findInOutputs(column_name);
+                    const auto & alias = actions->dag.addAlias(dag_node, kv.first);
+                    actions->dag.addOrReplaceInOutputs(alias);
+                }
+            }
+
+            if (i == 0 && actions_chain.steps.empty())
+                actions_chain.lastStep(syntax_result->required_source_columns);
+
+            /// Remove all intermediate columns.
+            actions_chain.addStep();
+        };
+
+        std::optional<MutationExpressionAnalysisResult> analysis_result;
+        bool build_with_legacy_analyzer = !use_analyzer;
+
+        if (use_analyzer)
+        {
+            auto columns_for_expression_analysis
+                = getColumnsForMutationExpressionAnalysis(all_columns, all_asts, *storage_snapshot->virtual_columns);
+            analysis_result = analyzeMutationExpression(
+                all_asts,
+                columns_for_expression_analysis,
+                *storage_snapshot->virtual_columns,
+                context,
+                execute_scalar_subqueries);
+
+            build_with_legacy_analyzer = analysis_result->prepared_sets
+                && !analysis_result->prepared_sets->getSubqueries().empty();
         }
 
-        if (i == 0 && actions_chain.steps.empty())
-            actions_chain.lastStep(syntax_result->required_source_columns);
+        if (build_with_legacy_analyzer)
+        {
+            build_actions_chain_with_legacy_analyzer();
+        }
+        else
+        {
+            stage.prepared_sets = analysis_result->prepared_sets;
 
-        /// Remove all intermediate columns.
-        actions_chain.addStep();
+            const auto & analyzed_outputs = analysis_result->actions_dag.getOutputs();
+            size_t analyzed_output_index = 0;
+
+            for (size_t filter_index = 0; filter_index < stage.filters.size(); ++filter_index, ++analyzed_output_index)
+            {
+                ActionsDAG::NodeRawConstPtrs filter_output_nodes;
+                filter_output_nodes.reserve(1 + output_columns_in_order.size());
+                filter_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
+                for (const auto & output_column : output_columns_in_order)
+                    filter_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
+
+                auto filter_dag = ActionsDAG::cloneSubDAG(filter_output_nodes, false);
+                auto & filter_step = appendActionsDAGStep(actions_chain, std::move(filter_dag), true);
+                const auto & filter_column_name = filter_step.actions()->dag.getOutputs().front()->result_name;
+                stage.filter_column_names.push_back(filter_column_name);
+                filter_step.addRequiredOutput(filter_column_name);
+            }
+
+            if (!stage_updates.empty())
+            {
+                NameSet updated_output_columns;
+                for (const auto & stage_update : stage_updates)
+                    updated_output_columns.insert(stage_update.first);
+
+                ActionsDAG::NodeRawConstPtrs update_output_nodes;
+                update_output_nodes.reserve(stage_updates.size() + output_columns_in_order.size());
+                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index, ++analyzed_output_index)
+                    update_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
+                for (const auto & output_column : output_columns_in_order)
+                {
+                    if (!updated_output_columns.contains(output_column))
+                        update_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
+                }
+
+                ActionsDAG::NodeMapping copied_update_nodes;
+                auto update_dag = ActionsDAG::cloneSubDAG(update_output_nodes, copied_update_nodes, false);
+                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index)
+                {
+                    const auto * copied_output = copied_update_nodes.at(update_output_nodes[update_index]);
+                    const auto & alias = update_dag.addAlias(*copied_output, stage_updates[update_index].first);
+                    update_dag.addOrReplaceInOutputs(alias);
+                }
+
+                appendActionsDAGStep(actions_chain, std::move(update_dag), true);
+            }
+
+            if (i == 0 && actions_chain.steps.empty())
+                actions_chain.lastStep(analysis_result->actions_dag.getRequiredColumns());
+
+            ActionsDAG::NodeRawConstPtrs projection_output_nodes;
+            projection_output_nodes.reserve(output_columns_in_order.size());
+            for (const auto & output_column : output_columns_in_order)
+                projection_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
+
+            auto projection_dag = ActionsDAG::cloneSubDAG(projection_output_nodes, false);
+            appendActionsDAGStep(actions_chain, std::move(projection_dag), false);
+        }
+
         actions_chain.getLastStep().required_output.clear();
-        ActionsDAG::NodeRawConstPtrs new_index;
-        for (const auto & name : stage.output_columns)
+        for (const auto & name : output_columns_in_order)
             actions_chain.getLastStep().addRequiredOutput(name);
 
         actions_chain.getLastActions();
@@ -1578,7 +1857,7 @@ void MutationsInterpreter::initQueryPlan(Stage & first_stage, QueryPlan & plan)
     plan.setConcurrencyControl(false);
 
     source.read(first_stage, plan, metadata_snapshot, context, settings);
-    addDelayedCreatingSetsStep(plan, first_stage.analyzer->getPreparedSets(), context);
+    addDelayedCreatingSetsStep(plan, first_stage.prepared_sets, context);
 }
 
 QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::vector<Stage> & prepared_stages, QueryPlan & plan) const
@@ -1609,7 +1888,7 @@ QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::v
             }
         }
 
-        addDelayedCreatingSetsStep(plan, stage.analyzer->getPreparedSets(), context);
+        addDelayedCreatingSetsStep(plan, stage.prepared_sets, context);
     }
 
     QueryPlanOptimizationSettings do_not_optimize_plan_settings(context);

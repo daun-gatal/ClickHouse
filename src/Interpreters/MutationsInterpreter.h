@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Interpreters/ExpressionAnalyzer.h>
 #include <Interpreters/ExpressionActions.h>
+#include <Interpreters/PreparedSets.h>
 #include <Storages/IStorage_fwd.h>
 #include <Storages/MergeTree/MergeTreeData.h>
 #include <Storages/MutationCommands.h>
@@ -226,7 +226,7 @@ private:
         /// the previous stages and also columns needed by the next stages.
         NameSet output_columns;
 
-        std::unique_ptr<ExpressionAnalyzer> analyzer;
+        PreparedSetsPtr prepared_sets;
 
         /// A chain of actions needed to execute this stage.
         /// First steps calculate filter columns for DELETEs (in the same order as in `filter_column_names`),
