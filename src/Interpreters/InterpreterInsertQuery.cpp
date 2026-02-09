@@ -506,7 +506,8 @@ QueryPipeline InterpreterInsertQuery::addInsertToSelectPipeline(ASTInsertQuery &
                     in_header,
                     table->prefersLargeBlocks() ? settings[Setting::min_insert_block_size_rows] : settings[Setting::max_block_size],
                     table->prefersLargeBlocks() ? settings[Setting::min_insert_block_size_bytes] : 0ULL,
-                    settings[Setting::max_insert_block_size], settings[Setting::max_insert_block_size_bytes],
+                    settings[Setting::max_insert_block_size],
+                    settings[Setting::max_insert_block_size_bytes],
                     squash_with_strict_limits);
             });
     }
@@ -784,7 +785,8 @@ QueryPipeline InterpreterInsertQuery::buildInsertPipeline(ASTInsertQuery & query
                 insert_dependencies,
                 insert_dependencies->getRootViewID(),
                 settings[Setting::insert_deduplication_token].value,
-                chain.getInputSharedHeader()));
+                chain.getInputSharedHeader())
+        );
     }
 
     if (shouldAddSquashingForStorage(table, context) && !no_squash)
@@ -800,7 +802,8 @@ QueryPipeline InterpreterInsertQuery::buildInsertPipeline(ASTInsertQuery & query
             chain.getInputSharedHeader(),
             table_prefers_large_blocks ? settings[Setting::min_insert_block_size_rows] : settings[Setting::max_block_size],
             table_prefers_large_blocks ? settings[Setting::min_insert_block_size_bytes] : 0ULL,
-            settings[Setting::max_insert_block_size], settings[Setting::max_insert_block_size_bytes],
+            settings[Setting::max_insert_block_size],
+            settings[Setting::max_insert_block_size_bytes],
             squash_with_strict_limits);
         chain.addSource(std::move(planing));
     }

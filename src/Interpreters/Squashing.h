@@ -16,8 +16,7 @@ struct ChunkWithOffsetAndLength
         : chunk(std::move(chunk_))
         , offset(offset_)
         , length(length_)
-        {
-        }
+        {}
 
     Chunk chunk;
     size_t offset = 0;

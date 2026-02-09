@@ -849,7 +849,8 @@ std::vector<Chain> InsertDependenciesBuilder::createChainWithDependenciesForAllS
                         output_header,
                         table_prefers_large_blocks ? settings[Setting::min_insert_block_size_rows] : settings[Setting::max_block_size],
                         table_prefers_large_blocks ? settings[Setting::min_insert_block_size_bytes] : 0ULL,
-                        settings[Setting::max_insert_block_size], settings[Setting::max_insert_block_size_bytes],
+                        settings[Setting::max_insert_block_size],
+                        settings[Setting::max_insert_block_size_bytes],
                         settings[Setting::use_strict_insert_block_limits]));
 
                 if (squashing_context.num_squashing_transforms > 1)

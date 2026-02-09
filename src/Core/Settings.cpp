@@ -133,7 +133,7 @@ The `max_block_size` setting indicates the recommended maximum number of rows to
 
 The block size should not be too small to avoid noticeable costs when processing each block. It should also not be too large to ensure that queries with a LIMIT clause execute quickly after processing the first block. When setting `max_block_size`, the goal should be to avoid consuming too much memory when extracting a large number of columns in multiple threads and to preserve at least some cache locality.
 )", 0) \
-DECLARE(Bool, use_strict_insert_block_limits, false, R"(
+    DECLARE(Bool, use_strict_insert_block_limits, false, R"(
 When enabled, strictly enforces both minimum and maximum insert block size limits.
 
 A block is emitted when:
