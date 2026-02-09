@@ -47,6 +47,7 @@
 #include <Interpreters/HashTablesStatistics.h>
 #include <Interpreters/StorageID.h>
 
+#include <QueryPipeline/SizeLimits.h>
 #include <Storages/ColumnsDescription.h>
 #include <Storages/IStorage.h>
 #include <Storages/MergeTree/MergeTreeData.h>
@@ -572,12 +573,21 @@ Aggregator::Params getAggregatorParams(const PlannerContextPtr & planner_context
     auto tmp_data_scope = query_context->getTempDataOnDisk();
     if (tmp_data_scope)
         tmp_data_scope = tmp_data_scope->childScope(/* metrics */{}, settings[Setting::temporary_files_buffer_size], settings[Setting::temporary_files_codec]);
+
+    auto max_rows_to_group_by = settings[Setting::max_rows_to_group_by];
+    auto group_by_overflow_mode = settings[Setting::group_by_overflow_mode];
+    if (query_analysis_result.limit_length > 0 && query_analysis_result.sort_description.empty())
+    {
+        max_rows_to_group_by = query_analysis_result.limit_length;
+        group_by_overflow_mode = OverflowMode::ANY;
+    }
+
     Aggregator::Params aggregator_params = Aggregator::Params(
         aggregation_analysis_result.aggregation_keys,
         aggregate_descriptions,
         query_analysis_result.aggregate_overflow_row,
-        settings[Setting::max_rows_to_group_by],
-        settings[Setting::group_by_overflow_mode],
+        max_rows_to_group_by,
+        group_by_overflow_mode,
         settings[Setting::group_by_two_level_threshold],
         settings[Setting::group_by_two_level_threshold_bytes],
         Aggregator::Params::getMaxBytesBeforeExternalGroupBy(
