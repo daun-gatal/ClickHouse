@@ -1300,14 +1300,13 @@ static QueryPlanNode buildPhysicalJoinImpl(
     }
     else
     {
-        ActionsDAG right_type_correction_actions;
-        if (logical_lookup && prepared_join_storage.storage_join)
-        {
-            right_type_correction_actions = JoinExpressionActions::getSubDAG(
-                actions_after_join
-                    | std::views::transform([&](const auto * action) { return JoinActionRef(action, expression_actions); })
-                    | std::views::filter([](const auto & action) { return action.fromRight() && action.getNode()->type != ActionsDAG::ActionType::INPUT; }));
-        }
+        /// For filled joins (e.g., StorageJoin, DirectJoin), we need to apply type corrections
+        /// to the right-side columns after the join, such as wrapping them in Nullable for outer joins.
+        /// Extract actions from actions_after_join that apply to the right side and are not just inputs.
+        ActionsDAG right_type_correction_actions = JoinExpressionActions::getSubDAG(
+            actions_after_join
+                | std::views::transform([&](const auto * action) { return JoinActionRef(action, expression_actions); })
+                | std::views::filter([](const auto & action) { return action.fromRight() && action.getNode()->type != ActionsDAG::ActionType::INPUT; }));
 
         constructPhysicalStep(
             node,
