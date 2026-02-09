@@ -166,7 +166,7 @@ ColumnsDescription SessionLogElement::getColumnsDescription()
 void SessionLogElement::appendToBlock(MutableColumns & columns) const
 {
     assert(type >= SESSION_LOGIN_FAILURE && type <= SESSION_LOGOUT);
-    assert(user_identified_with >= AuthenticationType::NO_PASSWORD && user_identified_with <= AuthenticationType::MAX);
+    assert(user_identified_with >= AuthenticationType::NO_PASSWORD && user_identified_with < AuthenticationType::MAX);
 
     size_t i = 0;
 
