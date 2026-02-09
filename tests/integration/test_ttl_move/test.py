@@ -1875,6 +1875,13 @@ class TestCancelBackgroundMoving:
     def test_cancel_background_moving_on_stop_moves_query(self, prepare_table):
         name = prepare_table
 
+        # Enable failpoint to pause the move after cloning but before swapping.
+        # This ensures the move is still in progress when SYSTEM STOP MOVES is issued,
+        # preventing a race condition where the move could complete before cancellation.
+        node1.query(
+            "SYSTEM ENABLE FAILPOINT stop_moving_part_before_swap_with_active"
+        )
+
         # Wait for background moving task to be started
         node1.query("SYSTEM START MOVES")
         assert_eq_with_retry(
@@ -1883,10 +1890,20 @@ class TestCancelBackgroundMoving:
             "1",
         )
 
-        # Wait for background moving task to be cancelled
+        # Cancel background moving
         node1.query("SYSTEM STOP MOVES")
+
+        # Disable failpoint so the move can proceed to the cancellation check
+        node1.query(
+            "SYSTEM DISABLE FAILPOINT stop_moving_part_before_swap_with_active"
+        )
+
+        # Wait for background moving task to be cancelled
         assert_logs_contain_with_retry(
-            node1, "MergeTreeBackgroundExecutor.*Cancelled moving parts"
+            node1,
+            "MergeTreeBackgroundExecutor.*Cancelled moving parts",
+            retry_count=30,
+            sleep_time=1,
         )
         assert_eq_with_retry(
             node1,
