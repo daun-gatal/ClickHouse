@@ -5,7 +5,7 @@
 namespace DB
 {
 
-#define THREAD_NAME_VALUES(M) \
+#define THREAD_NAME_VALUES(M)\
     M(AGGREGATED_ZOOKEEPER_LOG, "AggrZooLog") \
     M(AGGREGATOR_DESTRUCTION, "AggregDestruct") \
     M(AGGREGATOR_POOL, "AggregatorPool") \
@@ -157,7 +157,9 @@ namespace DB
     M(WORKLOAD_RESOURCE_MANAGER, "WorkloadResMgr") \
     M(ZOOKEEPER_ACL_WATCHER, "ZooACLWatch") \
     M(ZOOKEEPER_RECV, "ZooKeeperRecv") \
-    M(ZOOKEEPER_SEND, "ZooKeeperSend")
+    M(ZOOKEEPER_SEND, "ZooKeeperSend") \
+    M(BLOB_KILLER_TASK, "BlobKillerTask") \
+    M(BLOB_COPIER_TASK, "BlobCopierTask") \
 
 
 enum class ThreadName : uint8_t
