@@ -630,6 +630,8 @@ void addAggregationStep(QueryPlan & query_plan,
         bool match = true;
 
         SortDescription sort_description_for_group_by_limit_pushdown = query_analysis_result.sort_description;
+
+        // TODO support GROUP BY y, z ORDER BY y
         if (sort_description_for_group_by_limit_pushdown.size() != aggregation_analysis_result.aggregation_keys.size())
             match = false;
 
@@ -651,7 +653,10 @@ void addAggregationStep(QueryPlan & query_plan,
         LOG_DEBUG(getLogger("uwu"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
 
         if (match && settings[Setting::top_n_group_by_limit_pushdown])
+        {
             aggregator_params.top_n_keys = query_analysis_result.limit_length;
+            aggregator_params.top_n_keys_sort_direction = sort_description_for_group_by_limit_pushdown[0].direction; // FIXME
+        }
     }
 
     if (settings[Setting::force_aggregation_in_order])

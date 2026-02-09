@@ -126,6 +126,7 @@ public:
         bool serialize_string_with_zero_byte = false;
 
         size_t top_n_keys = 0; // TODO better piping
+        int top_n_keys_sort_direction = 0;  // 1 ASC, -1 DESC
 
         static size_t getMaxBytesBeforeExternalGroupBy(size_t max_bytes_before_external_group_by, double max_bytes_ratio_before_external_group_by);
 

@@ -1303,7 +1303,9 @@ void NO_INLINE Aggregator::executeImplBatch(
 
                     method.pqueue.push(key_field);
                     if (params.top_n_keys > 0 && method.pqueue.size() > params.top_n_keys)
+                    {
                         method.pqueue.pop();
+                    }
                     using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
                     if constexpr (std::is_same_v<KeyType, UInt64>)
                         LOG_TEST(log, "current key: {}", keyHolderGetKey(key_holder));
