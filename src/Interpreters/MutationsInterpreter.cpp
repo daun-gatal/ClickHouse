@@ -35,6 +35,8 @@
 #include <Processors/QueryPlan/CreatingSetsStep.h>
 #include <DataTypes/NestedUtils.h>
 #include <Interpreters/PreparedSets.h>
+#include <Columns/ColumnConst.h>
+#include <Columns/ColumnSet.h>
 #include <Storages/MergeTree/MergeTreeSequentialSource.h>
 #include <Processors/Sources/ThrowingExceptionSource.h>
 #include <Analyzer/QueryTreeBuilder.h>
@@ -250,6 +252,34 @@ ExpressionActionsChainSteps::ExpressionActionsStep & appendActionsDAGStep(
     auto * step = new ExpressionActionsChainSteps::ExpressionActionsStep(std::move(actions_and_flags));
     chain.steps.emplace_back(step);
     return *step;
+}
+
+PreparedSetsPtr collectPreparedSetsFromActionsChain(const ExpressionActionsChain & chain)
+{
+    auto prepared_sets = std::make_shared<PreparedSets>();
+
+    for (const auto & step : chain.steps)
+    {
+        const auto & nodes = step->actions()->dag.getNodes();
+
+        for (const auto & node : nodes)
+        {
+            if (node.type != ActionsDAG::ActionType::COLUMN || !node.column)
+                continue;
+
+            const IColumn * column = node.column.get();
+            if (const auto * column_const = typeid_cast<const ColumnConst *>(column))
+                column = &column_const->getDataColumn();
+
+            const auto * column_set = typeid_cast<const ColumnSet *>(column);
+            if (!column_set)
+                continue;
+
+            prepared_sets->addSet(column_set->getData());
+        }
+    }
+
+    return prepared_sets;
 }
 
 ColumnDependencies getAllColumnDependencies(
@@ -1571,7 +1601,75 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
         ExpressionActionsChain & actions_chain = stage.expressions_chain;
         stage.prepared_sets.reset();
-        auto build_actions_chain_with_legacy_analyzer = [&]
+        if (use_analyzer)
+        {
+            auto columns_for_expression_analysis
+                = getColumnsForMutationExpressionAnalysis(all_columns, all_asts, *storage_snapshot->virtual_columns);
+            auto analysis_result = analyzeMutationExpression(
+                all_asts,
+                columns_for_expression_analysis,
+                *storage_snapshot->virtual_columns,
+                context,
+                execute_scalar_subqueries);
+
+            const auto & analyzed_outputs = analysis_result.actions_dag.getOutputs();
+            size_t analyzed_output_index = 0;
+
+            for (size_t filter_index = 0; filter_index < stage.filters.size(); ++filter_index, ++analyzed_output_index)
+            {
+                ActionsDAG::NodeRawConstPtrs filter_output_nodes;
+                filter_output_nodes.reserve(1 + output_columns_in_order.size());
+                filter_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
+                for (const auto & output_column : output_columns_in_order)
+                    filter_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+
+                auto filter_dag = ActionsDAG::cloneSubDAG(filter_output_nodes, false);
+                auto & filter_step = appendActionsDAGStep(actions_chain, std::move(filter_dag), true);
+                const auto & filter_column_name = filter_step.actions()->dag.getOutputs().front()->result_name;
+                stage.filter_column_names.push_back(filter_column_name);
+                filter_step.addRequiredOutput(filter_column_name);
+            }
+
+            if (!stage_updates.empty())
+            {
+                NameSet updated_output_columns;
+                for (const auto & stage_update : stage_updates)
+                    updated_output_columns.insert(stage_update.first);
+
+                ActionsDAG::NodeRawConstPtrs update_output_nodes;
+                update_output_nodes.reserve(stage_updates.size() + output_columns_in_order.size());
+                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index, ++analyzed_output_index)
+                    update_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
+                for (const auto & output_column : output_columns_in_order)
+                {
+                    if (!updated_output_columns.contains(output_column))
+                        update_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+                }
+
+                ActionsDAG::NodeMapping copied_update_nodes;
+                auto update_dag = ActionsDAG::cloneSubDAG(update_output_nodes, copied_update_nodes, false);
+                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index)
+                {
+                    const auto * copied_output = copied_update_nodes.at(update_output_nodes[update_index]);
+                    const auto & alias = update_dag.addAlias(*copied_output, stage_updates[update_index].first);
+                    update_dag.addOrReplaceInOutputs(alias);
+                }
+
+                appendActionsDAGStep(actions_chain, std::move(update_dag), true);
+            }
+
+            if (i == 0 && actions_chain.steps.empty())
+                actions_chain.lastStep(analysis_result.actions_dag.getRequiredColumns());
+
+            ActionsDAG::NodeRawConstPtrs projection_output_nodes;
+            projection_output_nodes.reserve(output_columns_in_order.size());
+            for (const auto & output_column : output_columns_in_order)
+                projection_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+
+            auto projection_dag = ActionsDAG::cloneSubDAG(projection_output_nodes, false);
+            appendActionsDAGStep(actions_chain, std::move(projection_dag), false);
+        }
+        else
         {
             auto syntax_result = TreeRewriter(context).analyze(
                 all_asts, all_columns, source.getStorage(), storage_snapshot,
@@ -1617,90 +1715,6 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
             /// Remove all intermediate columns.
             actions_chain.addStep();
-        };
-
-        std::optional<MutationExpressionAnalysisResult> analysis_result;
-        bool build_with_legacy_analyzer = !use_analyzer;
-
-        if (use_analyzer)
-        {
-            auto columns_for_expression_analysis
-                = getColumnsForMutationExpressionAnalysis(all_columns, all_asts, *storage_snapshot->virtual_columns);
-            analysis_result = analyzeMutationExpression(
-                all_asts,
-                columns_for_expression_analysis,
-                *storage_snapshot->virtual_columns,
-                context,
-                execute_scalar_subqueries);
-
-            build_with_legacy_analyzer = analysis_result->prepared_sets
-                && !analysis_result->prepared_sets->getSubqueries().empty();
-        }
-
-        if (build_with_legacy_analyzer)
-        {
-            build_actions_chain_with_legacy_analyzer();
-        }
-        else
-        {
-            stage.prepared_sets = analysis_result->prepared_sets;
-
-            const auto & analyzed_outputs = analysis_result->actions_dag.getOutputs();
-            size_t analyzed_output_index = 0;
-
-            for (size_t filter_index = 0; filter_index < stage.filters.size(); ++filter_index, ++analyzed_output_index)
-            {
-                ActionsDAG::NodeRawConstPtrs filter_output_nodes;
-                filter_output_nodes.reserve(1 + output_columns_in_order.size());
-                filter_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
-                for (const auto & output_column : output_columns_in_order)
-                    filter_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
-
-                auto filter_dag = ActionsDAG::cloneSubDAG(filter_output_nodes, false);
-                auto & filter_step = appendActionsDAGStep(actions_chain, std::move(filter_dag), true);
-                const auto & filter_column_name = filter_step.actions()->dag.getOutputs().front()->result_name;
-                stage.filter_column_names.push_back(filter_column_name);
-                filter_step.addRequiredOutput(filter_column_name);
-            }
-
-            if (!stage_updates.empty())
-            {
-                NameSet updated_output_columns;
-                for (const auto & stage_update : stage_updates)
-                    updated_output_columns.insert(stage_update.first);
-
-                ActionsDAG::NodeRawConstPtrs update_output_nodes;
-                update_output_nodes.reserve(stage_updates.size() + output_columns_in_order.size());
-                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index, ++analyzed_output_index)
-                    update_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
-                for (const auto & output_column : output_columns_in_order)
-                {
-                    if (!updated_output_columns.contains(output_column))
-                        update_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
-                }
-
-                ActionsDAG::NodeMapping copied_update_nodes;
-                auto update_dag = ActionsDAG::cloneSubDAG(update_output_nodes, copied_update_nodes, false);
-                for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index)
-                {
-                    const auto * copied_output = copied_update_nodes.at(update_output_nodes[update_index]);
-                    const auto & alias = update_dag.addAlias(*copied_output, stage_updates[update_index].first);
-                    update_dag.addOrReplaceInOutputs(alias);
-                }
-
-                appendActionsDAGStep(actions_chain, std::move(update_dag), true);
-            }
-
-            if (i == 0 && actions_chain.steps.empty())
-                actions_chain.lastStep(analysis_result->actions_dag.getRequiredColumns());
-
-            ActionsDAG::NodeRawConstPtrs projection_output_nodes;
-            projection_output_nodes.reserve(output_columns_in_order.size());
-            for (const auto & output_column : output_columns_in_order)
-                projection_output_nodes.push_back(&analysis_result->actions_dag.findInOutputs(output_column));
-
-            auto projection_dag = ActionsDAG::cloneSubDAG(projection_output_nodes, false);
-            appendActionsDAGStep(actions_chain, std::move(projection_dag), false);
         }
 
         actions_chain.getLastStep().required_output.clear();
@@ -1709,6 +1723,8 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
         actions_chain.getLastActions();
         actions_chain.finalize();
+        if (use_analyzer)
+            stage.prepared_sets = collectPreparedSetsFromActionsChain(actions_chain);
 
         if (i)
         {

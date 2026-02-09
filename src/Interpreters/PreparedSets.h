@@ -216,6 +216,7 @@ public:
     FutureSetFromTuplePtr findTuple(const Hash & key, const DataTypes & types) const;
     FutureSetFromStoragePtr findStorage(const Hash & key) const;
     FutureSetFromSubqueryPtr findSubquery(const Hash & key) const;
+    void addSet(const FutureSetPtr & set);
 
     using Subqueries = std::vector<FutureSetFromSubqueryPtr>;
     Subqueries getSubqueries() const;
