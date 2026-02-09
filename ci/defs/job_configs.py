@@ -1145,6 +1145,7 @@ class JobConfigs:
         run_in_docker="clickhouse/test-base",
         command="python3 ./ci/jobs/parser_memory_check.py",
         requires=[ArtifactNames.PARSER_MEMORY_PROFILER],
+        result_name_for_cidb="Tests",
         digest_config=Job.CacheDigestConfig(
             include_paths=[
                 "./ci/jobs/parser_memory_check.py",
