@@ -5,14 +5,12 @@
 #include <memory>
 #include <optional>
 #include <ranges>
-#include <type_traits>
 #include <vector>
 
 #include <base/defines.h>
 #include <base/types.h>
 
 #include <Columns/ColumnNullable.h>
-#include <Columns/ColumnsNumber.h>
 #include <Columns/IColumn.h>
 #include <Core/SortCursor.h>
 #include <Core/SortDescription.h>
@@ -20,7 +18,6 @@
 #include <IO/WriteHelpers.h>
 #include <Interpreters/FullSortingMergeJoin.h>
 #include <Interpreters/TableJoin.h>
-#include <Parsers/ASTTablesInSelectQuery.h>
 #include <Processors/Chunk.h>
 #include <Processors/Port.h>
 #include <Processors/Transforms/MergeJoinTransform.h>
@@ -355,7 +352,7 @@ const Chunk & FullMergeJoinCursor::getCurrent() const
 
 void FullMergeJoinCursor::setChunk(Chunk && chunk)
 {
-    chassert(!recieved_all_blocks || !chunk);
+    chassert(!received_all_blocks || !chunk);
     chassert(!isValid() || !chunk);
 
     // should match the structure of sample_block (after materialization)
@@ -395,7 +392,7 @@ void FullMergeJoinCursor::setChunk(Chunk && chunk)
 
 bool FullMergeJoinCursor::fullyCompleted() const
 {
-    return !isValid() && recieved_all_blocks;
+    return !isValid() && received_all_blocks;
 }
 
 /// clang-tidy-21 false positive, loses track during the brace-initialization of the std::array.

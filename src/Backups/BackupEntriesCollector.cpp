@@ -73,7 +73,7 @@ namespace
         else
             str = fmt::format("table {}.{}", backQuoteIfNeed(database_name), backQuoteIfNeed(table_name));
         if (first_upper)
-            str[0] = std::toupper(str[0]);
+            str[0] = static_cast<char>(std::toupper(str[0]));
         return str;
     }
 
@@ -616,7 +616,7 @@ std::vector<std::pair<ASTPtr, StoragePtr>> BackupEntriesCollector::findTablesInD
 
         if (database_name == DatabaseCatalog::TEMPORARY_DATABASE)
         {
-            if (!create->temporary)
+            if (!create->isTemporary())
             {
                 throw Exception(ErrorCodes::LOGICAL_ERROR,
                                 "Got a non-temporary create query for {}",
