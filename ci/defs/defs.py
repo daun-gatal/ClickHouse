@@ -31,6 +31,8 @@ class RunnerLabels:
     ARM_SMALL_MEM = ["self-hosted", "arm-small-mem"]
     STYLE_CHECK_AMD = ["self-hosted", "style-checker"]
     STYLE_CHECK_ARM = ["self-hosted", "style-checker-aarch64"]
+    # GitHub-hosted macOS runners for native smoke tests
+    MACOS_ARM = ["macos-14"]  # Apple Silicon (M1/M2/M3)
 
 
 class CIFiles:
@@ -353,6 +355,7 @@ class JobNames:
     JEPSEN_SERVER = "ClickHouse Server Jepsen"
     LIBFUZZER_TEST = "libFuzzer tests"
     PARSER_MEMORY_CHECK = "Parser memory check"
+    MACOS_SMOKE_TEST = "macOS smoke test"
 
 
 class ToolSet:
