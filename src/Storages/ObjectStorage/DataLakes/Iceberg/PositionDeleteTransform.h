@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <Processors/Executors/PullingAsyncPipelineExecutor.h>
 #include <Processors/Formats/IInputFormat.h>
 #include <Poco/JSON/Array.h>
 #include <Common/logger_useful.h>
@@ -126,8 +127,6 @@ private:
     std::vector<Chunk> latest_chunks;
     std::vector<size_t> iterator_at_latest_chunks;
     std::set<std::pair<size_t, size_t>> latest_positions;
-
-    std::vector<PullingAsyncPipelineExecutor> delete_pipelines;
 
     std::optional<size_t> previous_chunk_end_offset;
 };

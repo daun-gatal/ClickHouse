@@ -70,59 +70,72 @@ void IcebergPositionDeleteTransform::initializeDeleteSources()
         make_intrusive<ASTIdentifier>(IcebergPositionDeleteTransform::data_file_path_column_name),
         make_intrusive<ASTLiteral>(Field(iceberg_data_path)));
 
+
+    std::mutex delete_sources_mutex;
+
+    /// Use ClickHouse's thread pool infrastructure for proper task scheduling
+    auto & thread_pool = DB::getFormatParsingThreadPool().get();
+    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::ICEBERG_POSITION_DELETES);
+
     for (const auto & position_deletes_object : iceberg_object_info->info.position_deletes_objects)
     {
-
-        auto object_path = position_deletes_object.file_path;
-        auto object_metadata = object_storage->getObjectMetadata(object_path, /*with_tags=*/ false);
-        auto object_info = RelativePathWithMetadata{object_path, object_metadata};
-
-
-        String format = position_deletes_object.file_format;
-        if (boost::to_lower_copy(format) != "parquet")
-            throw Exception(ErrorCodes::BAD_ARGUMENTS, "Position deletes are supported only for parquet format");
-
-        Block initial_header;
-        {
-            std::unique_ptr<ReadBuffer> read_buf_schema = createReadBuffer(object_info, object_storage, context, log);
-            auto schema_reader = FormatFactory::instance().getSchemaReader(format, *read_buf_schema, context);
-            auto columns_with_names = schema_reader->readSchema();
-            ColumnsWithTypeAndName initial_header_data;
-            for (const auto & elem : columns_with_names)
+        runner.enqueueAndKeepTrack(
+            [position_deletes_object, this, &where_ast, &delete_sources_mutex]()
             {
-                initial_header_data.push_back(ColumnWithTypeAndName(elem.type, elem.name));
-            }
-            initial_header = Block(initial_header_data);
-        }
+                auto object_path = position_deletes_object.file_path;
+                auto object_metadata = object_storage->getObjectMetadata(object_path, /*with_tags=*/false);
+                auto object_info = RelativePathWithMetadata{object_path, object_metadata};
 
-        CompressionMethod compression_method = chooseCompressionMethod(object_path, "auto");
 
-        delete_read_buffers.push_back(createReadBuffer(object_info, object_storage, context, log));
+                String format = position_deletes_object.file_format;
+                if (boost::to_lower_copy(format) != "parquet")
+                    throw Exception(ErrorCodes::BAD_ARGUMENTS, "Position deletes are supported only for parquet format");
 
-        auto syntax_result = TreeRewriter(context).analyze(where_ast, initial_header.getNamesAndTypesList());
-        ExpressionAnalyzer analyzer(where_ast, syntax_result, context);
-        std::optional<ActionsDAG> actions = analyzer.getActionsDAG(true);
-        std::shared_ptr<const ActionsDAG> actions_dag_ptr = [&actions]()
-        {
-            if (actions.has_value())
-                return std::make_shared<const ActionsDAG>(std::move(actions.value()));
-            return std::shared_ptr<const ActionsDAG>();
-        }();
+                Block initial_header;
+                {
+                    std::unique_ptr<ReadBuffer> read_buf_schema = createReadBuffer(object_info, object_storage, context, log);
+                    auto schema_reader = FormatFactory::instance().getSchemaReader(format, *read_buf_schema, context);
+                    auto columns_with_names = schema_reader->readSchema();
+                    ColumnsWithTypeAndName initial_header_data;
+                    for (const auto & elem : columns_with_names)
+                    {
+                        initial_header_data.push_back(ColumnWithTypeAndName(elem.type, elem.name));
+                    }
+                    initial_header = Block(initial_header_data);
+                }
 
-        auto delete_format = FormatFactory::instance().getInput(
-            format,
-            *delete_read_buffers.back(),
-            initial_header,
-            context,
-            context->getSettingsRef()[DB::Setting::max_block_size],
-            format_settings,
-            parser_shared_resources,
-            std::make_shared<FormatFilterInfo>(actions_dag_ptr, context, nullptr, nullptr, nullptr),
-            true /* is_remote_fs */,
-            compression_method);
+                CompressionMethod compression_method = chooseCompressionMethod(object_path, "auto");
 
-        delete_sources.push_back(std::move(delete_format));
+                delete_read_buffers.push_back(createReadBuffer(object_info, object_storage, context, log));
+
+                auto syntax_result = TreeRewriter(context).analyze(where_ast, initial_header.getNamesAndTypesList());
+                ExpressionAnalyzer analyzer(where_ast, syntax_result, context);
+                std::optional<ActionsDAG> actions = analyzer.getActionsDAG(true);
+                std::shared_ptr<const ActionsDAG> actions_dag_ptr = [&actions]()
+                {
+                    if (actions.has_value())
+                        return std::make_shared<const ActionsDAG>(std::move(actions.value()));
+                    return std::shared_ptr<const ActionsDAG>();
+                }();
+
+                auto delete_format = FormatFactory::instance().getInput(
+                    format,
+                    *delete_read_buffers.back(),
+                    initial_header,
+                    context,
+                    context->getSettingsRef()[DB::Setting::max_block_size],
+                    format_settings,
+                    parser_shared_resources,
+                    std::make_shared<FormatFilterInfo>(actions_dag_ptr, context, nullptr, nullptr, nullptr),
+                    true /* is_remote_fs */,
+                    compression_method);
+
+                std::lock_guard<std::mutex> lock(delete_sources_mutex);
+                delete_sources.push_back(std::move(delete_format));
+            });
     }
+
+    runner.waitForAllToFinishAndRethrowFirstError();
 }
 
 size_t IcebergPositionDeleteTransform::getColumnIndex(const std::shared_ptr<IInputFormat> & delete_source, const String & column_name)
@@ -152,20 +165,20 @@ void IcebergBitmapPositionDeleteTransform::initialize()
 
     /// Use ClickHouse's thread pool infrastructure for proper task scheduling
     auto & thread_pool = DB::getFormatParsingThreadPool().get();
-    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::POLYGON_DICT_LOAD);
+    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::ICEBERG_POSITION_DELETES);
 
     for (auto & delete_source : delete_sources)
     {
         runner.enqueueAndKeepTrack(
-            [&, delete_source_ptr = delete_source.get()]()
+            [this, delete_source, &bitmap_mutex]()
             {
-                while (auto delete_chunk = delete_source_ptr->read())
+                while (auto delete_chunk = delete_source->read())
                 {
                     auto position_index = getColumnIndex(
-                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
+                        std::shared_ptr<IInputFormat>(delete_source.get(), [](IInputFormat *) { }),
                         IcebergPositionDeleteTransform::positions_column_name);
                     auto filename_index = getColumnIndex(
-                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
+                        std::shared_ptr<IInputFormat>(delete_source.get(), [](IInputFormat *) { }),
                         IcebergPositionDeleteTransform::data_file_path_column_name);
 
                     auto position_column = delete_chunk.getColumns()[position_index];
@@ -183,59 +196,45 @@ void IcebergBitmapPositionDeleteTransform::initialize()
     /// Wait for all tasks to complete and rethrow any exceptions
     runner.waitForAllToFinishAndRethrowFirstError();
 }
+
 void IcebergStreamingPositionDeleteTransform::initialize()
 {
+    std::mutex internal_structure_mutex;
+    iterator_at_latest_chunks.reserve(delete_sources.size());
+    latest_chunks.reserve(delete_sources.size());
+    /// Use ClickHouse's thread pool infrastructure for proper task scheduling
     auto & thread_pool = DB::getFormatParsingThreadPool().get();
-    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::POLYGON_DICT_LOAD);
-    delete_pipelines.reserve(delete_sources.size());
+    DB::ThreadPoolCallbackRunnerLocal<void> runner(thread_pool, DB::ThreadName::ICEBERG_POSITION_DELETES);
+
     for (size_t i = 0; i < delete_sources.size(); ++i)
     {
-        delete_pipelines.emplace_back(QueryPipeline{*delete_sources[i]});
         runner.enqueueAndKeepTrack(
-            [&, delete_source_ptr = delete_source.get()]()
+            [this, delete_source = delete_sources[i], &internal_structure_mutex, i]()
             {
-                while (auto delete_chunk = delete_source_ptr->read())
+                size_t position_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::positions_column_name);
+                size_t filename_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::data_file_path_column_name);
+
+                delete_source_column_indices.push_back(
+                    PositionDeleteFileIndexes{.filename_index = filename_index, .position_index = position_index});
+                auto latest_chunk = delete_source->read();
+                std::unique_lock lock(internal_structure_mutex);
+                iterator_at_latest_chunks.push_back(0);
+                if (latest_chunk.hasRows())
                 {
-                    auto position_index = getColumnIndex(
-                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
-                        IcebergPositionDeleteTransform::positions_column_name);
-                    auto filename_index = getColumnIndex(
-                        std::shared_ptr<IInputFormat>(delete_source_ptr, [](IInputFormat *) { }),
-                        IcebergPositionDeleteTransform::data_file_path_column_name);
-
-                    auto position_column = delete_chunk.getColumns()[position_index];
-                    auto filename_column = delete_chunk.getColumns()[filename_index];
-
-                    std::lock_guard<std::mutex> lock(bitmap_mutex);
-                    for (size_t i = 0; i < delete_chunk.getNumRows(); ++i)
-                    {
-                        bitmap.add(position_column->get64(i));
-                    }
+                    size_t first_position_value_in_delete_file
+                        = latest_chunk.getColumns()[delete_source_column_indices.back().position_index]->get64(0);
+                    latest_positions.insert(std::pair<size_t, size_t>{first_position_value_in_delete_file, i});
                 }
+                latest_chunks.push_back(std::move(latest_chunk));
             });
-        auto & delete_source = delete_sources[i];
-        size_t position_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::positions_column_name);
-        size_t filename_index = getColumnIndex(delete_source, IcebergPositionDeleteTransform::data_file_path_column_name);
-
-        delete_source_column_indices.push_back(PositionDeleteFileIndexes{
-            .filename_index = filename_index,
-            .position_index = position_index
-        });
-        auto latest_chunk = delete_source->read();
-        iterator_at_latest_chunks.push_back(0);
-        if (latest_chunk.hasRows())
-        {
-            size_t first_position_value_in_delete_file = latest_chunk.getColumns()[delete_source_column_indices.back().position_index]->get64(0);
-            latest_positions.insert(std::pair<size_t, size_t>{first_position_value_in_delete_file, i});
-        }
-        latest_chunks.push_back(std::move(latest_chunk));
     }
+    runner.waitForAllToFinishAndRethrowFirstError();
 }
 
-void IcebergStreamingPositionDeleteTransform::fetchNewChunkForSource(size_t delete_source_index)
+
+void IcebergStreamingPositionDeleteTransform::fetchNewChunkFromSource(size_t delete_source_index)
 {
-    delete_pipelines[delete_source_index]->pull(latest_chunks[delete_source_index]);
-    const auto & latest_chunk = latest_chunks[delete_source_index];
+    auto latest_chunk = delete_sources[delete_source_index]->read();
     if (latest_chunk.hasRows())
     {
         size_t first_position_value_in_delete_file
@@ -244,6 +243,7 @@ void IcebergStreamingPositionDeleteTransform::fetchNewChunkForSource(size_t dele
     }
 
     iterator_at_latest_chunks[delete_source_index] = 0;
+    latest_chunks[delete_source_index] = std::move(latest_chunk);
 }
 
 void IcebergStreamingPositionDeleteTransform::transform(Chunk & chunk)
