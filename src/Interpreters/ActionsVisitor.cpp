@@ -55,16 +55,13 @@
 #include <Interpreters/misc.h>
 #include <Parsers/QueryParameterVisitor.h>
 
-#include <Analyzer/QueryNode.h>
 #include <Analyzer/SetUtils.h>
-#include <Interpreters/InterpreterSelectQueryAnalyzer.h>
 
 
 namespace DB
 {
 namespace Setting
 {
-    extern const SettingsBool allow_experimental_analyzer;
     extern const SettingsBool force_grouping_standard_compatibility;
     extern const SettingsUInt64 max_ast_elements;
     extern const SettingsBool transform_null_in;
@@ -1232,28 +1229,7 @@ FutureSetPtr ActionsMatcher::makeSet(const ASTFunction & node, Data & data, bool
         if (no_subqueries)
             return {};
 
-        PreparedSets::Hash set_key;
-        if (data.getContext()->getSettingsRef()[Setting::allow_experimental_analyzer] && !identifier)
-        {
-            /// Here we can be only from mutation interpreter. Normal selects with analyzed use other interpreter.
-            /// This is a hacky way to allow reusing cache for prepared sets.
-            ///
-            /// Mutation is executed in two stages:
-            /// * first, query 'SELECT count() FROM table WHERE ...' is executed to get the set of affected parts (using analyzer)
-            /// * second, every part is mutated separately, where plan is build "manually", using this code as well
-            /// To share the Set in between first and second stage, we should use the same hash.
-            /// New analyzer is uses a hash from query tree, so here we also build a query tree.
-            ///
-            /// Note : this code can be safely removed, but the test 02581_share_big_sets will be too slow (and fail by timeout).
-            /// Note : we should use new analyzer for mutations and remove this hack.
-            InterpreterSelectQueryAnalyzer interpreter(right_in_operand, data.getContext(), SelectQueryOptions().analyze(true).subquery());
-            const auto & query_tree = interpreter.getQueryTree();
-            if (auto * query_node = query_tree->as<QueryNode>())
-                query_node->setIsSubquery(true);
-            set_key = query_tree->getTreeHash({.ignore_cte = true});
-        }
-        else
-            set_key = right_in_operand->getTreeHash(/*ignore_aliases=*/ true);
+        PreparedSets::Hash set_key = right_in_operand->getTreeHash(/*ignore_aliases=*/ true);
 
         if (auto set = data.prepared_sets->findSubquery(set_key))
             return set;
