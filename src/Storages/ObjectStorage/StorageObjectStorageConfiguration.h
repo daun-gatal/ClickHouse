@@ -137,7 +137,9 @@ public:
 
     virtual bool isDataLakeConfiguration() const { return false; }
 
+    virtual bool supportsTotalRows() const { return false; }
     virtual std::optional<size_t> totalRows(ContextPtr) { return {}; }
+    virtual bool supportsTotalBytes() const { return false; }
     virtual std::optional<size_t> totalBytes(ContextPtr) { return {}; }
 
     // This function is used primarily for datalake storages to check if we need to update metadata
