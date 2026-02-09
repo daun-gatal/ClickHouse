@@ -43,6 +43,7 @@
 #include <Common/setThreadName.h>
 #include <Common/threadPoolCallbackRunner.h>
 #include <Common/typeid_cast.h>
+#include <Common/FieldAccurateComparison.h>
 
 
 namespace ProfileEvents
@@ -1285,17 +1286,17 @@ void NO_INLINE Aggregator::executeImplBatch(
                     }
                 }
 
-                // auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
-                // using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
-                // if constexpr (std::is_same_v<KeyType, UInt128>)
-                // {
-                //     // UInt64 current_key = keyHolderGetKey(key_holder);
-                //     // UInt64 assumed_limit = 10000;
-                //     //
-                //     // if (current_key > assumed_limit)
-                //     //     return;
-                //     LOG_DEBUG(log, "uwu key_holder element {}", keyHolderGetKey(key_holder));
-                // }
+                if (params.top_n_keys > 0 && method.pqueue.size() >= params.top_n_keys)
+                {
+                    auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
+                    Field key_field(keyHolderGetKey(key_holder));
+
+                    if (accurateLess(method.pqueue.top(), key_field))
+                    {
+                        LOG_TEST(log, "key is not necessary, skipping");
+                        continue;
+                    }
+                }
 
                 auto emplace_result = state.emplaceKey(method.data, i, *aggregates_pool);
                 if (emplace_result.isInserted())
@@ -1304,11 +1305,13 @@ void NO_INLINE Aggregator::executeImplBatch(
                     Field key_field(keyHolderGetKey(key_holder));
 
                     method.pqueue.push(key_field);
+                    if (params.top_n_keys > 0 && method.pqueue.size() > params.top_n_keys)
+                        method.pqueue.pop();
                     using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
                     if constexpr (std::is_same_v<KeyType, UInt64>)
-                        LOG_DEBUG(log, "current key: {}", keyHolderGetKey(key_holder));
+                        LOG_TEST(log, "current key: {}", keyHolderGetKey(key_holder));
                 }
-                LOG_DEBUG(log, "pqueue state: size: {}, max: {}", method.pqueue.size(), method.pqueue.empty() ? 0 : method.pqueue.top());
+                LOG_TEST(log, "pqueue state: size: {}, max: {}", method.pqueue.size(), method.pqueue.empty() ? 0 : method.pqueue.top());
 
                 if (emplace_result.isInserted())
                     getInlineCountState(emplace_result.getMapped()) = 1;

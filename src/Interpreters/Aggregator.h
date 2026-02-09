@@ -125,6 +125,8 @@ public:
 
         bool serialize_string_with_zero_byte = false;
 
+        size_t top_n_keys = 0; // TODO better piping
+
         static size_t getMaxBytesBeforeExternalGroupBy(size_t max_bytes_before_external_group_by, double max_bytes_ratio_before_external_group_by);
 
         Params(

@@ -145,6 +145,7 @@ namespace Setting
     extern const SettingsBool serialize_string_in_memory_with_zero_byte;
     extern const SettingsString temporary_files_codec;
     extern const SettingsNonZeroUInt64 temporary_files_buffer_size;
+    extern const SettingsBool top_n_group_by_limit_pushdown;
 }
 
 namespace ServerSetting
@@ -644,10 +645,13 @@ void addAggregationStep(QueryPlan & query_plan,
             }
         }
 
-        if (!query_analysis_result.limit_length)
+        if (query_analysis_result.limit_length < 1)  // FIXME what does negative limit mean?
             match = false;
 
         LOG_DEBUG(getLogger("uwu"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
+
+        if (match && settings[Setting::top_n_group_by_limit_pushdown])
+            aggregator_params.top_n_keys = query_analysis_result.limit_length;
     }
 
     if (settings[Setting::force_aggregation_in_order])

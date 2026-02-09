@@ -62,7 +62,7 @@ struct AggregationMethodString
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
 
     AggregationMethodString() = default;
 
