@@ -1,11 +1,7 @@
 #pragma once
-#include <chrono>
-#include <iostream>
-#include <thread>
-#include <Processors/Executors/PullingAsyncPipelineExecutor.h>
 #include <Processors/Formats/IInputFormat.h>
 #include <Poco/JSON/Array.h>
-#include <Common/logger_useful.h>
+#include "config.h"
 
 #if USE_AVRO
 
@@ -103,8 +99,7 @@ public:
         const std::optional<FormatSettings> & format_settings_,
         FormatParserSharedResourcesPtr parser_shared_resources_,
         ContextPtr context_)
-        : IcebergPositionDeleteTransform(
-              header_, iceberg_object_info_, object_storage_, format_settings_, parser_shared_resources_, context_)
+        : IcebergPositionDeleteTransform(header_, iceberg_object_info_, object_storage_, format_settings_, parser_shared_resources_, context_)
     {
         initialize();
     }
@@ -115,6 +110,7 @@ public:
 
 private:
     void initialize();
+
     struct PositionDeleteFileIndexes
     {
         size_t filename_index;
