@@ -1,37 +1,62 @@
 -- Regression test for "Unexpected return type from getSubcolumn. Expected UInt64. Got Nullable(UInt64)" with join_use_nulls
--- https://github.com/ClickHouse/ClickHouse/issues/...
+-- Issue: When join_use_nulls=true, columns from outer-joined tables become nullable,
+-- but getSubcolumn function return type wasn't updated to match, causing a type mismatch error.
 
-SET allow_experimental_statistics=1;
 SET join_use_nulls = true;
 
--- Create test database and tables
-CREATE DATABASE IF NOT EXISTS test_d9;
-CREATE VIEW test_d9.v315 AS (SELECT 30::Int256 AS c0 WHERE 1);
+-- Create simple test tables with String columns that have 'size' subcolumn
+DROP TABLE IF EXISTS test_left;
+DROP TABLE IF EXISTS test_right;
 
-CREATE DATABASE IF NOT EXISTS test_d1;
-CREATE TABLE test_d1.t0 (c0 Map(Date,Date), c1 Int32 NULL) ENGINE = Log();
+CREATE TABLE test_left (id Int32, data String) ENGINE = Memory;
+CREATE TABLE test_right (id Int32, data String) ENGINE = Memory;
 
-CREATE DATABASE IF NOT EXISTS test_d9_2;
-CREATE TABLE test_d9_2.v28 (c0 LowCardinality(String), c1 Int64) Engine=MergeTree() ORDER BY tuple();
+INSERT INTO test_left VALUES (1, 'left1'), (2, 'left2');
+INSERT INTO test_right VALUES (2, 'right2'), (3, 'right3');
 
-CREATE DATABASE IF NOT EXISTS test_d8;
-CREATE DICTIONARY test_d8.d302 (c0 Date DEFAULT -19 INJECTIVE) PRIMARY KEY (c0) SOURCE(CLICKHOUSE(DB 'test_d9_2' TABLE 'v28' QUERY 'SELECT 1 as c0')) LAYOUT(CACHE(SIZE_IN_CELLS 9742717)) LIFETIME(60);
+-- Test 1: Access size subcolumn on right table in FULL JOIN
+-- With join_use_nulls=true, r.data becomes Nullable(String)
+-- So r.data.size should return Nullable(UInt64)
+SELECT 
+    l.id,
+    r.`data.size`
+FROM test_left l
+FULL JOIN test_right r ON l.id = r.id
+ORDER BY l.id, r.id
+FORMAT Null;
 
-CREATE DATABASE IF NOT EXISTS test_d12;
-CREATE DICTIONARY test_d12.d308 (c0 String DEFAULT '\\'man\\'' INJECTIVE) PRIMARY KEY (c0) SOURCE(CLICKHOUSE(DB 'test_d8' TABLE 'd302' QUERY 'SELECT 1 as c0')) LAYOUT(COMPLEX_KEY_HASHED_ARRAY()) LIFETIME(MIN 10 MAX 30);
+-- Test 2: Access size subcolumn on left table in FULL JOIN  
+-- With join_use_nulls=true, l.data becomes Nullable(String)
+-- So l.data.size should return Nullable(UInt64)
+SELECT 
+    r.id,
+    l.`data.size`
+FROM test_left l
+FULL JOIN test_right r ON l.id = r.id
+ORDER BY l.id, r.id
+FORMAT Null;
 
--- This query should not throw "Unexpected return type" error
--- The issue is that t1d0.c0 is from the right side of a FULL JOIN, so it becomes Nullable with join_use_nulls=true
--- When accessing the subcolumn .size, the getSubcolumn function must also return Nullable(UInt64)
-SELECT t0d0.c0, 9::Int128, t0d0.c0, t1d0.`c0.size`, t0d0.c0 
-FROM test_d9.v315 AS t0d0 
-FINAL FULL JOIN test_d12.d308 AS t1d0 
-ON t0d0.c0 = t1d0.`c0.size` 
-LIMIT 1 FORMAT Null;
+-- Test 3: Access size subcolumn on right table in LEFT JOIN
+-- With join_use_nulls=true, r.data becomes Nullable(String)
+SELECT 
+    l.id,
+    r.`data.size`
+FROM test_left l
+LEFT JOIN test_right r ON l.id = r.id
+ORDER BY l.id
+FORMAT Null;
 
--- Cleanup
-DROP DATABASE test_d12;
-DROP DATABASE test_d8;
-DROP DATABASE test_d9_2;
-DROP DATABASE test_d1;
-DROP DATABASE test_d9;
+-- Test 4: Access size subcolumn on left table in RIGHT JOIN
+-- With join_use_nulls=true, l.data becomes Nullable(String)
+SELECT 
+    r.id,
+    l.`data.size`
+FROM test_left l
+RIGHT JOIN test_right r ON l.id = r.id
+ORDER BY r.id
+FORMAT Null;
+
+DROP TABLE test_left;
+DROP TABLE test_right;
+
+
