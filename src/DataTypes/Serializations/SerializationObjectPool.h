@@ -1,9 +1,8 @@
 #pragma once
 
-#include <Common/SharedMutex.h>
 #include <DataTypes/Serializations/ISerialization.h>
 
-#include <shared_mutex>
+#include <mutex>
 #include <unordered_map>
 
 namespace DB
@@ -22,47 +21,30 @@ public:
 
     SerializationPtr getOrCreate(const String & key, SerializationPtr && serialization)
     {
-        std::unique_lock lock(mutex);
-
-        auto it = cache.find(key);
-        if (it != cache.end())
-            return it->second;
-
-        cache[key] = serialization;
-        return serialization;
+        SerializationPtr res;
+        {
+            std::lock_guard lock(mutex);
+            res = cache.insert({key, std::move(serialization)}).first->second;
+        }
+        return res;
     }
 
     void remove(const String & key)
     {
-        std::unique_lock lock(mutex);
+        std::lock_guard lock(mutex);
         auto it = cache.find(key);
         /// use_count == 2 means: one in cache, one held by the object being destroyed
         if (it != cache.end() && it->second.use_count() == 2)
             cache.erase(it);
     }
 
-    bool contains(const String & key) const
-    {
-        std::shared_lock lock(mutex);
-        return cache.contains(key);
-    }
-
-    size_t size() const
-    {
-        std::shared_lock lock(mutex);
-        return cache.size();
-    }
-
-    void clear()
-    {
-        std::unique_lock lock(mutex);
-        cache.clear();
-    }
-
 private:
     SerializationObjectPool() = default;
 
-    mutable SharedMutex mutex;
+    /// Unfortunately we have to use a recursive mutex here, because
+    /// SerializationLowCardinality creates an inner dictionary Serialization
+    /// that also uses this pool.
+    mutable std::recursive_mutex mutex;
     std::unordered_map<String, SerializationPtr> cache;
 };
 
