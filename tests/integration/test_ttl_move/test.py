@@ -1550,7 +1550,86 @@ def test_concurrent_alter_with_ttl_move(started_cluster, engine, request):
         node1.query("DROP TABLE IF EXISTS {name} SYNC".format(name=table_name))
 
 
-# TODO: there was a test here, called TestCancelBackgroundMoving, which used to test whether STOP MOVES actually cancels the background operation.
-#       It was the flakiest amongst them all - the method of slowing down moves via throughput trottling coulnd't guarantee that we'd catch the move when trying to cancel it
-#       Removed the test as not having a more stable alternative (should explore using FailPoints for that)
-#       To minimally compensate coverage of pausing - added STOP/START to 'test_concurrent_alter_with_ttl_move' (concurrent randomized churner test)
+class TestCancelBackgroundMoving:
+    """Test that background moves can be reliably cancelled.
+
+    Uses the `stop_moving_part_before_swap_with_active` failpoint to
+    deterministically pause the move after cloning but before swapping,
+    so we can guarantee the move is still in progress when we cancel it.
+    """
+
+    @pytest.fixture()
+    def prepare_table(self, request, started_cluster):
+        name = unique_table_name(request)
+        engine = f"ReplicatedMergeTree('/clickhouse/{name}', '1')"
+
+        node1.query(
+            f"""
+            CREATE TABLE {name} (
+                s1 String,
+                d1 DateTime
+            ) ENGINE = {engine}
+            ORDER BY tuple()
+            TTL d1 + INTERVAL 5 SECOND TO DISK 'external'
+            SETTINGS storage_policy='small_jbod_with_external'
+            """
+        )
+
+        node1.query("SYSTEM STOP MOVES {}".format(name))
+
+        # Insert part which is about to move
+        node1.query(
+            "INSERT INTO {name} (s1, d1) VALUES ({s1}, toDateTime({d1}))".format(
+                name=name, s1=F_LARGE_STRING(), d1=int(time.time()) - 10
+            )
+        )
+
+        try:
+            yield name
+        finally:
+            node1.query(
+                "SYSTEM DISABLE FAILPOINT stop_moving_part_before_swap_with_active"
+            )
+            node1.query(f"DROP TABLE IF EXISTS {name} SYNC")
+
+    def test_cancel_background_moving_on_stop_moves_query(self, prepare_table):
+        name = prepare_table
+
+        # Enable failpoint to pause the move after cloning but before swapping.
+        # This ensures the move is still in progress when SYSTEM STOP MOVES is issued,
+        # preventing a race condition where the move could complete before cancellation.
+        node1.query(
+            "SYSTEM ENABLE FAILPOINT stop_moving_part_before_swap_with_active"
+        )
+
+        # Wait for background moving task to be started
+        node1.query("SYSTEM START MOVES {}".format(name))
+        assert_eq_with_retry(
+            node1,
+            f"SELECT count() FROM system.moves WHERE table = '{name}'",
+            "1",
+        )
+
+        # Cancel background moving
+        node1.query("SYSTEM STOP MOVES {}".format(name))
+
+        # Disable failpoint so the move can proceed to the cancellation check
+        node1.query(
+            "SYSTEM DISABLE FAILPOINT stop_moving_part_before_swap_with_active"
+        )
+
+        # Wait for background moving task to be cancelled
+        assert_logs_contain_with_retry(
+            node1,
+            "MergeTreeBackgroundExecutor.*Cancelled moving parts",
+            retry_count=30,
+            sleep_time=1,
+        )
+        assert_eq_with_retry(
+            node1,
+            f"SELECT count() FROM system.moves WHERE table = '{name}'",
+            "0",
+        )
+
+        # Ensure that part was not moved
+        assert get_disk_names(node1, name) == {"jbod1"}
