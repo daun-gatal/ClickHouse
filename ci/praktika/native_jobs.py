@@ -26,12 +26,12 @@ assert Settings.CI_CONFIG_RUNS_ON
 
 
 # TODO: find the right place to not dublicate
-def _GH_Auth(workflow):
+def _GH_Auth(workflow, force=False):
     if not Settings.USE_CUSTOM_GH_AUTH:
         return
     from .gh_auth import GHAuth
 
-    if not Shell.check(f"gh auth status", verbose=True):
+    if force or not Shell.check(f"gh auth status", verbose=True):
         pem = workflow.get_secret(Settings.SECRET_GH_APP_PEM_KEY).get_value()
         app_id = workflow.get_secret(Settings.SECRET_GH_APP_ID).get_value()
         GHAuth.auth(app_id=app_id, app_key=pem)
@@ -230,9 +230,8 @@ def _config_workflow(workflow: Workflow.Config, job_name) -> Result:
     def _check_yaml_up_to_date():
         print("Check workflows are up to date")
         commands = [
-            f"git diff-index --name-only HEAD -- {Settings.WORKFLOW_PATH_PREFIX}",
             f"{Settings.PYTHON_INTERPRETER} -m praktika yaml",
-            f'test -z "$(git diff-index --name-only HEAD -- {Settings.WORKFLOW_PATH_PREFIX})"',
+            f"sh -c 'changed=$(git diff-index --name-only HEAD -- {Settings.WORKFLOW_PATH_PREFIX}); if [ -n \"$changed\" ]; then echo \"ERROR: workflows are outdated. Changed files:\"; printf \"%s\\n\" \"$changed\"; exit 1; fi'",
         ]
 
         return Result.from_commands_run(
@@ -304,9 +303,49 @@ def _config_workflow(workflow: Workflow.Config, job_name) -> Result:
         )
         env.dump()
 
+    try:
+        _GH_Auth(workflow, force=True)
+    except Exception as e:
+        print(f"WARNING: Failed to auth with GH: [{e}]")
+
+    # refresh PR data
+    if env.PR_NUMBER > 0:
+        title, body, labels = GH.get_pr_title_body_labels()
+        print(f"NOTE: PR title: {title}")
+        print(f"NOTE: PR labels: {labels}")
+        if title:
+            if title != env.PR_TITLE:
+                print("PR title has been changed")
+                env.PR_TITLE = title
+            if env.PR_BODY != body:
+                print("PR body has been changed")
+                env.PR_BODY = body
+            if env.PR_LABELS != labels:
+                print("PR labels have been changed")
+                env.PR_LABELS = labels
+            env.dump()
+
     if workflow.enable_report:
         print("Push pending CI report")
         HtmlRunnerHooks.push_pending_ci_report(workflow)
+
+        info = Info()
+        report_url_latest_sha = info.get_report_url(latest=True)
+        report_url_current_sha = info.get_report_url(latest=False)
+        body = f"Workflow [[{workflow.name}]({report_url_latest_sha})], commit [{env.SHA[:8]}]"
+        res2 = not bool(env.PR_NUMBER) or GH.post_updateable_comment(
+            comment_tags_and_bodies={"report": body, "summary": ""},
+        )
+        res1 = GH.post_commit_status(
+            name=workflow.name,
+            status=Result.Status.PENDING,
+            description="",
+            url=report_url_current_sha,
+        )
+        if not (res1 or res2):
+            Utils.raise_with_error(
+                "Failed to set both GH commit status and PR comment with Workflow Status, cannot proceed"
+            )
 
     _ = RunConfig(
         name=workflow.name,
@@ -510,21 +549,6 @@ def _config_workflow(workflow: Workflow.Config, job_name) -> Result:
                 info=info,
             )
         )
-
-    # refresh PR data
-    if env.PR_NUMBER > 0:
-        title, body, labels = GH.get_pr_title_body_labels()
-        if title:
-            if title != env.PR_TITLE:
-                print("PR title has been changed")
-                env.PR_TITLE = title
-            if env.PR_BODY != body:
-                print("PR body has been changed")
-                env.PR_BODY = body
-            if env.PR_LABELS != labels:
-                print("PR labels have been changed")
-                env.PR_LABELS = labels
-            env.dump()
 
     if workflow.enable_slack_feed:
         if env.PR_NUMBER:
@@ -752,6 +776,16 @@ def _finish_workflow(workflow, job_name):
                 workflow_result.dump()
                 workflow_result.ext["is_cancelled"] = True
                 update_final_report = True
+                dropped_results.append(result.name)
+                continue
+            elif gh_job_result == "success":
+                print(
+                    f"NOTE: not finished job [{result.name}] in the workflow but GitHub status is [{gh_job_result}] - set status to success"
+                )
+                result.status = Result.Status.SUCCESS
+                workflow_result.dump()
+                update_final_report = True
+                continue
             else:
                 print(
                     f"ERROR: not finished job [{result.name}] in the workflow - set status to error"

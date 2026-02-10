@@ -331,7 +331,7 @@ UInt64 MergeTreeReadTask::estimateNumRows() const
 
         double filtration_ratio = std::max(block_size_params.min_filtration_ratio, 1.0 - size_predictor->filtered_rows_ratio);
         auto rows_to_read_for_max_size_column_with_filtration
-            = static_cast<size_t>(rows_to_read_for_max_size_column / filtration_ratio);
+            = static_cast<size_t>(static_cast<double>(rows_to_read_for_max_size_column) / filtration_ratio);
 
         /// If preferred_max_column_in_block_size_bytes is used, number of rows to read can be less than current_index_granularity.
         rows_to_read = std::min(rows_to_read, rows_to_read_for_max_size_column_with_filtration);
@@ -397,7 +397,8 @@ MergeTreeReadTask::BlockAndProgress MergeTreeReadTask::read()
     }
 
     if (updater)
-        updater->recordInputColumns(block.getColumnsWithTypeAndName(), info->data_part->getColumnSizes(), num_read_bytes);
+        updater->recordInputColumns(
+            block.getColumnsWithTypeAndName(), info->data_part->getColumns(), info->data_part->getColumnSizes(), num_read_bytes);
 
     BlockAndProgress res = {
         .block = std::move(block),
