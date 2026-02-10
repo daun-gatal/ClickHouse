@@ -32,7 +32,7 @@ public:
 
     ~SerializationNumber() override;
 
-    String getName() const override { return String(typeid(T).name()) + "_" + String(TypeName<T>); }
+    String getName() const override { return String(TypeName<T>); }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings, bool whole) const override;
