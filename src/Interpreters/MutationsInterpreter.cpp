@@ -477,7 +477,13 @@ MutationsInterpreter::MutationsInterpreter(
     , select_limits(SelectQueryOptions().analyze(!settings.can_execute).ignoreLimits())
     , logger(getLogger("MutationsInterpreter(" + source.getStorage()->getStorageID().getFullTableName() + ")"))
 {
-    context = Context::createCopy(context_);
+    auto mutable_context = Context::createCopy(context_);
+    /// Allow mutations to work when force_index_by_date or force_primary_key is on.
+    /// For regular mutations this is done in MutateTask::prepareMutationPartForExecution,
+    /// but lightweight updates (updateLightweightImpl) bypass MutateTask.
+    mutable_context->setSetting("force_primary_key", false);
+    mutable_context->setSetting("force_index_by_date", false);
+    context = std::move(mutable_context);
 }
 
 static NameSet getKeyColumns(const MutationsInterpreter::Source & source, const StorageMetadataPtr & metadata_snapshot)
@@ -1457,6 +1463,17 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
         /// (just the column name), causing "Column identifier is already registered" errors.
         createUniqueAliasesIfNecessary(expression, context);
 
+        /// Give the fake table expression a unique alias so that column identifiers
+        /// registered from it (e.g. "__mutation_source.key") don't collide with identifiers
+        /// from table expressions inside subqueries (e.g. EXISTS or IN subqueries that
+        /// reference tables with the same column names). Without this alias, identifiers
+        /// from the fake table are just the bare column name (e.g. "key"), which can
+        /// collide with identifiers from other tables that also lack aliases.
+        /// Note: createUniqueAliasesIfNecessary does NOT visit fake_table_expression because
+        /// it's the scope table, not part of the expression tree (ColumnNode stores its source
+        /// as a weak pointer, not a tree child).
+        fake_table_expression->setAlias("__mutation_source");
+
         GlobalPlannerContextPtr global_planner_context = std::make_shared<GlobalPlannerContext>(nullptr, nullptr, FiltersForTableExpressionMap{});
         auto mutable_context = Context::createCopy(context);
         auto planner_context = std::make_shared<PlannerContext>(std::move(mutable_context), global_planner_context, SelectQueryOptions{});
@@ -1644,7 +1661,13 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
         /// Build subquery plans for IN clauses so that addCreatingSetsStep can wire them
         /// into the mutation pipeline. Without this, FutureSetFromSubquery objects created by
         /// collectSets would have no source QueryPlan, and build() would return null.
-        if (stage.prepared_sets)
+        ///
+        /// Skip this when dry_run is true (validation mode): subquery plans are only needed
+        /// for pipeline execution, and during dry_run the expression tree may contain
+        /// EXISTS-turned-IN subqueries (QueryAnalyzer transforms non-correlated EXISTS to IN
+        /// when only_analyze=true) whose nested table expressions can cause identifier
+        /// collisions in the Planner.
+        if (!dry_run && stage.prepared_sets)
         {
             auto subqueries = stage.prepared_sets->getSubqueries();
             auto subquery_options = SelectQueryOptions{}.subquery();
@@ -1657,6 +1680,13 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
                 auto query_tree = subquery->detachQueryTree();
                 if (!query_tree)
                     continue;
+
+                /// Ensure all table expressions inside the detached subquery tree have
+                /// unique aliases. This is needed because the subquery tree was part of
+                /// a larger expression tree where createUniqueAliasesIfNecessary was called,
+                /// but building a standalone plan requires consistent aliases within
+                /// the fresh GlobalPlannerContext.
+                createUniqueAliasesIfNecessary(query_tree, context);
 
                 Planner subquery_planner(
                     query_tree,
@@ -1791,6 +1821,7 @@ void MutationsInterpreter::Source::read(
         SelectQueryInfo query_info;
         query_info.query = std::move(select);
         query_info.filter_actions_dag = std::move(filter_actions_dag);
+        query_info.prepared_sets = first_stage.prepared_sets;
 
         size_t max_block_size = context_->getSettingsRef()[Setting::max_block_size];
         Names extracted_column_names;
@@ -1832,8 +1863,19 @@ static void addCreatingSetsForPreparedSets(QueryPlan & plan, const PreparedSetsP
     if (subqueries.empty())
         return;
 
-    /// Subquery plans were already built during prepareMutationStages (before table locks),
-    /// so we just need to wire them into the query plan.
+    /// Build sets synchronously so that ReadFromMergeTree::initializePipeline
+    /// (called later during buildQueryPipeline) can use them for index analysis.
+    /// Without this, buildOrderedSetInplace would find a null source because
+    /// addCreatingSetsStep below moves the source out of FutureSetFromSubquery.
+    /// This mirrors the normal Planner behavior where sets are built inline
+    /// during the first optimization pass (before addPlansForSets in the second pass).
+    for (auto & subquery : subqueries)
+    {
+        if (subquery->get())
+            continue;
+        subquery->buildOrderedSetInplace(context);
+    }
+
     addCreatingSetsStep(plan, std::move(subqueries), context);
 }
 
