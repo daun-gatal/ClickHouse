@@ -1269,6 +1269,10 @@ void NO_INLINE Aggregator::executeImplBatch(
         }
         else if (!no_more_keys)
         {
+            auto * heap_queue = &method.pqueue;
+            if (params.top_n_keys_sort_direction == -1)
+                auto * heap_queue = &method.pqueue_desc;
+
             for (size_t i = row_begin; i < row_end; ++i)
             {
                 if constexpr (prefetch && HasPrefetchMemberFunc<decltype(method.data), KeyHolder>)
@@ -1283,12 +1287,12 @@ void NO_INLINE Aggregator::executeImplBatch(
                     }
                 }
 
-                if (params.top_n_keys > 0 && method.pqueue.size() >= params.top_n_keys)
+                if (params.top_n_keys > 0 && heap_queue->size() >= params.top_n_keys)
                 {
                     auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
                     Field key_field(keyHolderGetKey(key_holder));
 
-                    if (accurateLess(method.pqueue.top(), key_field))
+                    if (accurateLess(heap_queue->top(), key_field))
                     {
                         LOG_TEST(log, "key is not necessary, skipping");
                         continue;
@@ -1301,16 +1305,16 @@ void NO_INLINE Aggregator::executeImplBatch(
                     auto && key_holder = state.getKeyHolder(i, *aggregates_pool);
                     Field key_field(keyHolderGetKey(key_holder));
 
-                    method.pqueue.push(key_field);
-                    if (params.top_n_keys > 0 && method.pqueue.size() > params.top_n_keys)
+                    heap_queue->push(key_field);
+                    if (params.top_n_keys > 0 && heap_queue->size() > params.top_n_keys)
                     {
-                        method.pqueue.pop();
+                        heap_queue->pop();
                     }
                     using KeyType = std::decay_t<decltype(keyHolderGetKey(key_holder))>;
                     if constexpr (std::is_same_v<KeyType, UInt64>)
                         LOG_TEST(log, "current key: {}", keyHolderGetKey(key_holder));
                 }
-                LOG_TEST(log, "pqueue state: size: {}, max: {}", method.pqueue.size(), method.pqueue.empty() ? 0 : method.pqueue.top());
+                LOG_TEST(log, "pqueue state: size: {}, max: {}", heap_queue->size(), heap_queue->empty() ? 0 : heap_queue->top());
 
                 if (emplace_result.isInserted())
                     getInlineCountState(emplace_result.getMapped()) = 1;

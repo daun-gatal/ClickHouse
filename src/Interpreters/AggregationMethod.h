@@ -19,6 +19,7 @@ struct AggregationMethodOneNumber
 
     Data data;
     std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodOneNumber() = default;
 
@@ -63,6 +64,7 @@ struct AggregationMethodString
 
     Data data;
     std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodString() = default;
 
@@ -99,7 +101,8 @@ struct AggregationMethodStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodStringNoCache() = default;
 
@@ -133,7 +136,8 @@ struct AggregationMethodFixedString
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodFixedString() = default;
 
@@ -167,7 +171,8 @@ struct AggregationMethodFixedStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodFixedStringNoCache() = default;
 
@@ -202,7 +207,8 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
     using Key = typename Base::Key;
     using Mapped = typename Base::Mapped;
     using Base::data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     template <bool use_cache>
     using BaseStateImpl = typename Base::template StateImpl<use_cache>;
@@ -240,7 +246,8 @@ struct AggregationMethodKeysFixed
     static constexpr bool has_low_cardinality = has_low_cardinality_;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodKeysFixed() = default;
 
@@ -288,7 +295,8 @@ struct AggregationMethodSerialized
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
 
     AggregationMethodSerialized() = default;
 
