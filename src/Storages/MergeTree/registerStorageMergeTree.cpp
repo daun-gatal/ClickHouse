@@ -757,11 +757,23 @@ static StoragePtr create(const StorageFactory::Arguments & args)
 
         if (args.query.columns_list && args.query.columns_list->projections)
         {
+            /// When loading projections from existing metadata (ATTACH), enable positional
+            /// arguments for backward compatibility. Old server versions may have stored
+            /// projections with positional GROUP BY (e.g., GROUP BY 1, 2) without normalizing
+            /// them to actual column names. The normalization code in getProjectionFromAST
+            /// will rewrite the definition_ast to use resolved column names.
+            auto projection_context = context;
+            if (args.mode >= LoadingStrictnessLevel::ATTACH)
+            {
+                projection_context = Context::createCopy(context);
+                projection_context->setSetting("enable_positional_arguments_for_projections", true);
+            }
+
             for (auto & projection_ast : args.query.columns_list->projections->children)
             {
                 try
                 {
-                    auto projection = ProjectionDescription::getProjectionFromAST(projection_ast, columns, context);
+                    auto projection = ProjectionDescription::getProjectionFromAST(projection_ast, columns, projection_context);
                     metadata.projections.add(std::move(projection));
                 }
                 catch (...)

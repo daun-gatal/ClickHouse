@@ -651,12 +651,19 @@ ProjectionsDescription ProjectionsDescription::parse(const String & str, const C
     if (str.empty())
         return result;
 
+    /// Enable positional arguments for backward compatibility when loading existing metadata.
+    /// Old server versions may have stored projections with positional GROUP BY (e.g., GROUP BY 1, 2)
+    /// without normalizing them to actual column names. The normalization code in getProjectionFromAST
+    /// will rewrite the definition_ast to use resolved column names.
+    auto context = Context::createCopy(query_context);
+    context->setSetting("enable_positional_arguments_for_projections", true);
+
     ParserProjectionDeclarationList parser;
     ASTPtr list = parseQuery(parser, str, 0, DBMS_DEFAULT_MAX_PARSER_DEPTH, DBMS_DEFAULT_MAX_PARSER_BACKTRACKS);
 
     for (const auto & projection_ast : list->children)
     {
-        auto projection = ProjectionDescription::getProjectionFromAST(projection_ast, columns, query_context);
+        auto projection = ProjectionDescription::getProjectionFromAST(projection_ast, columns, context);
         result.add(std::move(projection));
     }
 
