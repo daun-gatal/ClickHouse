@@ -1,0 +1,15 @@
+RIGHT JOIN with QUALIFY:
+1	a	A
+RIGHT JOIN with WHERE:
+1	a	A
+RIGHT JOIN without filter:
+1	a	A
+3	\N	C
+LEFT JOIN with QUALIFY:
+1	a	A
+LEFT JOIN with WHERE:
+1	a	A
+FULL JOIN with QUALIFY:
+1	a	A
+FULL JOIN with WHERE:
+1	a	A
