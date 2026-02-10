@@ -57,9 +57,15 @@ struct MergeTreeSettings;
  */
 class ISerialization : private boost::noncopyable, public std::enable_shared_from_this<ISerialization>
 {
-public:
+protected:
     ISerialization() = default;
-    virtual ~ISerialization() = default;
+
+public:
+    /// Must be overrided in the "leaf" derivatives. The following line must be called:
+    /// SerializationObjectPool::instance().remove(getName());
+    virtual ~ISerialization() = 0;
+
+    virtual String getName() const = 0;
 
     enum class Kind : UInt8
     {
