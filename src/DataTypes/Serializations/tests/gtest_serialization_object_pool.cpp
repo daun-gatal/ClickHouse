@@ -115,6 +115,7 @@ TEST(SerializationObjectPool, CacheDoesNotEvictWhileInUse)
     // Try to insert a new serialization with the same key multiple times
     for (int i = 0; i < 5; ++i)
     {
+        (void)i; // Intentionally unused - we just need multiple iterations
         auto serialization = std::make_shared<TestSerializationWrapper>(base, key);
         auto result = pool.getOrCreate(key, std::move(serialization));
         
