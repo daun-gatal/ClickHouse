@@ -107,6 +107,16 @@ DB::Names HiveCatalog::getTables() const
     return result;
 }
 
+void HiveCatalog::checkDatabase(std::string database_name) const
+{
+    LOG_TEST(log, "Checking database '{}'", database_name);
+
+    std::vector<std::string> result;
+
+    std::lock_guard lock(client_mutex);
+    client.get_all_tables(result, database_name);
+}
+
 bool HiveCatalog::existsTable(const std::string & namespace_name, const std::string & table_name) const
 {
     Apache::Hadoop::Hive::Table table;

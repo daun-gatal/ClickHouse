@@ -36,6 +36,8 @@ public:
 
     DB::Names getTables() const override;
 
+    void checkDatabase(std::string database_name) const override;
+
     bool existsTable(const std::string & namespace_name, const std::string & table_name) const override;
 
     void getTableMetadata(const std::string & namespace_name, const std::string & table_name, TableMetadata & result) const override;
