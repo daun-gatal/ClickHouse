@@ -63,7 +63,7 @@ protected:
 public:
     /// Must be overridden in the "leaf" derivatives. The following line must be called:
     /// SerializationObjectPool::instance().remove(getName());
-    virtual ~ISerialization() = 0;
+    virtual ~ISerialization() noexcept(false) = 0;
 
     virtual String getName() const = 0;
 
