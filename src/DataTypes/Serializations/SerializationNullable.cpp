@@ -32,7 +32,7 @@ String SerializationNullable::getName() const
 
 SerializationNullable::~SerializationNullable()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationNullable::enumerateStreams(

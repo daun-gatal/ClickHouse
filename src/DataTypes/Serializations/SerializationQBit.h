@@ -57,8 +57,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_, size_t element_size_, size_t dimension_)
     {
-        auto ptr = SerializationPtr(new SerializationQBit(nested_, element_size_, dimension_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "QBit(" + nested_->getName() + ", " + std::to_string(element_size_) + ", " + std::to_string(dimension_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_, element_size_, dimension_] { return SerializationPtr(new SerializationQBit(nested_, element_size_, dimension_)); });
     }
 
     ~SerializationQBit() override;

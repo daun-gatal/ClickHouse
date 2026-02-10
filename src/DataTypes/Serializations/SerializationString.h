@@ -26,8 +26,10 @@ private:
 public:
     static SerializationPtr create(MergeTreeStringSerializationVersion version_ = MergeTreeStringSerializationVersion::SINGLE_STREAM)
     {
-        auto ptr = SerializationPtr(new SerializationString(version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "String(" + std::to_string(static_cast<int>(version_)) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [version_] { return SerializationPtr(new SerializationString(version_)); });
     }
 
     ~SerializationString() override;

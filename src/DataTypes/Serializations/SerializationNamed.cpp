@@ -22,7 +22,7 @@ SerializationNamed::SerializationNamed(
 
 SerializationNamed::~SerializationNamed()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationNamed::enumerateStreams(

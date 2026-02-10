@@ -36,7 +36,7 @@ String SerializationArray::getName() const
 
 SerializationArray::~SerializationArray()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 static constexpr size_t MAX_ARRAY_SIZE = 1ULL << 30;

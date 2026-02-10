@@ -19,8 +19,10 @@ private:
 public:
     static SerializationPtr create(IntervalKind kind_)
     {
-        auto ptr = SerializationPtr(new SerializationInterval(kind_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Interval" + std::string(kind_.toString());
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [kind_] { return SerializationPtr(new SerializationInterval(kind_)); });
     }
 
     ~SerializationInterval() override;

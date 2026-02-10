@@ -138,7 +138,7 @@ String SerializationDecimal<T>::getName() const
 template <typename T>
 SerializationDecimal<T>::~SerializationDecimal()
 {
-    SerializationObjectPool::instance().remove(this->getName());
+    SerializationObjectPool::instance().remove(this->getName(), this);
 }
 
 template class SerializationDecimal<Decimal32>;

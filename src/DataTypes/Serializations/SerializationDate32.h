@@ -12,10 +12,11 @@ private:
     explicit SerializationDate32(const DateLUTImpl & time_zone_ = DateLUT::instance());
 
 public:
-    static SerializationPtr create(const DateLUTImpl & time_zone_ = DateLUT::instance())
+    static SerializationPtr create()
     {
-        auto ptr = SerializationPtr(new SerializationDate32(time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            "Date32",
+            [] { return SerializationPtr(new SerializationDate32()); });
     }
 
     ~SerializationDate32() override;

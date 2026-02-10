@@ -24,7 +24,7 @@ namespace ErrorCodes
 
 SerializationSparse::~SerializationSparse()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationSparse::getName() const
@@ -34,7 +34,7 @@ String SerializationSparse::getName() const
 
 SerializationSparseNullMap::~SerializationSparseNullMap()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationSparseNullMap::getName() const

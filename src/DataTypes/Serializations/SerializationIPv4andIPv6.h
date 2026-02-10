@@ -17,8 +17,9 @@ private:
 public:
     static SerializationPtr create()
     {
-        auto ptr = SerializationPtr(new SerializationIP<IPv>());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            String(TypeName<IPv>),
+            [] { return SerializationPtr(new SerializationIP<IPv>()); });
     }
 
     ~SerializationIP() override;

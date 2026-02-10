@@ -23,8 +23,17 @@ private:
 public:
     static SerializationPtr create(const std::vector<String> & typed_paths_)
     {
-        auto ptr = SerializationPtr(new SerializationObjectDistinctPaths(typed_paths_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "ObjectDistinctPaths(";
+        for (size_t i = 0; i < typed_paths_.size(); ++i)
+        {
+            if (i > 0)
+                key += ", ";
+            key += typed_paths_[i];
+        }
+        key += ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [typed_paths_] { return SerializationPtr(new SerializationObjectDistinctPaths(typed_paths_)); });
     }
 
     ~SerializationObjectDistinctPaths() override;

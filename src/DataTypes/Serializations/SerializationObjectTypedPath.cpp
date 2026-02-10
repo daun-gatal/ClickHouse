@@ -21,7 +21,7 @@ String SerializationObjectTypedPath::getName() const
 
 SerializationObjectTypedPath::~SerializationObjectTypedPath()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationObjectTypedPath::enumerateStreams(

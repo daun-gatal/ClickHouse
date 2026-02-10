@@ -17,7 +17,7 @@ String SerializationUUID::getName() const
 
 SerializationUUID::~SerializationUUID()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationUUID::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const

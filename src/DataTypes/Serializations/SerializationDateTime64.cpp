@@ -32,7 +32,7 @@ String SerializationDateTime64::getName() const
 
 SerializationDateTime64::~SerializationDateTime64()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationDateTime64::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const

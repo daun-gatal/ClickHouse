@@ -24,7 +24,7 @@ SerializationSubObject::SerializationSubObject(
 
 SerializationSubObject::~SerializationSubObject()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationSubObject::getName() const

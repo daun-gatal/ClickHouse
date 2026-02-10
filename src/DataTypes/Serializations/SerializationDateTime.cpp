@@ -26,7 +26,7 @@ String SerializationDateTime::getName() const
 
 SerializationDateTime::~SerializationDateTime()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationTime::getName() const
@@ -36,7 +36,7 @@ String SerializationTime::getName() const
 
 SerializationTime::~SerializationTime()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 namespace

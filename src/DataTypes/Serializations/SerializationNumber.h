@@ -26,8 +26,9 @@ public:
 
     static SerializationPtr create()
     {
-        auto ptr = SerializationPtr(new SerializationNumber<T>());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            String(TypeName<T>),
+            [] { return SerializationPtr(new SerializationNumber<T>()); });
     }
 
     ~SerializationNumber() override;

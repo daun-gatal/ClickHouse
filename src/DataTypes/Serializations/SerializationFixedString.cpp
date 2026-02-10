@@ -33,7 +33,7 @@ String SerializationFixedString::getName() const
 
 SerializationFixedString::~SerializationFixedString()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationFixedString::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const

@@ -16,8 +16,10 @@ private:
 public:
     static SerializationPtr create(MergeTreeStringSerializationVersion version_)
     {
-        auto ptr = SerializationPtr(new SerializationStringSize(version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "StringSize(" + std::to_string(static_cast<int>(version_)) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [version_] { return SerializationPtr(new SerializationStringSize(version_)); });
     }
 
     ~SerializationStringSize() override;

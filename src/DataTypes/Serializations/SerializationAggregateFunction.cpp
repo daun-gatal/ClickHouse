@@ -26,7 +26,7 @@ namespace ErrorCodes
 
 SerializationAggregateFunction::~SerializationAggregateFunction()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationAggregateFunction::getName() const

@@ -32,7 +32,7 @@ SerializationTime64::SerializationTime64(UInt32 scale_, const DataTypeTime64 & /
 
 SerializationTime64::~SerializationTime64()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationTime64::getName() const

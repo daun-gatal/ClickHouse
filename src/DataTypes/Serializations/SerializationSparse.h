@@ -32,8 +32,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_)
     {
-        auto ptr = SerializationPtr(new SerializationSparse(nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Sparse(" + nested_->getName() + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_] { return SerializationPtr(new SerializationSparse(nested_)); });
     }
 
     ~SerializationSparse() override;
@@ -153,8 +155,9 @@ public:
 
     static SerializationPtr create()
     {
-        auto ptr = SerializationPtr(new SerializationSparseNullMap());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            "SparseNullMap",
+            [] { return SerializationPtr(new SerializationSparseNullMap()); });
     }
 
     ~SerializationSparseNullMap() override;

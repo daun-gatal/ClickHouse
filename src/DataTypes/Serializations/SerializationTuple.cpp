@@ -50,7 +50,7 @@ String SerializationTuple::getName() const
 
 SerializationTuple::~SerializationTuple()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationTuple::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings & settings) const

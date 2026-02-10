@@ -21,8 +21,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & name_, SubstreamType substream_type_)
     {
-        auto ptr = SerializationPtr(new SerializationNamed(nested_, name_, substream_type_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Named(" + nested_->getName() + ", " + name_ + ", " + std::to_string(static_cast<int>(substream_type_)) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_, name_, substream_type_] { return SerializationPtr(new SerializationNamed(nested_, name_, substream_type_)); });
     }
 
     ~SerializationNamed() override;

@@ -21,8 +21,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & path_)
     {
-        auto ptr = SerializationPtr(new SerializationObjectTypedPath(nested_, path_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "ObjectTypedPath(" + nested_->getName() + ", " + path_ + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_, path_] { return SerializationPtr(new SerializationObjectTypedPath(nested_, path_)); });
     }
 
     ~SerializationObjectTypedPath() override;

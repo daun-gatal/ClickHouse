@@ -6,7 +6,7 @@ namespace DB
 
 SerializationArrayOffsets::~SerializationArrayOffsets()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationArrayOffsets::getName() const

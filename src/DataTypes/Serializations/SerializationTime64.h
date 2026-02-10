@@ -20,14 +20,18 @@ private:
 public:
     static SerializationPtr create(UInt32 scale_)
     {
-        auto ptr = SerializationPtr(new SerializationTime64(scale_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Time64(" + std::to_string(scale_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [scale_] { return SerializationPtr(new SerializationTime64(scale_)); });
     }
 
     static SerializationPtr create(UInt32 scale_, const DataTypeTime64 & time_type)
     {
-        auto ptr = SerializationPtr(new SerializationTime64(scale_, time_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Time64(" + std::to_string(scale_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [scale_, &time_type] { return SerializationPtr(new SerializationTime64(scale_, time_type)); });
     }
 
     ~SerializationTime64() override;

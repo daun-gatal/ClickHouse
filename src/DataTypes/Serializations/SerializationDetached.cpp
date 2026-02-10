@@ -21,7 +21,7 @@ SerializationDetached::SerializationDetached(const SerializationPtr & nested_) :
 
 SerializationDetached::~SerializationDetached()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationDetached::getName() const

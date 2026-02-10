@@ -45,7 +45,7 @@ struct DeserializeBinaryBulkStateObjectDynamicPath : public ISerialization::Dese
 
 SerializationObjectDynamicPath::~SerializationObjectDynamicPath()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationObjectDynamicPath::enumerateStreams(

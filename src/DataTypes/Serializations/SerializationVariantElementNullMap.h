@@ -34,8 +34,10 @@ private:
 public:
     static SerializationPtr create(const String & variant_element_name_, ColumnVariant::Discriminator variant_discriminator_)
     {
-        auto ptr = SerializationPtr(new SerializationVariantElementNullMap(variant_element_name_, variant_discriminator_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "VariantElementNullMap(" + variant_element_name_ + ", " + std::to_string(variant_discriminator_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [variant_element_name_, variant_discriminator_] { return SerializationPtr(new SerializationVariantElementNullMap(variant_element_name_, variant_discriminator_)); });
     }
 
     ~SerializationVariantElementNullMap() override;

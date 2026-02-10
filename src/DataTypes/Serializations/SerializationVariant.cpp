@@ -33,7 +33,7 @@ namespace ErrorCodes
 
 SerializationVariant::~SerializationVariant()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationVariant::getName() const
@@ -69,8 +69,9 @@ struct DeserializeBinaryBulkStateVariant : public ISerialization::DeserializeBin
 
 SerializationPtr SerializationVariant::create(const DataTypes & variant_types_, const String & variant_name_)
 {
-    auto ptr = SerializationPtr(new SerializationVariant(variant_types_, variant_name_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    return SerializationObjectPool::instance().getOrCreate(
+        variant_name_,
+        [variant_types_, variant_name_] { return SerializationPtr(new SerializationVariant(variant_types_, variant_name_)); });
 }
 
 SerializationVariant::SerializationVariant(const DataTypes & variant_types_, const String & variant_name_) : variant_types(variant_types_), deserialize_text_order(getVariantsDeserializeTextOrder(variant_types_)), variant_name(variant_name_)

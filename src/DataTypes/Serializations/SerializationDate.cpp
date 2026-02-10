@@ -17,7 +17,7 @@ String SerializationDate::getName() const
 
 SerializationDate::~SerializationDate()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationDate::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const

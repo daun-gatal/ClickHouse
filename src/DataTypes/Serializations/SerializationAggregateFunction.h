@@ -24,8 +24,10 @@ public:
 
     static SerializationPtr create(const AggregateFunctionPtr & function_, String type_name_, size_t version_)
     {
-        auto ptr = SerializationPtr(new SerializationAggregateFunction(function_, type_name_, version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "AggregateFunction(" + function_->getName() + ", " + type_name_ + ", " + std::to_string(version_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [function_, type_name_, version_] { return SerializationPtr(new SerializationAggregateFunction(function_, type_name_, version_)); });
     }
 
     ~SerializationAggregateFunction() override;

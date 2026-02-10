@@ -14,7 +14,7 @@ SerializationStringSize::SerializationStringSize(MergeTreeStringSerializationVer
 
 SerializationStringSize::~SerializationStringSize()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationStringSize::getName() const

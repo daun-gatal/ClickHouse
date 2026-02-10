@@ -43,13 +43,16 @@ SerializationLowCardinality::SerializationLowCardinality(const DataTypePtr & dic
 
 SerializationPtr SerializationLowCardinality::create(const DataTypePtr & dictionary_type_)
 {
-    auto ptr = SerializationPtr(new SerializationLowCardinality(dictionary_type_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    auto dict_inner_serialization = removeNullable(dictionary_type_)->getDefaultSerialization();
+    String key = "LowCardinality(" + dictionary_type_->getName() + ", " + dict_inner_serialization->getName() + ")";
+    return SerializationObjectPool::instance().getOrCreate(
+        key,
+        [dictionary_type_] { return SerializationPtr(new SerializationLowCardinality(dictionary_type_)); });
 }
 
 SerializationLowCardinality::~SerializationLowCardinality()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationLowCardinality::getName() const

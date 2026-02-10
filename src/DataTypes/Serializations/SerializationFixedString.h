@@ -17,8 +17,10 @@ private:
 public:
     static SerializationPtr create(size_t n_)
     {
-        auto ptr = SerializationPtr(new SerializationFixedString(n_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "FixedString(" + std::to_string(n_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [n_] { return SerializationPtr(new SerializationFixedString(n_)); });
     }
 
     ~SerializationFixedString() override;

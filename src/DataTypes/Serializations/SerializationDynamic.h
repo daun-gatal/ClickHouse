@@ -20,8 +20,10 @@ private:
 public:
     static SerializationPtr create(size_t max_dynamic_types_ = DataTypeDynamic::DEFAULT_MAX_DYNAMIC_TYPES)
     {
-        auto ptr = SerializationPtr(new SerializationDynamic(max_dynamic_types_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Dynamic(" + std::to_string(max_dynamic_types_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [max_dynamic_types_] { return SerializationPtr(new SerializationDynamic(max_dynamic_types_)); });
     }
 
     ~SerializationDynamic() override;

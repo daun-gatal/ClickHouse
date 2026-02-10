@@ -31,7 +31,7 @@ String SerializationDynamic::getName() const
 
 SerializationDynamic::~SerializationDynamic()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 struct SerializeBinaryBulkStateDynamic : public ISerialization::SerializeBinaryBulkState

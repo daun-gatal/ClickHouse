@@ -18,8 +18,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & path_, const String & path_subcolumn_, const DataTypePtr & dynamic_type_, const DataTypePtr & subcolumn_type_)
     {
-        auto ptr = SerializationPtr(new SerializationObjectDynamicPath(nested_, path_, path_subcolumn_, dynamic_type_, subcolumn_type_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "ObjectDynamicPath(" + nested_->getName() + ", " + path_ + ", " + path_subcolumn_ + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_, path_, path_subcolumn_, dynamic_type_, subcolumn_type_] { return SerializationPtr(new SerializationObjectDynamicPath(nested_, path_, path_subcolumn_, dynamic_type_, subcolumn_type_)); });
     }
 
     ~SerializationObjectDynamicPath() override;

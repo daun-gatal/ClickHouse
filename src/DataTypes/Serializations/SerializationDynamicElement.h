@@ -28,8 +28,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & dynamic_element_name_, const String & nested_subcolumn_, bool is_null_map_subcolumn_ = false)
     {
-        auto ptr = SerializationPtr(new SerializationDynamicElement(nested_, dynamic_element_name_, nested_subcolumn_, is_null_map_subcolumn_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "DynamicElement(" + nested_->getName() + ", " + dynamic_element_name_ + ", " + nested_subcolumn_ + ", " + std::to_string(is_null_map_subcolumn_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_, dynamic_element_name_, nested_subcolumn_, is_null_map_subcolumn_] { return SerializationPtr(new SerializationDynamicElement(nested_, dynamic_element_name_, nested_subcolumn_, is_null_map_subcolumn_)); });
     }
 
     ~SerializationDynamicElement() override;

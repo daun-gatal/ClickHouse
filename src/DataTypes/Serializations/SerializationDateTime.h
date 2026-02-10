@@ -16,8 +16,10 @@ private:
 public:
     static SerializationPtr create(const TimezoneMixin & time_zone_)
     {
-        auto ptr = SerializationPtr(new SerializationDateTime(time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "DateTime(" + time_zone_.getTimeZone() + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [&time_zone_] { return SerializationPtr(new SerializationDateTime(time_zone_)); });
     }
 
     ~SerializationDateTime() override;
@@ -49,8 +51,9 @@ private:
 public:
     static SerializationPtr create(const DataTypeTime & time_type)
     {
-        auto ptr = SerializationPtr(new SerializationTime(time_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            "Time",
+            [&time_type] { return SerializationPtr(new SerializationTime(time_type)); });
     }
 
     ~SerializationTime() override;

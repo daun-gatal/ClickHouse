@@ -18,8 +18,10 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_)
     {
-        auto ptr = SerializationPtr(new SerializationReplicated(nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Replicated(" + nested_->getName() + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [nested_] { return SerializationPtr(new SerializationReplicated(nested_)); });
     }
 
     ~SerializationReplicated() override;

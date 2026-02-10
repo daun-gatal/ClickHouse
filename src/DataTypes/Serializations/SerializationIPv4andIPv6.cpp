@@ -187,7 +187,7 @@ void SerializationIP<IPv>::deserializeBinaryBulk(DB::IColumn & column, DB::ReadB
 template <typename IPv>
 SerializationIP<IPv>::~SerializationIP()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 template class SerializationIP<IPv4>;

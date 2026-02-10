@@ -41,7 +41,7 @@ struct SerializationVariantElement::DeserializeBinaryBulkStateVariantElement : p
 
 SerializationVariantElement::~SerializationVariantElement()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationVariantElement::enumerateStreams(

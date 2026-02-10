@@ -44,7 +44,7 @@ SerializationInterval::SerializationInterval(IntervalKind interval_kind_) : inte
 
 SerializationInterval::~SerializationInterval()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationInterval::getName() const

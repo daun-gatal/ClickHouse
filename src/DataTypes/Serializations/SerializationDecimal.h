@@ -18,8 +18,10 @@ public:
 
     static SerializationPtr create(UInt32 precision_, UInt32 scale_)
     {
-        auto ptr = SerializationPtr(new SerializationDecimal(precision_, scale_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Decimal(" + std::to_string(precision_) + ", " + std::to_string(scale_) + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [precision_, scale_] { return SerializationPtr(new SerializationDecimal(precision_, scale_)); });
     }
 
     ~SerializationDecimal() override;

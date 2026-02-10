@@ -19,7 +19,7 @@ String SerializationNothing::getName() const
 
 SerializationNothing::~SerializationNothing()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationNothing::throwNoSerialization()

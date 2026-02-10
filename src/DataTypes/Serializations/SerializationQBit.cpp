@@ -33,7 +33,7 @@ extern const int TOO_LARGE_ARRAY_SIZE;
 
 SerializationQBit::~SerializationQBit()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationQBit::getName() const

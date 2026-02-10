@@ -22,8 +22,19 @@ private:
 public:
     static SerializationPtr create(const ElementSerializations & elems_, bool has_explicit_names_)
     {
-        auto ptr = SerializationPtr(new SerializationTuple(elems_, has_explicit_names_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "Tuple(";
+        for (size_t i = 0; i < elems_.size(); ++i)
+        {
+            if (i > 0)
+                key += ", ";
+            if (has_explicit_names_)
+                key += elems_[i]->getElementName() + " ";
+            key += elems_[i]->getNested()->getName();
+        }
+        key += ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [elems_, has_explicit_names_] { return SerializationPtr(new SerializationTuple(elems_, has_explicit_names_)); });
     }
 
     ~SerializationTuple() override;

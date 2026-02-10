@@ -53,7 +53,7 @@ struct DeserializeBinaryBulkStateObjectSharedDataPath : public ISerialization::D
 
 SerializationObjectSharedDataPath::~SerializationObjectSharedDataPath()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 void SerializationObjectSharedDataPath::enumerateStreams(

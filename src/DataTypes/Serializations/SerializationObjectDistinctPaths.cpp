@@ -21,7 +21,7 @@ SerializationObjectDistinctPaths::SerializationObjectDistinctPaths(const std::ve
 
 SerializationObjectDistinctPaths::~SerializationObjectDistinctPaths()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationObjectDistinctPaths::getName() const

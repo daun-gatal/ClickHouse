@@ -15,8 +15,10 @@ private:
 public:
     static SerializationPtr create(UInt32 scale_, const TimezoneMixin & time_zone_)
     {
-        auto ptr = SerializationPtr(new SerializationDateTime64(scale_, time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        String key = "DateTime64(" + std::to_string(scale_) + ", " + time_zone_.getTimeZone() + ")";
+        return SerializationObjectPool::instance().getOrCreate(
+            key,
+            [scale_, &time_zone_] { return SerializationPtr(new SerializationDateTime64(scale_, time_zone_)); });
     }
 
     ~SerializationDateTime64() override;

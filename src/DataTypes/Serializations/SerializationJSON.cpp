@@ -381,7 +381,7 @@ String SerializationJSON<Parser>::getName() const
 template <typename Parser>
 SerializationJSON<Parser>::~SerializationJSON()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 #if USE_SIMDJSON

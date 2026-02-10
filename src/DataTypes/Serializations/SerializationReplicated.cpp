@@ -23,7 +23,7 @@ SerializationReplicated::SerializationReplicated(const SerializationPtr & nested
 
 SerializationReplicated::~SerializationReplicated()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationReplicated::getName() const

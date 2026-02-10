@@ -15,8 +15,9 @@ private:
 public:
     static SerializationPtr create()
     {
-        auto ptr = SerializationPtr(new SerializationArrayOffsets());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            "ArrayOffsets",
+            [] { return SerializationPtr(new SerializationArrayOffsets()); });
     }
 
     ~SerializationArrayOffsets() override;

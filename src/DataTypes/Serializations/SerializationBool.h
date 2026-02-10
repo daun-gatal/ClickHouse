@@ -16,8 +16,9 @@ private:
 public:
     static SerializationPtr create(const SerializationPtr & nested_)
     {
-        auto ptr = SerializationPtr(new SerializationBool(nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(
+            "Bool",
+            [nested_] { return SerializationPtr(new SerializationBool(nested_)); });
     }
 
     ~SerializationBool() override;

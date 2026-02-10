@@ -33,13 +33,15 @@ SerializationPtr SerializationSubObjectSharedData::create(
     const String & paths_prefix_,
     const DataTypePtr & dynamic_type_)
 {
-    auto ptr = SerializationPtr(new SerializationSubObjectSharedData(serialization_version_, buckets_, paths_prefix_, dynamic_type_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    String key = "SubObjectSharedData(" + std::to_string(static_cast<int>(serialization_version_.value)) + ", " + std::to_string(buckets_) + ", " + paths_prefix_ + ")";
+    return SerializationObjectPool::instance().getOrCreate(
+        key,
+        [serialization_version_, buckets_, paths_prefix_, dynamic_type_] { return SerializationPtr(new SerializationSubObjectSharedData(serialization_version_, buckets_, paths_prefix_, dynamic_type_)); });
 }
 
 SerializationSubObjectSharedData::~SerializationSubObjectSharedData()
 {
-    SerializationObjectPool::instance().remove(getName());
+    SerializationObjectPool::instance().remove(getName(), this);
 }
 
 String SerializationSubObjectSharedData::getName() const
