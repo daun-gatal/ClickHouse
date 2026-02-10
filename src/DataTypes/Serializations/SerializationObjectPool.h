@@ -32,10 +32,22 @@ public:
     void remove(const String & key)
     {
         std::lock_guard lock(mutex);
+        /// During pool destruction, the map is being torn down and
+        /// shared_ptr release triggers serialization destructors that
+        /// call back into remove(). Skip the access to avoid UAF.
+        if (destroying)
+            return;
+
         auto it = cache.find(key);
         /// use_count == 2 means: one in cache, one held by the object being destroyed
         if (it != cache.end() && it->second.use_count() == 2)
             cache.erase(it);
+    }
+
+    ~SerializationObjectPool()
+    {
+        std::lock_guard lock(mutex);
+        destroying = true;
     }
 
 private:
@@ -44,6 +56,7 @@ private:
     /// Unfortunately we have to use a recursive mutex here, because
     /// SerializationLowCardinality creates an inner dictionary Serialization
     /// that also uses this pool.
+    bool destroying = false;
     mutable std::recursive_mutex mutex;
     std::unordered_map<String, SerializationPtr> cache;
 };
