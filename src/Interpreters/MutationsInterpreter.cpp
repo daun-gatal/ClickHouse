@@ -2,7 +2,6 @@
 #include <Functions/FunctionFactory.h>
 #include <Functions/IFunction.h>
 #include <Interpreters/ExpressionActions.h>
-#include <Interpreters/InterpreterSelectQuery.h>
 #include <Interpreters/MutationsInterpreter.h>
 #include <Interpreters/TreeRewriter.h>
 #include <Interpreters/MutationsNonDeterministicHelpers.h>
@@ -182,7 +181,6 @@ ColumnDependencies getAllColumnDependencies(
 IsStorageTouched isStorageTouchedByMutations(
     MergeTreeData::DataPartPtr source_part,
     MergeTreeData::MutationsSnapshotPtr mutations_snapshot,
-    const StorageMetadataPtr & metadata_snapshot,
     const std::vector<MutationCommand> & commands,
     ContextPtr context,
     std::function<void(const Progress & value)> check_operation_is_not_cancelled)
@@ -232,26 +230,10 @@ IsStorageTouched isStorageTouchedByMutations(
     if (all_commands_can_be_skipped)
         return no_rows;
 
-    std::optional<InterpreterSelectQuery> interpreter_select_query;
-    BlockIO io;
-
-    if (context->getSettingsRef()[Setting::allow_experimental_analyzer])
-    {
-        auto select_query_tree = prepareQueryAffectedQueryTree(commands, storage_from_part, context);
-        InterpreterSelectQueryAnalyzer interpreter(select_query_tree, context, SelectQueryOptions().ignoreLimits());
-        io = interpreter.execute();
-    }
-    else
-    {
-        ASTPtr select_query = prepareQueryAffectedAST(commands, storage_from_part, context);
-        /// Interpreter must be alive, when we use result of execute() method.
-        /// For some reason it may copy context and give it into ExpressionTransform
-        /// after that we will use context from destroyed stack frame in our stream.
-        interpreter_select_query.emplace(
-            select_query, context, storage_from_part, metadata_snapshot, SelectQueryOptions().ignoreLimits());
-
-        io = interpreter_select_query->execute();
-    }
+    /// Always use the new analyzer path to match the rest of the mutation pipeline.
+    auto select_query_tree = prepareQueryAffectedQueryTree(commands, storage_from_part, context);
+    InterpreterSelectQueryAnalyzer interpreter(select_query_tree, context, SelectQueryOptions().ignoreLimits());
+    BlockIO io = interpreter.execute();
 
     PullingAsyncPipelineExecutor executor(io.pipeline);
     io.pipeline.setConcurrencyControl(context->getSettingsRef()[Setting::use_concurrency_control]);
@@ -1614,7 +1596,22 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
                     update_dag.addOrReplaceInOutputs(update_dag.materializeNode(output_node));
             }
 
-            stage.action_steps.push_back(Stage::ActionStep{.dag = std::move(update_dag), .filter_column_name = {}, .project_input = false});
+            /// Use project_input=true so that only DAG outputs survive. This properly
+            /// replaces updated columns: when an update expression doesn't reference the
+            /// original column (e.g. UPDATE v = '100'), removeUnusedActions removes the
+            /// INPUT node for that column. With project_input=false, the original column
+            /// would pass through unconsumed alongside the ALIAS result, causing duplicates.
+            /// With project_input=true, appendInputsForUnusedColumns (called later in
+            /// addStreamsForLaterStages) adds INPUT nodes for all header columns, ensuring
+            /// they are consumed. Only DAG output columns survive, correctly replacing
+            /// updated columns.
+            /// This also prevents the updated column from appearing in required_columns
+            /// (computed from the DAG before appendInputsForUnusedColumns), so the reader
+            /// doesn't request it from the part. This is important when the column type
+            /// changed (e.g. MODIFY COLUMN after UPDATE): the reader would try to convert
+            /// the old type to the new type via performRequiredConversions, which can fail
+            /// for values that only the UPDATE expression would fix.
+            stage.action_steps.push_back(Stage::ActionStep{.dag = std::move(update_dag), .filter_column_name = {}, .project_input = true});
         }
 
         /// Build the final projection step that keeps only output_columns.
@@ -1699,16 +1696,48 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
             }
         }
 
-        /// Compute required input columns for this stage from ALL action steps.
-        /// Each step may need different source columns (e.g. the filter needs columns for
-        /// the predicate, the update needs columns for the update expression, the projection
-        /// needs the output columns). The source must provide the union of all requirements.
+        /// Compute required input columns for this stage by propagating requirements
+        /// backwards through the action steps. Start from the last step's requirements,
+        /// then for each preceding step: remove columns it produces (DAG outputs that
+        /// are not pass-through INPUTs) and add columns it needs from its predecessor.
+        /// This matches how ExpressionActionsChain::finalize computes source requirements:
+        /// columns produced by intermediate steps (e.g. UPDATE v='100' creates v) are NOT
+        /// requested from the source, preventing unnecessary reads that could trigger
+        /// performRequiredConversions failures when column types have changed.
         {
-            NameSet all_required;
-            for (const auto & step : stage.action_steps)
+            NameSet needed;
+            /// Start with the last step's required columns.
+            if (!stage.action_steps.empty())
+            {
+                const auto & last_step = stage.action_steps.back();
+                for (const auto & name : last_step.dag.getRequiredColumnsNames())
+                    needed.insert(name);
+            }
+
+            /// Propagate backwards through remaining steps.
+            for (int64_t step_idx = static_cast<int64_t>(stage.action_steps.size()) - 2; step_idx >= 0; --step_idx)
+            {
+                const auto & step = stage.action_steps[step_idx];
+
+                /// Determine which columns this step produces (non-INPUT outputs).
+                NameSet produced;
+                NameSet step_inputs;
+                for (const auto * input : step.dag.getInputs())
+                    step_inputs.insert(input->result_name);
+                for (const auto & output_name : step.dag.getOutputs())
+                    if (!step_inputs.contains(output_name->result_name))
+                        produced.insert(output_name->result_name);
+
+                /// Remove produced columns from needed set (they don't need to come from source).
+                for (const auto & name : produced)
+                    needed.erase(name);
+
+                /// Add this step's own required inputs.
                 for (const auto & name : step.dag.getRequiredColumnsNames())
-                    all_required.insert(name);
-            stage.required_columns = Names(all_required.begin(), all_required.end());
+                    needed.insert(name);
+            }
+
+            stage.required_columns = Names(needed.begin(), needed.end());
         }
 
         if (i)
@@ -1990,17 +2019,11 @@ void MutationsInterpreter::validate()
         }
     }
 
-    // Make sure the mutation query is valid
+    // Make sure the mutation query is valid.
+    // Always use the new analyzer path to match prepareMutationStages which uses the
+    // new analyzer directly.
     if (context->getSettingsRef()[Setting::validate_mutation_query])
-    {
-        if (context->getSettingsRef()[Setting::allow_experimental_analyzer])
-            prepareQueryAffectedQueryTree(commands, source.getStorage(), context);
-        else
-        {
-            ASTPtr select_query = prepareQueryAffectedAST(commands, source.getStorage(), context);
-            InterpreterSelectQuery(select_query, context, source.getStorage(), metadata_snapshot);
-        }
-    }
+        prepareQueryAffectedQueryTree(commands, source.getStorage(), context);
 
     QueryPlan plan;
 
