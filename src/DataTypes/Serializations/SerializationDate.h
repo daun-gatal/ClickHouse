@@ -15,6 +15,9 @@ private:
 public:
     static SerializationPtr create(const DateLUTImpl & time_zone_ = DateLUT::instance())
     {
+        // Note: time_zone_ is captured by reference because DateLUTImpl is not copyable.
+        // This is safe because: (1) time_zone_ is always a reference to a DateLUT singleton,
+        // and (2) the factory lambda is called immediately within getOrCreate() if needed.
         return SerializationObjectPool::instance().getOrCreate(
             "Date",
             [&time_zone_] { return SerializationPtr(new SerializationDate(time_zone_)); });
