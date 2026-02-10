@@ -23,7 +23,7 @@ MASTER_PROFILER_URL = "https://clickhouse-builds.s3.us-east-1.amazonaws.com/mast
 # Threshold: changes below this are considered OK (noise)
 CHANGE_THRESHOLD_BYTES = 32
 
-# Frame prefixes to strip from stack tops (jemalloc/malloc internals)
+# Frame prefixes to strip from stack tops (jemalloc/malloc internals, profiler overhead)
 NOISE_FRAME_PREFIXES = (
     "je_",
     "imalloc",
@@ -47,6 +47,9 @@ NOISE_FRAME_PREFIXES = (
     "sdallocx",
     "rallocx",
     "mallocx",
+    "main",
+    "(anonymous namespace)::dumpProfile",
+    "dumpProfile",
 )
 
 
@@ -82,7 +85,9 @@ def parse_symbolized_heap(sym_file: str) -> dict:
     with open(sym_file, "r") as f:
         content = f.read()
 
-    # Parse symbol table: address -> "symbol1--symbol2"
+    # Parse symbol table: int(address) -> "symbol1--symbol2"
+    # Use int keys to normalize zero-padded (0x000000010726faef) vs
+    # compact (0x10726faef) address representations.
     symbols = {}
     in_symbol_section = False
     in_heap_section = False
@@ -105,12 +110,16 @@ def parse_symbolized_heap(sym_file: str) -> dict:
             # Format: 0x1234ABCD symbolname--inlinename
             parts = line.strip().split(" ", 1)
             if len(parts) == 2 and parts[0].startswith("0x"):
-                addr = parts[0].lower()
-                symbols[addr] = parts[1]
+                try:
+                    addr_int = int(parts[0], 16)
+                    symbols[addr_int] = parts[1]
+                except ValueError:
+                    pass
 
     # Parse heap section: extract stacks with byte counts
     stacks = {}
     current_addrs = None
+    current_addr_ints = None
 
     for line in lines:
         if not in_heap_section:
@@ -122,12 +131,16 @@ def parse_symbolized_heap(sym_file: str) -> dict:
             # Stack trace line: @ 0x1234 0x5678 ...
             addr_strs = line[1:].strip().split()
             current_addrs = []
+            current_addr_ints = []
             for a in addr_strs:
-                # Normalize to lowercase hex with 0x prefix
                 a_clean = a.lower()
                 if not a_clean.startswith("0x"):
                     a_clean = "0x" + a_clean
                 current_addrs.append(a_clean)
+                try:
+                    current_addr_ints.append(int(a_clean, 16))
+                except ValueError:
+                    current_addr_ints.append(0)
 
         elif current_addrs is not None and line.strip().startswith("t*:"):
             # Thread stats line: t*: curobjs: curbytes [accumobjs: accumbytes]
@@ -135,17 +148,14 @@ def parse_symbolized_heap(sym_file: str) -> dict:
             if match:
                 curbytes = int(match.group(2))
                 if curbytes > 0:
-                    # Symbolize the stack
+                    # Symbolize the stack using int-key lookup
                     sym_frames = []
-                    for addr in current_addrs:
-                        # Try exact match, then try addr-1 (caller address fix)
-                        sym = symbols.get(addr, "")
+                    for i, addr_int in enumerate(current_addr_ints):
+                        sym = symbols.get(addr_int, "")
                         if not sym:
-                            # Try without leading zeros
-                            addr_int = int(addr, 16)
-                            addr_minus1 = hex(addr_int - 1)
-                            sym = symbols.get(addr_minus1, addr)
-                        sym_frames.append(sym if sym else addr)
+                            # Try addr-1 (caller address fix, same as jeprof)
+                            sym = symbols.get(addr_int - 1, "")
+                        sym_frames.append(sym if sym else current_addrs[i])
 
                     stack_key = ";".join(current_addrs)
                     stacks[stack_key] = {
@@ -153,12 +163,14 @@ def parse_symbolized_heap(sym_file: str) -> dict:
                         "frames": sym_frames,
                     }
             current_addrs = None
+            current_addr_ints = None
 
     return stacks
 
 
 def filter_stack_frames(frames: list) -> list:
-    """Strip leading jemalloc/malloc/libc frames, keep from first ClickHouse frame."""
+    """Strip leading jemalloc/malloc/libc/profiler-overhead frames.
+    Returns empty list if all frames are noise (profiler overhead)."""
     filtered = []
     found_clickhouse = False
     for frame in frames:
@@ -173,12 +185,15 @@ def filter_stack_frames(frames: list) -> list:
                 continue
             found_clickhouse = True
         filtered.append(frame)
-    return filtered if filtered else frames  # fallback to full stack if all filtered
+    return filtered
 
 
 def format_stack(frames: list) -> str:
-    """Format symbolized frames as a compact one-liner."""
+    """Format symbolized frames as a compact one-liner.
+    Returns empty string if all frames are noise (profiler overhead)."""
     filtered = filter_stack_frames(frames)
+    if not filtered:
+        return ""
     # Split multi-frame symbols (separated by --) and flatten
     flat = []
     for f in filtered:
@@ -193,6 +208,7 @@ def format_stack(frames: list) -> str:
 def compute_diff(stacks_before: dict, stacks_after: dict) -> tuple:
     """
     Compute per-stack byte diffs between before and after heap profiles.
+    Skips stacks that are entirely profiler overhead (e.g. dumpProfile, main-only).
     Returns (total_diff, list of (diff_bytes, formatted_stack) sorted by |diff| desc).
     """
     all_keys = set(stacks_before.keys()) | set(stacks_after.keys())
@@ -207,7 +223,11 @@ def compute_diff(stacks_before: dict, stacks_after: dict) -> tuple:
             frames = stacks_after.get(key, stacks_before.get(key, {})).get(
                 "frames", [key]
             )
-            diffs.append((diff, format_stack(frames)))
+            formatted = format_stack(frames)
+            if not formatted:
+                # All frames are profiler overhead — skip
+                continue
+            diffs.append((diff, formatted))
             total += diff
 
     diffs.sort(key=lambda x: -abs(x[0]))
@@ -222,7 +242,12 @@ def run_profiler_with_heap(
     Returns dict with keys: jemalloc_diff, heap_diff, stack_diffs, error
     """
     env = os.environ.copy()
-    env["MALLOC_CONF"] = "prof:true,prof_active:true,prof_thread_active_init:true,lg_prof_sample:0"
+    malloc_conf = "prof:true,prof_active:true,prof_thread_active_init:true,lg_prof_sample:0"
+    # macOS: jemalloc uses je_ prefix -> JE_MALLOC_CONF
+    # Linux: jemalloc without prefix -> MALLOC_CONF
+    # Set both to be safe (only the matching one takes effect)
+    env["JE_MALLOC_CONF"] = malloc_conf
+    env["MALLOC_CONF"] = malloc_conf
 
     args = [binary_path, "--profile", profile_prefix]
     if symbolize:
@@ -356,10 +381,10 @@ def main():
         )
 
         if master_data.get("error") or pr_data.get("error"):
-            error_info = f"master: {master_data.get('error', 'ok')}, pr: {pr_data.get('error', 'ok')}"
+            error_info = f"Query: {query}\n\nmaster: {master_data.get('error', 'ok')}, pr: {pr_data.get('error', 'ok')}"
             query_results.append(
                 Result(
-                    name=f"Query {query_num}: {query_display}",
+                    name=f"Query {query_num}",
                     status=Result.Status.ERROR,
                     info=error_info,
                 )
@@ -384,9 +409,10 @@ def main():
         else:
             status = "OK"
 
-        # Build info string with stack diffs
+        # Build info string with full query and stack profiles for both versions
         info_lines = [
-            f"AST allocation diff (heap profile): master={master_bytes:,} bytes, PR={pr_bytes:,} bytes, change={change:+,} bytes"
+            f"Query: {query}",
+            f"\nAST allocation diff (heap profile): master={master_bytes:,} bytes, PR={pr_bytes:,} bytes, change={change:+,} bytes",
         ]
 
         if change >= CHANGE_THRESHOLD_BYTES:
@@ -394,20 +420,24 @@ def main():
         elif change <= -CHANGE_THRESHOLD_BYTES:
             info_lines.append(f"\nImprovement: {change:,} bytes")
 
-        # Add PR stack diffs (most useful for understanding allocations)
-        if pr_data["stack_diffs"]:
-            info_lines.append("\nPR allocation stacks:")
-            for diff_bytes, stack in pr_data["stack_diffs"][:10]:
-                info_lines.append(f"  {diff_bytes:+,} bytes: {stack}")
+        # Always include full profiles for both versions
+        info_lines.append(f"\n--- Master profile ({master_bytes:,} bytes) ---")
+        if master_data["stack_diffs"]:
+            for diff_bytes, stack in master_data["stack_diffs"]:
+                info_lines.append(f"  {diff_bytes:+,} bytes | {stack}")
+        else:
+            info_lines.append("  (no stack data)")
 
-        if master_data["stack_diffs"] and abs(change) >= CHANGE_THRESHOLD_BYTES:
-            info_lines.append("\nMaster allocation stacks:")
-            for diff_bytes, stack in master_data["stack_diffs"][:10]:
-                info_lines.append(f"  {diff_bytes:+,} bytes: {stack}")
+        info_lines.append(f"\n--- PR profile ({pr_bytes:,} bytes) ---")
+        if pr_data["stack_diffs"]:
+            for diff_bytes, stack in pr_data["stack_diffs"]:
+                info_lines.append(f"  {diff_bytes:+,} bytes | {stack}")
+        else:
+            info_lines.append("  (no stack data)")
 
         query_results.append(
             Result(
-                name=f"Query {query_num}: {query_display}",
+                name=f"Query {query_num}",
                 status=status,
                 info="\n".join(info_lines),
             )
