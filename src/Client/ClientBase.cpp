@@ -60,6 +60,7 @@
 #include <Parsers/Prometheus/ParserPrometheusQuery.h>
 
 #include <IO/Ask.h>
+#include <IO/ReadBufferFromFileDescriptor.h>
 #include <IO/CompressionMethod.h>
 #include <IO/ForkWriteBuffer.h>
 #include <IO/ReadHelpers.h>
@@ -89,6 +90,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <poll.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -1792,8 +1794,33 @@ void ClientBase::setInsertionTable(const ASTInsertQuery & insert_query)
 
 namespace
 {
-bool isStdinNotEmptyAndValid(ReadBuffer & std_in)
+/// Check if stdin has data available without blocking.
+/// Uses poll() to avoid blocking on a pipe that has no data and hasn't been closed,
+/// which can happen when running with --queries-file in a non-interactive environment.
+bool isStdinNotEmptyAndValid(ReadBuffer & std_in, bool non_blocking = false)
 {
+    /// If there's already data buffered, no need to check further.
+    if (std_in.hasPendingData())
+        return true;
+
+    if (non_blocking)
+    {
+        auto * fd_buf = typeid_cast<ReadBufferFromFileDescriptor *>(&std_in);
+        if (fd_buf)
+        {
+            struct pollfd pfd;
+            pfd.fd = fd_buf->getFD();
+            pfd.events = POLLIN;
+            pfd.revents = 0;
+
+            int ret = poll(&pfd, 1, 0);
+            if (ret <= 0)
+                return false;
+            if (pfd.revents & (POLLERR | POLLNVAL))
+                return false;
+        }
+    }
+
     try
     {
         return !std_in.eof();
@@ -1902,14 +1929,9 @@ void ClientBase::sendData(Block & sample, const ColumnsDescription & columns_des
     if (!connection->isSendDataNeeded())
         return;
 
-    /// Compute have_data_in_stdin lazily, because isStdinNotEmptyAndValid can block
-    /// if stdin is a pipe with no data and no EOF (e.g. when running with --queries-file
-    /// in a non-interactive environment). We only need to check stdin when there's no
-    /// other data source (no inline data, no infile).
-    auto have_data_in_stdin = [&]() -> bool
-    {
-        return !is_interactive && !stdin_is_a_tty && isStdinNotEmptyAndValid(*std_in);
-    };
+    /// Use non-blocking check to avoid hanging when stdin is a pipe with no data and no EOF
+    /// (e.g. when running with --queries-file in a non-interactive environment).
+    bool have_data_in_stdin = !is_interactive && !stdin_is_a_tty && isStdinNotEmptyAndValid(*std_in, /* non_blocking= */ true);
 
     if (need_render_progress)
     {
@@ -2008,7 +2030,7 @@ void ClientBase::sendData(Block & sample, const ColumnsDescription & columns_des
             sendDataFromPipe(
                 std::move(pipe),
                 parsed_query,
-                have_data_in_stdin());
+                have_data_in_stdin);
         }
         catch (Exception & e)
         {
@@ -2016,7 +2038,7 @@ void ClientBase::sendData(Block & sample, const ColumnsDescription & columns_des
             throw;
         }
 
-        if (have_data_in_stdin() && !cancelled)
+        if (have_data_in_stdin && !cancelled)
             sendDataFromStdin(sample, columns_description_for_query, parsed_query);
     }
     else if (parsed_insert_query->data)
@@ -2025,7 +2047,9 @@ void ClientBase::sendData(Block & sample, const ColumnsDescription & columns_des
         ReadBufferFromMemory data_in(parsed_insert_query->data, parsed_insert_query->end - parsed_insert_query->data);
         try
         {
-            sendDataFrom(data_in, sample, columns_description_for_query, parsed_query);
+            sendDataFrom(data_in, sample, columns_description_for_query, parsed_query, have_data_in_stdin);
+            if (have_data_in_stdin && !cancelled)
+                sendDataFromStdin(sample, columns_description_for_query, parsed_query);
         }
         catch (Exception & e)
         {
@@ -2357,7 +2381,8 @@ void ClientBase::processParsedSingleQuery(
 
         if (is_async_insert_with_inlined_data)
         {
-            bool have_external_data = insert->infile != nullptr;
+            bool have_data_in_stdin = !is_interactive && !stdin_is_a_tty && isStdinNotEmptyAndValid(*std_in, /* non_blocking= */ true);
+            bool have_external_data = have_data_in_stdin || insert->infile;
 
             if (have_external_data)
                 throw Exception(ErrorCodes::NOT_IMPLEMENTED,
