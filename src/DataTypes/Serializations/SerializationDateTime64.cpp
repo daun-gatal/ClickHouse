@@ -27,7 +27,7 @@ SerializationDateTime64::SerializationDateTime64(
 
 String SerializationDateTime64::getName() const
 {
-    return "DateTime64(" + std::to_string(scale) + ")";
+    return "DateTime64(" + std::to_string(scale) + ", " + time_zone.getTimeZone() + ")";
 }
 
 SerializationDateTime64::~SerializationDateTime64()

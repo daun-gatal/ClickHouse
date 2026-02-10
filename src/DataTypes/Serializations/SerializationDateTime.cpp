@@ -21,7 +21,7 @@ extern const int UNEXPECTED_DATA_AFTER_PARSED_VALUE;
 
 String SerializationDateTime::getName() const
 {
-    return "DateTime";
+    return "DateTime(" + time_zone.getTimeZone() + ")";
 }
 
 SerializationDateTime::~SerializationDateTime()
