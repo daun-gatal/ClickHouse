@@ -31,7 +31,7 @@ public:
         String key = "Time64(" + std::to_string(scale_) + ")";
         return SerializationObjectPool::instance().getOrCreate(
             key,
-            [scale_, &time_type] { return SerializationPtr(new SerializationTime64(scale_, time_type)); });
+            [scale_, time_type] { return SerializationPtr(new SerializationTime64(scale_, time_type)); });
     }
 
     ~SerializationTime64() override;

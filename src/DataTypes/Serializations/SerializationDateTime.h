@@ -19,7 +19,7 @@ public:
         String key = "DateTime(" + time_zone_.getTimeZone() + ")";
         return SerializationObjectPool::instance().getOrCreate(
             key,
-            [&time_zone_] { return SerializationPtr(new SerializationDateTime(time_zone_)); });
+            [time_zone_] { return SerializationPtr(new SerializationDateTime(time_zone_)); });
     }
 
     ~SerializationDateTime() override;
@@ -53,7 +53,7 @@ public:
     {
         return SerializationObjectPool::instance().getOrCreate(
             "Time",
-            [&time_type] { return SerializationPtr(new SerializationTime(time_type)); });
+            [time_type] { return SerializationPtr(new SerializationTime(time_type)); });
     }
 
     ~SerializationTime() override;

@@ -18,7 +18,7 @@ public:
         String key = "DateTime64(" + std::to_string(scale_) + ", " + time_zone_.getTimeZone() + ")";
         return SerializationObjectPool::instance().getOrCreate(
             key,
-            [scale_, &time_zone_] { return SerializationPtr(new SerializationDateTime64(scale_, time_zone_)); });
+            [scale_, time_zone_] { return SerializationPtr(new SerializationDateTime64(scale_, time_zone_)); });
     }
 
     ~SerializationDateTime64() override;

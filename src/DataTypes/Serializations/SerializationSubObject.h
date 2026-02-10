@@ -27,7 +27,7 @@ public:
         String key = "SubObject(" + paths_prefix_ + ", " + dynamic_type->getName() + ")";
         return SerializationObjectPool::instance().getOrCreate(
             key,
-            [paths_prefix_, &typed_paths_serializations_, dynamic_type] { return SerializationPtr(new SerializationSubObject(paths_prefix_, typed_paths_serializations_, dynamic_type)); });
+            [paths_prefix_, typed_paths_serializations_, dynamic_type] { return SerializationPtr(new SerializationSubObject(paths_prefix_, typed_paths_serializations_, dynamic_type)); });
     }
 
     ~SerializationSubObject() override;

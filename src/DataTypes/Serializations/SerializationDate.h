@@ -17,7 +17,7 @@ public:
     {
         return SerializationObjectPool::instance().getOrCreate(
             "Date",
-            [] { return SerializationPtr(new SerializationDate()); });
+            [&time_zone_] { return SerializationPtr(new SerializationDate(time_zone_)); });
     }
 
     ~SerializationDate() override;

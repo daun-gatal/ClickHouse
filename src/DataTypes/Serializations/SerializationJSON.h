@@ -30,7 +30,9 @@ public:
     {
         return SerializationObjectPool::instance().getOrCreate(
             "JSON",
-            [&typed_paths_types_, &paths_to_skip_, &path_regexps_to_skip_, dynamic_type_, &json_extract_tree_] { return SerializationPtr(new SerializationJSON(typed_paths_types_, paths_to_skip_, path_regexps_to_skip_, dynamic_type_, std::move(json_extract_tree_))); });
+            [typed_paths_types_, paths_to_skip_, path_regexps_to_skip_, dynamic_type_, json_extract_tree_ = std::move(json_extract_tree_)] () mutable { 
+                return SerializationPtr(new SerializationJSON(typed_paths_types_, paths_to_skip_, path_regexps_to_skip_, dynamic_type_, std::move(json_extract_tree_))); 
+            });
     }
 
     ~SerializationJSON() override;
