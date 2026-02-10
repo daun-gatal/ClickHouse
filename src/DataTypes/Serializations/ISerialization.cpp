@@ -31,7 +31,7 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-ISerialization::~ISerialization() = default;
+ISerialization::~ISerialization() noexcept(false) = default;
 
 ISerialization::KindStack ISerialization::getKindStack(const IColumn & column)
 {
