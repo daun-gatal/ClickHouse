@@ -819,7 +819,7 @@ InterpreterSelectQuery::InterpreterSelectQuery(
                 /// Just attempting to read statistics files on disk can increase query latencies
                 /// First check the in-memory metadata if statistics are present at all
                 auto estimator = storage_snapshot->metadata->hasStatistics()
-                                    ? storage->getConditionSelectivityEstimator(parts, context)
+                                    ? storage->getConditionSelectivityEstimator(*parts, context)
                                     : nullptr;
 
                 MergeTreeWhereOptimizer where_optimizer{
