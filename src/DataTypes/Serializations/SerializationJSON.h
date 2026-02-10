@@ -28,6 +28,8 @@ public:
         const DataTypePtr & dynamic_type_,
         std::unique_ptr<JSONExtractTreeNode<Parser>> json_extract_tree_)
     {
+        // Note: json_extract_tree_ is moved into the lambda because the constructor takes
+        // ownership of the unique_ptr. The lambda is marked mutable to allow std::move.
         return SerializationObjectPool::instance().getOrCreate(
             "JSON",
             [typed_paths_types_, paths_to_skip_, path_regexps_to_skip_, dynamic_type_, json_extract_tree_ = std::move(json_extract_tree_)] () mutable { 
