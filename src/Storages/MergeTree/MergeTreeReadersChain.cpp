@@ -84,6 +84,8 @@ MergeTreeReadersChain::ReadResult MergeTreeReadersChain::read(size_t max_rows, M
         first_reader.getReader()->fillVirtualColumns(read_result.columns, read_result.num_rows);
         readPatches(first_reader.getReadSampleBlock(), patch_ranges, read_result);
         executeActionsBeforePrewhere(read_result, read_result.columns, first_reader, {}, read_result.num_rows);
+        /// Save patch virtual columns before PREWHERE actions because they can project out unused columns.
+        addPatchVirtuals(read_result, first_reader.getReadSampleBlock());
 
         executePrewhereActions(first_reader, read_result, {}, range_readers.size() == 1);
         addPatchVirtuals(read_result, first_reader.getSampleBlock());
@@ -235,11 +237,21 @@ void MergeTreeReadersChain::executePrewhereActions(MergeTreeRangeReader & reader
 
 void MergeTreeReadersChain::addPatchVirtuals(ReadResult & result, const Block & header) const
 {
-    if (patch_readers.empty() || result.num_rows == 0)
+    if (patch_readers.empty() || result.num_rows == 0 || result.columns.empty())
         return;
 
-    auto result_block = header.cloneWithColumns(result.columns);
-    addPatchVirtuals(result.columns_for_patches, result_block);
+    const auto & system_columns = getPatchPartSystemColumns();
+    for (const auto & column : system_columns)
+    {
+        if (result.columns_for_patches.has(column.name) || !header.has(column.name))
+            continue;
+
+        size_t pos = header.getPositionByName(column.name);
+        if (pos >= result.columns.size() || !result.columns[pos])
+            continue;
+
+        result.columns_for_patches.insert({result.columns[pos], header.getByPosition(pos).type, column.name});
+    }
 }
 
 void MergeTreeReadersChain::addPatchVirtuals(Block & to, const Block & from) const

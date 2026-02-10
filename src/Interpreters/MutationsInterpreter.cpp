@@ -31,6 +31,7 @@
 #include <Parsers/ASTLiteral.h>
 #include <Parsers/ASTExpressionList.h>
 #include <Parsers/ASTSelectQuery.h>
+#include <Parsers/ASTSubquery.h>
 #include <IO/WriteHelpers.h>
 #include <Processors/QueryPlan/CreatingSetsStep.h>
 #include <DataTypes/NestedUtils.h>
@@ -48,6 +49,7 @@
 #include <Interpreters/Context.h>
 #include <Planner/CollectSets.h>
 #include <Planner/CollectTableExpressionData.h>
+#include <Planner/Planner.h>
 #include <Planner/Utils.h>
 #include <Parsers/makeASTForLogicalFunction.h>
 #include <Common/logger_useful.h>
@@ -92,6 +94,7 @@ namespace ErrorCodes
     extern const int CANNOT_UPDATE_COLUMN;
     extern const int UNEXPECTED_EXPRESSION;
     extern const int ILLEGAL_STATISTICS;
+    extern const int UNKNOWN_TABLE;
 }
 
 
@@ -211,6 +214,25 @@ MutationExpressionAnalysisResult analyzeMutationExpression(
     collectSourceColumns(expression_query_tree, planner_context, true /*keep_alias_columns*/);
     collectSets(expression_query_tree, *planner_context);
 
+    for (auto & subquery : planner_context->getPreparedSets().getSubqueries())
+    {
+        auto query_tree = subquery->detachQueryTree();
+        if (!query_tree)
+            continue;
+
+        auto subquery_options = SelectQueryOptions{}.subquery();
+        subquery_options.ignore_limits = false;
+        Planner subquery_planner(
+            query_tree,
+            subquery_options,
+            std::make_shared<GlobalPlannerContext>(
+                /*parallel_replicas_node=*/nullptr,
+                /*parallel_replicas_table=*/nullptr,
+                FiltersForTableExpressionMap{}));
+        subquery_planner.buildQueryPlanIfNeeded();
+        subquery->setQueryPlan(std::make_unique<QueryPlan>(std::move(subquery_planner).extractQueryPlan()));
+    }
+
     ColumnNodePtrWithHashSet empty_correlated_columns_set;
     auto [actions_dag, correlated_subtrees] = buildActionsDAGFromExpressionNode(
         expression_query_tree,
@@ -280,6 +302,21 @@ PreparedSetsPtr collectPreparedSetsFromActionsChain(const ExpressionActionsChain
     }
 
     return prepared_sets;
+}
+
+bool astContainsSubquery(const ASTPtr & ast)
+{
+    if (!ast)
+        return false;
+
+    if (ast->as<ASTSubquery>())
+        return true;
+
+    for (const auto & child : ast->children)
+        if (astContainsSubquery(child))
+            return true;
+
+    return false;
 }
 
 ColumnDependencies getAllColumnDependencies(
@@ -1584,8 +1621,34 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
         for (const auto & kv : stage.column_to_updated)
         {
-            all_asts->children.push_back(kv.second);
-            stage_updates.emplace_back(kv.first, kv.second);
+            ASTPtr update_expression_for_analysis = kv.second;
+            if (use_analyzer && dry_run && astContainsSubquery(update_expression_for_analysis))
+            {
+                auto update_columns_for_expression_analysis = getColumnsForMutationExpressionAnalysis(
+                    all_columns,
+                    update_expression_for_analysis,
+                    *storage_snapshot->virtual_columns);
+
+                try
+                {
+                    analyzeMutationExpression(
+                        update_expression_for_analysis,
+                        update_columns_for_expression_analysis,
+                        *storage_snapshot->virtual_columns,
+                        context,
+                        /*execute_scalar_subqueries=*/false);
+                }
+                catch (const Exception & e)
+                {
+                    if (e.code() == ErrorCodes::UNKNOWN_TABLE)
+                        update_expression_for_analysis = make_intrusive<ASTIdentifier>(kv.first);
+                    else
+                        throw;
+                }
+            }
+
+            all_asts->children.push_back(update_expression_for_analysis);
+            stage_updates.emplace_back(kv.first, update_expression_for_analysis);
         }
 
         /// Add all output columns to prevent ExpressionAnalyzer from deleting them from source columns.
@@ -1755,8 +1818,20 @@ void MutationsInterpreter::Source::read(
     const ContextPtr & context_,
     const Settings & mutation_settings) const
 {
-    auto required_columns = first_stage.expressions_chain.steps.front()->getRequiredColumns().getNames();
     auto storage_snapshot = getStorageSnapshot(snapshot_, context_, mutation_settings.can_execute);
+    auto required_columns = first_stage.expressions_chain.steps.front()->getRequiredColumns().getNames();
+    if (required_columns.empty())
+    {
+        /// Analyzer may fold mutation expressions to constants and produce empty source dependencies.
+        /// Some storages cannot read with an empty column list, so read stage outputs instead.
+        required_columns.assign(first_stage.output_columns.begin(), first_stage.output_columns.end());
+    }
+
+    if (required_columns.empty())
+    {
+        /// If the first stage has no outputs (e.g. constant filter stage), read any physical columns from storage.
+        required_columns = storage_snapshot->metadata->getColumns().getNamesOfPhysical();
+    }
 
     if (!mutation_settings.can_execute)
     {
