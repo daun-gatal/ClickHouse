@@ -143,6 +143,8 @@ public:
     /// Contains full namespaces in names.
     virtual DB::Names getTables() const = 0;
 
+    virtual void checkDatabase(std::string database_name) const = 0;
+
     /// Check that a table exists in a given namespace.
     virtual bool existsTable(
         const std::string & namespace_naem,

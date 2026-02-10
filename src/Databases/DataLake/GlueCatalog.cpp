@@ -279,6 +279,12 @@ DB::Names GlueCatalog::getTables() const
     return result;
 }
 
+void GlueCatalog::checkDatabase(std::string database_name) const
+{
+    LOG_TEST(log, "Checking database '{}'", database_name);
+    getTablesForDatabase(database_name, /* limit */ 1);
+}
+
 bool GlueCatalog::existsTable(const std::string & database_name, const std::string & table_name) const
 {
     Aws::Glue::Model::GetTableRequest request;

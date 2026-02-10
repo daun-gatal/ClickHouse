@@ -88,6 +88,17 @@ DB::Names UnityCatalog::getTables() const
     return result;
 }
 
+void UnityCatalog::checkDatabase(std::string database_name) const
+{
+    LOG_TEST(log, "Checking database '{}'", database_name);
+
+    auto all_schemas = getSchemas("");
+    for (const auto & schema : all_schemas)
+    {
+        getTablesForSchema(schema, /* limit */ 1);
+    }
+}
+
 void UnityCatalog::getTableMetadata(
     const std::string & namespace_name,
     const std::string & table_name,
