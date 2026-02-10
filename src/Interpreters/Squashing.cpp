@@ -445,7 +445,7 @@ std::pair<size_t, size_t> Squashing::PendingQueue::calculateConsumable(size_t ma
 
     /// No limits: return entire available front chunk
     if (max_rows == 0 && max_bytes == 0)
-        return {available_rows, available_rows * bytes_per_row};
+        return {available_rows, static_cast<size_t>((static_cast<double>(available_rows) * bytes_per_row))};
 
     size_t rows_to_take = available_rows;
 
@@ -454,7 +454,7 @@ std::pair<size_t, size_t> Squashing::PendingQueue::calculateConsumable(size_t ma
 
     if (max_bytes != 0)
     {
-        size_t rows_by_bytes = static_cast<size_t>(max_bytes / bytes_per_row);
+        size_t rows_by_bytes = static_cast<size_t>(static_cast<double>(max_bytes) / bytes_per_row);
 
         /// Allow at least one row if empty and cannot add anymore bytes
         if (rows_by_bytes == 0 && max_bytes > 0)
@@ -463,7 +463,7 @@ std::pair<size_t, size_t> Squashing::PendingQueue::calculateConsumable(size_t ma
         rows_to_take = std::min(rows_by_bytes, rows_to_take);
     }
 
-    auto bytes_to_take = static_cast<size_t>(rows_to_take * bytes_per_row);
+    auto bytes_to_take = static_cast<size_t>(static_cast<double>(rows_to_take) * bytes_per_row);
 
     return {rows_to_take, bytes_to_take};
 }

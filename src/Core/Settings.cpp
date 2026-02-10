@@ -147,7 +147,7 @@ When disabled, a block is emitted when:
 
 Disabled by default.
 )", 0) \
-    DECLARE_WITH_ALIAS(UInt64, max_insert_block_size, DEFAULT_INSERT_BLOCK_SIZE, R"(
+    DECLARE_WITH_ALIAS(NonZeroUInt64, max_insert_block_size, DEFAULT_INSERT_BLOCK_SIZE, R"(
 The maximum size of blocks (in a count of rows) to form for insertion into a table.
 
 This setting controls block formation in two contexts:
