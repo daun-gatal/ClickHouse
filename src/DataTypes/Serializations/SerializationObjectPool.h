@@ -9,56 +9,61 @@ namespace DB
 {
 
 /// Pool for constant serialization objects.
-/// Used to create them only once and share them between different columns.
+/// Deduplicates identical serializations so that concurrent users of the
+/// same type share one object. Uses weak_ptr so entries expire automatically
+/// when all external holders release their references — no remove() or
+/// destructor interaction needed.
 class SerializationObjectPool
 {
 public:
     static SerializationObjectPool & instance()
     {
-        static SerializationObjectPool cache;
-        return cache;
+        static SerializationObjectPool pool;
+        return pool;
     }
 
     SerializationPtr getOrCreate(const String & key, SerializationPtr && serialization)
     {
-        SerializationPtr res;
-        {
-            std::lock_guard lock(mutex);
-            res = cache.insert({key, std::move(serialization)}).first->second;
-        }
-        return res;
-    }
-
-    void remove(const String & key)
-    {
         std::lock_guard lock(mutex);
-        /// During pool destruction, the map is being torn down and
-        /// shared_ptr release triggers serialization destructors that
-        /// call back into remove(). Skip the access to avoid UAF.
-        if (destroying)
-            return;
 
         auto it = cache.find(key);
-        /// use_count == 2 means: one in cache, one held by the object being destroyed
-        if (it != cache.end() && it->second.use_count() == 2)
-            cache.erase(it);
+        if (it != cache.end())
+        {
+            if (auto existing = it->second.lock())
+                return existing;
+            /// Expired — replace with the new one.
+            it->second = serialization;
+        }
+        else
+        {
+            cache.emplace(key, serialization);
+        }
+
+        /// Lazy cleanup: sweep expired entries when the map gets large.
+        if (cache.size() > cleanup_threshold)
+            removeExpiredEntries();
+
+        return std::move(serialization);
     }
 
-    ~SerializationObjectPool()
-    {
-        std::lock_guard lock(mutex);
-        destroying = true;
-    }
+    /// No-op kept for backward compatibility with existing destructors.
+    /// With weak_ptr storage, entries expire on their own.
+    void remove(const String & /*key*/) {}
 
 private:
     SerializationObjectPool() = default;
 
-    /// Unfortunately we have to use a recursive mutex here, because
-    /// SerializationLowCardinality creates an inner dictionary Serialization
-    /// that also uses this pool.
-    bool destroying = false;
+    void removeExpiredEntries()
+    {
+        std::erase_if(cache, [](const auto & pair) { return pair.second.expired(); });
+    }
+
+    static constexpr size_t cleanup_threshold = 1000;
+
+    /// Recursive mutex: SerializationLowCardinality's constructor creates
+    /// inner serializations that also go through the pool.
     mutable std::recursive_mutex mutex;
-    std::unordered_map<String, SerializationPtr> cache;
+    std::unordered_map<String, std::weak_ptr<const ISerialization>> cache;
 };
 
 }
