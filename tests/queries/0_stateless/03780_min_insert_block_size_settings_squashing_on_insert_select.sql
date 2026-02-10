@@ -21,7 +21,7 @@ Engine = MergeTree()
 Order by id;
 
 -- Expect 4 parts
-SET max_insert_block_size_rows = 0;
+SET max_insert_block_size_rows = 1000000;
 SET max_insert_block_size_bytes = 0;
 SET min_insert_block_size_rows = 1;
 SET min_insert_block_size_bytes = 200;
@@ -29,7 +29,7 @@ SET min_insert_block_size_bytes = 200;
 INSERT INTO test_min_insert_rows_less_than_bytes_squashing SELECT number FROM numbers(100) SETTINGS max_block_size = 10,use_strict_insert_block_limits=1;
 
 -- Expect 3 parts
-SET max_insert_block_size_rows = 0;
+SET max_insert_block_size_rows = 1000000;
 SET max_insert_block_size_bytes = 0;
 SET min_insert_block_size_rows = 33;
 SET min_insert_block_size_bytes = 8;
