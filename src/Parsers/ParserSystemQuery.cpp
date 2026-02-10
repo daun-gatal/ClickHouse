@@ -19,7 +19,7 @@
 namespace DB
 {
 
-[[nodiscard]] static bool parseQueryWithOnClusterAndMaybeTable(std::shared_ptr<ASTSystemQuery> & res, IParser::Pos & pos,
+[[nodiscard]] static bool parseQueryWithOnClusterAndMaybeTable(boost::intrusive_ptr<ASTSystemQuery> & res, IParser::Pos & pos,
                                                  Expected & expected, bool require_table, bool allow_string_literal)
 {
     /// Better form for user: SYSTEM <ACTION> table ON CLUSTER cluster
@@ -73,7 +73,7 @@ enum class SystemQueryTargetType : uint8_t
     Disk,
 };
 
-[[nodiscard]] static bool parseQueryWithOnClusterAndTarget(std::shared_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected, SystemQueryTargetType target_type)
+[[nodiscard]] static bool parseQueryWithOnClusterAndTarget(boost::intrusive_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected, SystemQueryTargetType target_type)
 {
     /// Better form for user: SYSTEM <ACTION> target_name ON CLUSTER cluster
     /// Query rewritten form + form while executing on cluster: SYSTEM <ACTION> ON CLUSTER cluster target_name
@@ -138,7 +138,7 @@ enum class SystemQueryTargetType : uint8_t
     return true;
 }
 
-[[nodiscard]] static bool parseQueryWithOnCluster(std::shared_ptr<ASTSystemQuery> & res, IParser::Pos & pos,
+[[nodiscard]] static bool parseQueryWithOnCluster(boost::intrusive_ptr<ASTSystemQuery> & res, IParser::Pos & pos,
                                     Expected & expected)
 {
     String cluster_str;
@@ -152,7 +152,7 @@ enum class SystemQueryTargetType : uint8_t
     return true;
 }
 
-[[nodiscard]] static bool parseDropReplica(std::shared_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected, bool database)
+[[nodiscard]] static bool parseDropReplica(boost::intrusive_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected, bool database)
 {
     if (!parseQueryWithOnCluster(res, pos, expected))
         return false;
@@ -206,7 +206,7 @@ enum class SystemQueryTargetType : uint8_t
     return true;
 }
 
-[[nodiscard]] static bool parseDropCatalogReplica(std::shared_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected)
+[[nodiscard]] static bool parseDropCatalogReplica(boost::intrusive_ptr<ASTSystemQuery> & res, IParser::Pos & pos, Expected & expected)
 {
     ASTPtr ast;
     if (!ParserStringLiteral{}.parse(pos, ast, expected))
@@ -222,7 +222,7 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
 
     using Type = ASTSystemQuery::Type;
 
-    auto res = std::make_shared<ASTSystemQuery>();
+    auto res = make_intrusive<ASTSystemQuery>();
 
     bool found = false;
 
@@ -258,6 +258,7 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
             {"DROP QUERY CACHE", Type::CLEAR_QUERY_CACHE},
             {"DROP COMPILED EXPRESSION CACHE", Type::CLEAR_COMPILED_EXPRESSION_CACHE},
             {"DROP ICEBERG METADATA CACHE", Type::CLEAR_ICEBERG_METADATA_CACHE},
+            {"DROP PARQUET METADATA CACHE", Type::CLEAR_PARQUET_METADATA_CACHE},
             {"DROP FILESYSTEM CACHE", Type::CLEAR_FILESYSTEM_CACHE},
             {"DROP DISTRIBUTED CACHE", Type::CLEAR_DISTRIBUTED_CACHE},
             {"DROP DISK METADATA CACHE", Type::CLEAR_DISK_METADATA_CACHE},
@@ -686,7 +687,7 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
 
             if (ParserKeyword{Keyword::FROM}.ignore(pos, expected) && ParserIdentifierWithOptionalParameters{}.parse(pos, ast, expected))
             {
-                ast->as<ASTFunction &>().kind = ASTFunction::Kind::BACKUP_NAME;
+                ast->as<ASTFunction &>().setKind(ASTFunction::Kind::BACKUP_NAME);
                 res->backup_source = ast;
                 res->children.push_back(res->backup_source);
             }
@@ -920,7 +921,11 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
             break;
         }
 #endif
-
+        case Type::RESET_DDL_WORKER: {
+            if (!parseQueryWithOnCluster(res, pos, expected))
+                return false;
+            break;
+        }
         default:
         {
             if (!parseQueryWithOnCluster(res, pos, expected))
