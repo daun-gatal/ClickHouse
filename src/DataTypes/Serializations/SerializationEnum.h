@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <typeinfo>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <DataTypes/Serializations/SerializationNumber.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/EnumValues.h>
@@ -48,7 +50,14 @@ public:
 
     ~SerializationEnum() override;
 
-    String getName() const override { return String(typeid(Type).name()) + "_Enum"; }
+    String getName() const override
+    {
+        const auto & vals = ref_enum_values.getValues();
+        std::vector<String> parts(vals.size());
+        for (size_t i = 0; i < vals.size(); ++i)
+            parts[i] = fmt::format("{}={}", vals[i].first, static_cast<int>(vals[i].second));
+        return fmt::format("{}_Enum({})", typeid(Type).name(), fmt::join(parts, ","));
+    }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void serializeTextEscaped(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
