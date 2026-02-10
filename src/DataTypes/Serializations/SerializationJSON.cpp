@@ -373,6 +373,12 @@ void SerializationJSON<Parser>::deserializeTextJSON(IColumn & column, ReadBuffer
 }
 
 template <typename Parser>
+String SerializationJSON<Parser>::getName() const
+{
+    return "JSON";
+}
+
+template <typename Parser>
 SerializationJSON<Parser>::~SerializationJSON()
 {
     SerializationObjectPool::instance().remove(getName());

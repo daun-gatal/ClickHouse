@@ -130,6 +130,12 @@ bool SerializationDecimal<T>::tryDeserializeTextJSON(IColumn & column, ReadBuffe
 
 
 template <typename T>
+String SerializationDecimal<T>::getName() const
+{
+    return "Decimal(" + std::to_string(this->precision) + ", " + std::to_string(this->scale) + ")";
+}
+
+template <typename T>
 SerializationDecimal<T>::~SerializationDecimal()
 {
     SerializationObjectPool::instance().remove(this->getName());

@@ -23,6 +23,8 @@ public:
 
     ~SerializationFixedString() override;
 
+    String getName() const override;
+
     size_t getN() const { return n; }
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;

@@ -30,6 +30,8 @@ public:
 
     ~SerializationNullable() override;
 
+    String getName() const override;
+
     const SerializationPtr & getNested() const { return nested; }
 
     void enumerateStreams(

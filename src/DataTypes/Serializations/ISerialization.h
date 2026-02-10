@@ -61,7 +61,7 @@ protected:
     ISerialization() = default;
 
 public:
-    /// Must be overriden in the "leaf" derivatives. The following line must be called:
+    /// Must be overridden in the "leaf" derivatives. The following line must be called:
     /// SerializationObjectPool::instance().remove(getName());
     virtual ~ISerialization() = 0;
 

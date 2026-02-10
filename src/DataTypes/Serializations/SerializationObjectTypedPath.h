@@ -27,6 +27,8 @@ public:
 
     ~SerializationObjectTypedPath() override;
 
+    String getName() const override;
+
     void enumerateStreams(
         EnumerateStreamsSettings & settings,
         const StreamCallback & callback,

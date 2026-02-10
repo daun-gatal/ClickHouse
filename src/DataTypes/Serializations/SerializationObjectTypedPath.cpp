@@ -14,6 +14,11 @@ namespace ErrorCodes
 }
 
 
+String SerializationObjectTypedPath::getName() const
+{
+    return "ObjectTypedPath(" + nested_serialization->getName() + ", " + path + ")";
+}
+
 SerializationObjectTypedPath::~SerializationObjectTypedPath()
 {
     SerializationObjectPool::instance().remove(getName());
