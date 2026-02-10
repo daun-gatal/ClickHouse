@@ -34,7 +34,7 @@ Chunk Squashing::flush()
     return result;
 }
 
-Chunk Squashing::squash(Chunk && input_chunk, SharedHeader header)
+Chunk Squashing::squash(Chunk && input_chunk)
 {
     if (!input_chunk)
         return std::move(input_chunk);
@@ -44,16 +44,16 @@ Chunk Squashing::squash(Chunk && input_chunk, SharedHeader header)
     if (!squash_info)
         throw Exception(ErrorCodes::LOGICAL_ERROR, "There is no ChunksToSquash in ChunkInfoPtr");
 
-    return squash(std::move(squash_info->chunks), std::move(input_chunk.getChunkInfos()), header);
+    return squash(std::move(squash_info->chunks), std::move(input_chunk.getChunkInfos()));
 }
 
-Chunk Squashing::squash(std::vector<Chunk> && input_chunks, Chunk::ChunkInfoCollection && infos, SharedHeader header)
+Chunk Squashing::squash(std::vector<Chunk> && input_chunks, Chunk::ChunkInfoCollection && infos)
 {
     auto input_chunks_size = input_chunks.size();
     LOG_TEST(getLogger("squashing"), "input chunks count {}", input_chunks_size);
 
     Chunk::ChunkInfoCollection result_info;
-    /// merge all infos before squashing the chunks in order to release original block in deduplication info
+    /// merge all infos before squashing the chunks
     for (auto & chunk : input_chunks)
     {
         LOG_TEST(getLogger("squashing"), "merge deduplication info debug: {}",
@@ -71,15 +71,6 @@ Chunk Squashing::squash(std::vector<Chunk> && input_chunks, Chunk::ChunkInfoColl
             return std::move(input_chunks_.front());
         return Squashing::squash(std::move(input_chunks_));
     }(std::move(input_chunks));
-
-    // Update original block in deduplication info after squashing
-    if (auto deduplication_info = result_info.get<DeduplicationInfo>())
-    {
-        LOG_TEST(getLogger("squashing"), "Updating original block in deduplication info after squashing, rows: {}, input_chunks count {}, debug: {}",
-            result.getNumRows(), input_chunks_size, deduplication_info->debug());
-        if (!deduplication_info->isDisabled())
-            deduplication_info->updateOriginalBlock(result, header);
-    }
 
     result.setChunkInfos(std::move(result_info));
 

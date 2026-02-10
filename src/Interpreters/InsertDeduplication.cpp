@@ -140,14 +140,14 @@ std::vector<std::string> getDeduplicationPaths(std::string storage_path, const s
 static std::atomic<size_t> deduplication_info_id_counter{0};
 
 
-DeduplicationInfo::FilterResult DeduplicationInfo::deduplicateSelf(bool deduplication_enabled, const std::string & partition_id, ContextPtr context) const
+DeduplicationInfo::FilterResult DeduplicationInfo::deduplicateSelf(const Block & block, bool deduplication_enabled, const std::string & partition_id, ContextPtr context) const
 {
     if (disabled || !deduplication_enabled)
     {
         return {};
     }
 
-    return recalculateBlock(filterImpl(filterSelf(partition_id)), partition_id, context);
+    return recalculateBlock(filterImpl(block, filterSelf(partition_id)), partition_id, context);
 }
 
 
@@ -163,7 +163,9 @@ DeduplicationInfo::FilterResult DeduplicationInfo::recalculateBlock(Deduplicatio
     LOG_DEBUG(logger, "token to retry with: {}", token_for_retry->debug());
     chunk.getChunkInfos().add(std::move(token_for_retry));
 
-    auto header = std::make_shared<const Block>(filtered.filtered_block->cloneEmpty());
+    auto header = original_block_header
+        ? original_block_header
+        : std::make_shared<const Block>(filtered.filtered_block->cloneEmpty());
 
     auto block = goRetry(std::move(header), std::move(chunk), filtered.deduplication_info, partition_id, context);
     filtered.filtered_block = std::make_shared<Block>(std::move(block));
@@ -191,9 +193,9 @@ std::set<size_t> DeduplicationInfo::filterSelf(const String & partition_id) cons
 }
 
 
-std::set<size_t> DeduplicationInfo::filterOriginal(const std::vector<std::string> & collisions, const String & partition_id) const
+std::set<size_t> DeduplicationInfo::filterOriginal(const Block & block, const std::vector<std::string> & collisions, const String & partition_id) const
 {
-    chassert(original_block && !original_block->empty());
+    chassert(!block.empty());
 
     if (collisions.empty())
         return {};
@@ -218,6 +220,7 @@ DeduplicationInfo::Ptr DeduplicationInfo::cloneSelfFilterImpl() const
     new_instance->visited_views = visited_views;
     new_instance->insert_dependencies = insert_dependencies;
     new_instance->retried_view_id = retried_view_id;
+    new_instance->original_block_header = original_block_header;
     new_instance->original_block_view_id = original_block_view_id;
     return new_instance;
 }
@@ -235,15 +238,13 @@ DeduplicationInfo::Ptr DeduplicationInfo::cloneMergeImpl() const
 }
 
 
-DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<size_t> & collision_offsets) const
+DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const Block & block, const std::set<size_t> & collision_offsets) const
 {
     if (collision_offsets.empty())
         return {};
 
-    chassert(original_block && !original_block->empty());
-    chassert(original_block && original_block->rows() > 0);
-
-    auto & block = *original_block;
+    chassert(!block.empty());
+    chassert(block.rows() > 0);
 
     Ptr new_tokens = cloneSelfFilterImpl();
 
@@ -274,7 +275,7 @@ DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<siz
     if (removed_rows == block.rows())
     {
         chassert(removed_tokens == getCount());
-        new_tokens->original_block = std::make_shared<Block>(block.cloneEmpty());
+        auto empty_block = std::make_shared<Block>(block.cloneEmpty());
 
         LOG_TEST(
             logger,
@@ -283,7 +284,7 @@ DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<siz
             debug());
 
         return {
-            .filtered_block = new_tokens->original_block,
+            .filtered_block = std::move(empty_block),
             .deduplication_info = new_tokens,
             .removed_rows = removed_rows,
             .removed_tokens = removed_tokens
@@ -300,7 +301,7 @@ DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<siz
     chassert(filtered_block.rows() == new_tokens->getRows());
     chassert(filtered_block.rows() + removed_rows == block.rows());
 
-    new_tokens->original_block = std::make_shared<Block>(std::move(filtered_block));
+    auto filtered_block_ptr = std::make_shared<Block>(std::move(filtered_block));
 
     LOG_DEBUG(
         logger,
@@ -309,12 +310,12 @@ DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<siz
         block.rows(),
         collision_offsets.size(),
         getCount(),
-        new_tokens->original_block->rows(),
+        filtered_block_ptr->rows(),
         new_tokens->getCount(),
         debug());
 
     return {
-        .filtered_block = new_tokens->original_block,
+        .filtered_block = std::move(filtered_block_ptr),
         .deduplication_info = new_tokens,
         .removed_rows = removed_rows,
         .removed_tokens = removed_tokens
@@ -322,15 +323,17 @@ DeduplicationInfo::FilterResult DeduplicationInfo::filterImpl(const std::set<siz
 }
 
 
-UInt128 DeduplicationInfo::calculateDataHash(size_t offset) const
+UInt128 DeduplicationInfo::calculateDataHash(const Block * block, size_t offset) const
 {
     chassert(offset < offsets.size());
-    chassert(original_block->rows() == getRows());
 
     if (tokens[offset].data_hash.has_value())
         return tokens[offset].data_hash.value();
 
-    auto cols = original_block->getColumns();
+    chassert(block && "Block must be provided when data hash is not yet cached");
+    chassert(block->rows() == getRows());
+
+    auto cols = block->getColumns();
 
     SipHash hash;
     for (size_t j = getTokenBegin(offset); j < getTokenEnd(offset); ++j)
@@ -359,7 +362,7 @@ DeduplicationHash DeduplicationInfo::getBlockUnifiedHash(size_t offset, const st
     }
     else
     {
-        auto data_hash = calculateDataHash(offset);
+        auto data_hash = calculateDataHash(nullptr, offset);
         extension = fmt::format("{}_{}", data_hash.items[0], data_hash.items[1]);
     }
 
@@ -394,7 +397,7 @@ DeduplicationHash DeduplicationInfo::getBlockHash(size_t offset, const std::stri
     if (token.empty())
     {
         chassert(level == Level::SOURCE);
-        token.by_part_writer = calculateDataHash(offset);
+        token.by_part_writer = calculateDataHash(nullptr, offset);
     }
 
     if (token.by_part_writer.has_value() && level == Level::SOURCE)
@@ -534,22 +537,13 @@ std::string DeduplicationInfo::debug() const
         token_strs.push_back("...");
     }
 
-    std::string block_str;
-    if (!original_block)
-        block_str = "null";
-    else if (original_block->empty())
-        block_str = "empty";
-    else
-        block_str = fmt::format("rows/cols {}/{}", original_block->rows(), original_block->getColumns().size());
-
     return fmt::format(
-        "instance_id: {}, {}, {}, level {}, rows/tokens {}/{}, in block: {}, tokens: {}:[{}], visited views: {}:[{}], retried view id: {}, original block id: {}, unification_stage {}",
+        "instance_id: {}, {}, {}, level {}, rows/tokens {}/{}, tokens: {}:[{}], visited views: {}:[{}], retried view id: {}, original block id: {}, unification_stage {}",
         instance_id,
         is_async_insert ? "async" : "sync",
         disabled ? "disabled" : "enabled",
         level,
         getRows(), getCount(),
-        block_str,
         getCount(), fmt::join(token_strs, ","),
         visited_views.size(), fmt::join(visited_views, ","),
         retried_view_id,
@@ -657,7 +651,7 @@ void DeduplicationInfo::redefineTokensWithDataHash()
 {
     LOG_TEST(logger, "redefineTokensWithDataHash, debug: {}", debug());
 
-    if (level != Level::SOURCE)
+    if (disabled || level != Level::SOURCE)
         return;
 
     for (size_t i = 0; i < tokens.size(); ++i)
@@ -665,8 +659,21 @@ void DeduplicationInfo::redefineTokensWithDataHash()
         auto & token = tokens[i];
         if (token.empty())
         {
-            /// calculate tokens from data
-            token.by_part_writer = calculateDataHash(i);
+            /// Data hashes should have been eagerly cached by cacheDataHashes at the source level
+            token.by_part_writer = calculateDataHash(nullptr, i);
+        }
+    }
+}
+
+
+void DeduplicationInfo::cacheDataHashes(const Block & block)
+{
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+        if (tokens[i].empty())
+        {
+            /// Eagerly compute and cache data hash while the source block data is available
+            calculateDataHash(&block, i);
         }
     }
 }
@@ -691,7 +698,7 @@ DeduplicationInfo::DeduplicationInfo(const DeduplicationInfo & other)
     , level(other.level)
     , tokens(other.tokens)
     , offsets(other.offsets)
-    , original_block(other.original_block)
+    , original_block_header(other.original_block_header)
     , original_block_view_id(other.original_block_view_id)
     , visited_views(other.visited_views)
     , retried_view_id(other.retried_view_id)
@@ -865,26 +872,16 @@ Block DeduplicationInfo::goRetry(SharedHeader && header, Chunk && filtered_data,
 }
 
 
-void DeduplicationInfo::updateOriginalBlock(const Chunk & chunk, SharedHeader header)
-{
-    chassert(!visited_views.empty());
-
-    LOG_TEST(
-        logger,
-        "updateOriginalBlock with chunk rows/col {}/{} debug: {}",
-        chunk.getNumRows(), chunk.getNumColumns(),
-        debug());
-
-    if (!original_block)
-        original_block_view_id = visited_views.back();
-
-    original_block = std::make_shared<Block>(header->cloneWithColumns(chunk.getColumns()));
-}
-
-
 void DeduplicationInfo::setInsertDependencies(InsertDependenciesBuilderConstPtr insert_dependencies_)
 {
     insert_dependencies = std::move(insert_dependencies_);
+}
+
+
+void DeduplicationInfo::setOriginalBlockHeader(SharedHeader header)
+{
+    if (!original_block_header)
+        original_block_header = std::move(header);
 }
 
 
@@ -897,6 +894,7 @@ void DeduplicationInfo::setRootViewID(const StorageIDMaybeEmpty & id)
 
     addExtraPart(TokenDefinition::Extra::asSourceID(id));
     visited_views.push_back(id);
+    original_block_view_id = id;
 }
 
 
@@ -938,11 +936,11 @@ void DeduplicationInfo::setViewBlockNumber(size_t block_number)
 
 
 DeduplicationInfo::FilterResult DeduplicationInfo::deduplicateBlock(
-    const std::vector<std::string> & existing_block_ids, const std::string & partition_id, ContextPtr context) const
+    const Block & block, const std::vector<std::string> & existing_block_ids, const std::string & partition_id, ContextPtr context) const
 {
     chassert(!existing_block_ids.empty());
     chassert(!disabled);
-    return recalculateBlock(filterImpl(filterOriginal(existing_block_ids, partition_id)), partition_id, context);
+    return recalculateBlock(filterImpl(block, filterOriginal(block, existing_block_ids, partition_id)), partition_id, context);
 }
 
 

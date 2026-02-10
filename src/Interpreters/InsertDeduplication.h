@@ -91,8 +91,8 @@ public:
         size_t removed_rows = 0;
         size_t removed_tokens = 0;
     };
-    FilterResult deduplicateSelf(bool deduplication_enabled, const std::string & partition_id, ContextPtr context) const;
-    FilterResult deduplicateBlock(const std::vector<std::string> & existing_block_ids, const std::string & partition_id, ContextPtr context) const;
+    FilterResult deduplicateSelf(const Block & block, bool deduplication_enabled, const std::string & partition_id, ContextPtr context) const;
+    FilterResult deduplicateBlock(const Block & block, const std::vector<std::string> & existing_block_ids, const std::string & partition_id, ContextPtr context) const;
 
     std::vector<DeduplicationHash> getDeduplicationHashes(const std::string & partition_id, bool deduplication_enabled) const;
 
@@ -115,18 +115,22 @@ public:
     /// hash from part writer would be used as user token for dependent views if no user token has been set before
     void redefineTokensWithDataHash();
 
+    /// Eagerly cache data hashes for tokens that have no user token set.
+    /// Must be called at the source level while the original block data is still available.
+    void cacheDataHashes(const Block & block);
+
     void setViewID(const StorageID & id);
     void setViewBlockNumber(size_t block_number);
 
     void setInsertDependencies(InsertDependenciesBuilderConstPtr insert_dependencies_);
-    void updateOriginalBlock(const Chunk & chunk, SharedHeader header);
+    void setOriginalBlockHeader(SharedHeader header);
 
     const std::vector<StorageIDMaybeEmpty> & getVisitedViews() const;
 
 private:
     DeduplicationInfo(bool async_insert_, InsertDeduplicationVersions unification_stage_);
 
-    UInt128 calculateDataHash(size_t offset) const;
+    UInt128 calculateDataHash(const Block * block, size_t offset) const;
     // the old one hash
     DeduplicationHash getBlockHash(size_t offset, const std::string & partition_) const;
     // the new unified hash
@@ -136,8 +140,8 @@ private:
 
     Ptr cloneSelfFilterImpl() const;
     std::set<size_t> filterSelf(const String & partition_id) const;
-    std::set<size_t> filterOriginal(const std::vector<std::string> & collisions, const String & partition_id) const;
-    FilterResult filterImpl(const std::set<size_t> & collision_offsets) const;
+    std::set<size_t> filterOriginal(const Block & block, const std::vector<std::string> & collisions, const String & partition_id) const;
+    FilterResult filterImpl(const Block & block, const std::set<size_t> & collision_offsets) const;
 
     Ptr cloneMergeImpl() const;
 
@@ -226,7 +230,7 @@ private:
     mutable std::vector<TokenDefinition> tokens;
     std::vector<size_t> offsets; // points to the last row for each offset
 
-    std::shared_ptr<Block> original_block;
+    SharedHeader original_block_header;
     StorageIDMaybeEmpty original_block_view_id;
 
     std::vector<StorageIDMaybeEmpty> visited_views;

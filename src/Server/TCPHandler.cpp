@@ -1236,8 +1236,7 @@ AsynchronousInsertQueue::PushResult TCPHandler::processAsyncInsertQuery(QuerySta
         squashing.setHeader(state.block_for_insert.cloneEmpty());
 
         auto result_chunk = Squashing::squash(
-            squashing.add({state.block_for_insert.getColumns(), state.block_for_insert.rows()}, /*flush_if_enough_size*/ true),
-            squashing.getHeader());
+            squashing.add({state.block_for_insert.getColumns(), state.block_for_insert.rows()}, /*flush_if_enough_size*/ true));
 
         sendLogs(state);
         sendInsertProfileEvents(state);
@@ -1254,8 +1253,7 @@ AsynchronousInsertQueue::PushResult TCPHandler::processAsyncInsertQuery(QuerySta
     }
 
     Chunk result_chunk = Squashing::squash(
-        squashing.flush(),
-        squashing.getHeader());
+        squashing.flush());
     if (!result_chunk)
     {
         return insert_queue.pushQueryWithBlock(state.parsed_query, squashing.getHeader()->cloneWithoutColumns(), state.query_context);

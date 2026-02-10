@@ -28,7 +28,6 @@ std::vector<Int64> testSelfDeduplicate(std::vector<Int64> data, std::vector<size
 
     auto deduplication_info = DeduplicationInfo::create(true, InsertDeduplicationVersions::NEW_UNIFIED_HASHES);
     deduplication_info->setRootViewID({});
-    deduplication_info->updateOriginalBlock(Chunk(block.getColumns(), block.rows()), std::make_shared<const Block>(block.cloneEmpty()));
     deduplication_info->disabled = false; // there is no insert dependencies instance in this test
 
     chassert(offsets.size() == hashes.size());
@@ -42,7 +41,7 @@ std::vector<Int64> testSelfDeduplicate(std::vector<Int64> data, std::vector<size
     chassert(offsets.size() == deduplication_info->getCount());
     chassert(offsets.back() == deduplication_info->getRows());
 
-    auto filtered = deduplication_info->filterImpl(deduplication_info->filterSelf("all"));
+    auto filtered = deduplication_info->filterImpl(block, deduplication_info->filterSelf("all"));
 
     ColumnPtr col = filtered.filtered_block->getColumns()[0];
 

@@ -44,7 +44,7 @@ public:
     Squashing(Squashing && other) = default;
 
     Chunk add(Chunk && input_chunk, bool flush_if_enough_size = false);
-    static Chunk squash(Chunk && input_chunk, SharedHeader header);
+    static Chunk squash(Chunk && input_chunk);
 
     Chunk flush();
 
@@ -71,7 +71,7 @@ private:
 
     CurrentData accumulated;
 
-    static Chunk squash(std::vector<Chunk> && input_chunks, Chunk::ChunkInfoCollection && infos, SharedHeader header);
+    static Chunk squash(std::vector<Chunk> && input_chunks, Chunk::ChunkInfoCollection && infos);
     static Chunk squash(std::vector<Chunk> && input_chunks);
     // LazyMaterializingTransform calls private method squash(std::vector<Chunk> && input_chunks)
     // that method does not handle ChunkInfos,

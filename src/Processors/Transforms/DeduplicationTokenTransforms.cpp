@@ -142,7 +142,15 @@ void AddDeduplicationInfoTransform::transform(Chunk & chunk)
     info->setRootViewID(root_view_id);
     info->setSourceBlockNumber(block_number++);
     if (!info->isDisabled())
-        info->updateOriginalBlock(chunk, getInputPort().getSharedHeader());
+    {
+        info->setOriginalBlockHeader(getInputPort().getSharedHeader());
+
+        /// Eagerly cache data hashes for tokens without a user token while the source block data is available.
+        /// This is needed because the block data may not be available later in the MV pipeline
+        /// (e.g., after aggregation changes the number of rows).
+        auto block = getInputPort().getHeader().cloneWithColumns(chunk.getColumns());
+        info->cacheDataHashes(block);
+    }
 }
 
 RedefineDeduplicationInfoWithDataHashTransform::RedefineDeduplicationInfoWithDataHashTransform(SharedHeader header_)
@@ -153,8 +161,6 @@ RedefineDeduplicationInfoWithDataHashTransform::RedefineDeduplicationInfoWithDat
 void RedefineDeduplicationInfoWithDataHashTransform::transform(Chunk & chunk)
 {
     auto info = chunk.getChunkInfos().getSafe<DeduplicationInfo>();
-
-    // part hash is used only for the deduplication for one part in the target table partition
     info->redefineTokensWithDataHash();
 }
 }

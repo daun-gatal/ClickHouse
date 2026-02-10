@@ -301,7 +301,7 @@ void ReplicatedMergeTreeSink::consume(Chunk & chunk)
         {
             ProfileEventTimeIncrement<Microseconds> duplication_elapsed(ProfileEvents::DuplicationElapsedMicroseconds);
 
-            auto result = current_deduplication_info->deduplicateSelf(deduplicate, current_block.partition_id, context);
+            auto result = current_deduplication_info->deduplicateSelf(*current_block.block, deduplicate, current_block.partition_id, context);
 
             if (result.removed_rows > 0)
             {
@@ -463,6 +463,7 @@ void ReplicatedMergeTreeSink::finishDelayed(const ZooKeeperWithFaultInjectionPtr
                     LOG_DEBUG(log, "Found duplicate block IDs: {}, retry times {}", fmt::join(getDeduplicationBlockIds(conflicts), ", "), retry_times);
 
                     auto result = partition.deduplication_info->deduplicateBlock(
+                        *partition.block_with_partition.block,
                         getDeduplicationBlockIds(conflicts),
                         partition.block_with_partition.partition_id,
                         context);
