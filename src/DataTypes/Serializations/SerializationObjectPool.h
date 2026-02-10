@@ -19,17 +19,20 @@ public:
         return cache;
     }
 
-    SerializationPtr getOrCreate(const String & key, SerializationPtr && serialization)
+    template <typename Factory>
+    SerializationPtr getOrCreate(const String & key, Factory && factory)
     {
-        SerializationPtr res;
-        {
-            std::lock_guard lock(mutex);
-            res = cache.insert({key, std::move(serialization)}).first->second;
-        }
-        return res;
+        std::lock_guard lock(mutex);
+        auto it = cache.find(key);
+        if (it != cache.end())
+            return it->second;
+        
+        auto serialization = factory();
+        cache[key] = serialization;
+        return serialization;
     }
 
-    void remove(const String & key)
+    void remove(const String & key, const ISerialization * ptr)
     {
         std::lock_guard lock(mutex);
         /// During pool destruction, the map is being torn down and
@@ -39,8 +42,9 @@ public:
             return;
 
         auto it = cache.find(key);
+        /// Only remove if the pointer matches the cached instance
         /// use_count == 2 means: one in cache, one held by the object being destroyed
-        if (it != cache.end() && it->second.use_count() == 2)
+        if (it != cache.end() && it->second.get() == ptr && it->second.use_count() == 2)
             cache.erase(it);
     }
 
