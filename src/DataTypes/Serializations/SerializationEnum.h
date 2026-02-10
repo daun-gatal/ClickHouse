@@ -1,11 +1,11 @@
 #pragma once
 
 #include <memory>
-#include <typeinfo>
 #include <DataTypes/Serializations/SerializationNumber.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/EnumValues.h>
 #include <DataTypes/DataTypeEnum.h>
+#include <base/TypeName.h>
 
 namespace DB
 {
@@ -36,7 +36,7 @@ private:
 public:
     static SerializationPtr create(const std::shared_ptr<const DataTypeEnum<Type>> & enum_type)
     {
-        String key = String(typeid(Type).name()) + "_Enum";
+        String key = String(TypeName<Type>) + "_Enum";
         return SerializationObjectPool::instance().getOrCreate(
             key,
             [enum_type] { return SerializationPtr(new SerializationEnum(enum_type)); });
@@ -44,7 +44,7 @@ public:
 
     static SerializationPtr create(const Values & values_)
     {
-        String key = String(typeid(Type).name()) + "_Enum";
+        String key = String(TypeName<Type>) + "_Enum";
         return SerializationObjectPool::instance().getOrCreate(
             key,
             [values_] { return SerializationPtr(new SerializationEnum(values_)); });

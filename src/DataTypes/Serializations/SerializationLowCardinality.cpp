@@ -43,6 +43,9 @@ SerializationLowCardinality::SerializationLowCardinality(const DataTypePtr & dic
 
 SerializationPtr SerializationLowCardinality::create(const DataTypePtr & dictionary_type_)
 {
+    // Note: We compute dict_inner_serialization here to construct the cache key,
+    // even though it's only needed if we have a cache miss. This is required because
+    // getName() includes the inner serialization name in the key for correctness.
     auto dict_inner_serialization = removeNullable(dictionary_type_)->getDefaultSerialization();
     String key = "LowCardinality(" + dictionary_type_->getName() + ", " + dict_inner_serialization->getName() + ")";
     return SerializationObjectPool::instance().getOrCreate(
