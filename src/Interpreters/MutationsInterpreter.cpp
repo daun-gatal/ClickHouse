@@ -1678,11 +1678,28 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
         }
 
         /// Add all output columns to prevent ExpressionAnalyzer from deleting them from source columns.
-        for (const auto & column : stage.output_columns)
+        /// Keep deterministic output order matching storage columns as much as possible.
+        NameSet added_output_columns;
+        added_output_columns.reserve(stage.output_columns.size());
+
+        auto add_output_column = [&](const String & column_name)
         {
-            all_asts->children.push_back(make_intrusive<ASTIdentifier>(column));
-            output_columns_in_order.push_back(column);
-        }
+            if (!stage.output_columns.contains(column_name))
+                return;
+
+            if (!added_output_columns.emplace(column_name).second)
+                return;
+
+            all_asts->children.push_back(make_intrusive<ASTIdentifier>(column_name));
+            output_columns_in_order.push_back(column_name);
+        };
+
+        for (const auto & column : all_columns)
+            add_output_column(column.name);
+
+        /// Fallback for hidden/output-only columns that are not present in `all_columns`.
+        for (const auto & column_name : stage.output_columns)
+            add_output_column(column_name);
 
         /// Executing scalar subquery on that stage can lead to deadlock
         /// e.g. ALTER referencing the same table in scalar subquery
