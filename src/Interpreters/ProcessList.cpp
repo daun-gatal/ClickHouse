@@ -330,11 +330,11 @@ ProcessList::EntryPtr ProcessList::insert(
             processes.end(),
             query);
 
-        CancellationChecker::getInstance().appendTask(query, query_context->getSettingsRef()[Setting::max_execution_time].totalMilliseconds(), query_context->getSettingsRef()[Setting::timeout_overflow_mode]);
+        bool registered_in_cancellation_checker = CancellationChecker::getInstance().appendTask(query, query_context->getSettingsRef()[Setting::max_execution_time].totalMilliseconds(), query_context->getSettingsRef()[Setting::timeout_overflow_mode]);
 
         increaseQueryKindAmount(query_kind);
 
-        res = std::make_shared<Entry>(*this, process_it);
+        res = std::make_shared<Entry>(*this, process_it, registered_in_cancellation_checker);
 
         (*process_it)->setUserProcessList(&user_process_list);
         (*process_it)->setProcessListEntry(res);
@@ -368,6 +368,7 @@ ProcessList::EntryPtr ProcessList::insert(
 
 ProcessListEntry::~ProcessListEntry()
 {
+    if (registered_in_cancellation_checker)
     {
         /// We need to block the overcommit tracker here to avoid lock inversion because OvercommitTracker takes a lock on the ProcessList::mutex.
         /// When task is added, we lock the ProcessList::mutex, and then the CancellationChecker mutex.
