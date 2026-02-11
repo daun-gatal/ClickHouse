@@ -25,7 +25,7 @@ ${CLICKHOUSE_CLIENT} -q "
     SYSTEM FLUSH LOGS opentelemetry_span_log;
     SELECT attribute['db.statement']       as query
     FROM system.opentelemetry_span_log
-    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date                      >= yesterday()
+    WHERE finish_date                      >= yesterday()
     AND   operation_name                   = 'query'
     AND   attribute['clickhouse.query_id'] = '${1}'
     Format JSONEachRow
@@ -40,7 +40,7 @@ ${CLICKHOUSE_CLIENT} -q "
            attribute['clickhouse.read_rows']     as read_rows,
            attribute['clickhouse.written_rows']  as written_rows
     FROM system.opentelemetry_span_log
-    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date                      >= yesterday()
+    WHERE finish_date                      >= yesterday()
     AND   operation_name                   = 'query'
     AND   attribute['clickhouse.query_id'] = '${1}'
     Format JSONEachRow
@@ -55,7 +55,7 @@ result=$(${CLICKHOUSE_CLIENT} -q "
            attribute['clickhouse.setting.max_block_size'],
            attribute['clickhouse.setting.max_execution_time']
     FROM system.opentelemetry_span_log
-    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date                      >= yesterday()
+    WHERE finish_date                      >= yesterday()
     AND   operation_name                   = 'query'
     AND   attribute['clickhouse.query_id'] = '${1}'
     FORMAT JSONEachRow;
@@ -88,7 +88,7 @@ function check_tcp_attributes()
       SYSTEM FLUSH LOGS opentelemetry_span_log;
       SELECT attribute['client.version']
       FROM system.opentelemetry_span_log
-      WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
+      WHERE finish_date >= yesterday()
       AND operation_name = 'query'
       AND attribute['clickhouse.query_id'] = '${query_id}'
       FORMAT JSONEachRow;
@@ -125,7 +125,7 @@ function check_http_attributes()
              attribute['http.user.agent'],
              attribute['http.method']
       FROM system.opentelemetry_span_log
-      WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
+      WHERE finish_date >= yesterday()
       AND operation_name = 'query'
       AND attribute['clickhouse.query_id'] = '${query_id}'
       FORMAT JSONEachRow;
