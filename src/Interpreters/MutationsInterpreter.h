@@ -39,6 +39,12 @@ ASTPtr getPartitionAndPredicateExpressionForMutationCommand(
     ContextPtr context
 );
 
+/// Estimates size of the synthetic "affected rows" query for mutation commands.
+size_t evaluateMutationCommandsSize(
+    const MutationCommands & commands,
+    const StoragePtr & storage,
+    ContextPtr context);
+
 /// Create an input stream that will read data from storage and apply mutation commands (UPDATEs, DELETEs, MATERIALIZEs)
 /// to this data.
 class MutationsInterpreter

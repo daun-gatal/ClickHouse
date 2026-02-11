@@ -42,6 +42,7 @@
 #include <Processors/Sources/ThrowingExceptionSource.h>
 #include <Analyzer/QueryTreeBuilder.h>
 #include <Analyzer/QueryTreePassManager.h>
+#include <Analyzer/createUniqueAliasesIfNecessary.h>
 #include <Analyzer/QueryNode.h>
 #include <Analyzer/Resolve/QueryAnalyzer.h>
 #include <Analyzer/TableNode.h>
@@ -204,6 +205,7 @@ MutationExpressionAnalysisResult analyzeMutationExpression(
 
     QueryAnalyzer analyzer(/*only_analyze=*/!execute_scalar_subqueries);
     analyzer.resolve(expression_query_tree, table_expression, analysis_context);
+    createUniqueAliasesIfNecessary(expression_query_tree, analysis_context);
 
     GlobalPlannerContextPtr global_planner_context = std::make_shared<GlobalPlannerContext>(
         /*parallel_replicas_node=*/nullptr,
@@ -302,6 +304,22 @@ PreparedSetsPtr collectPreparedSetsFromActionsChain(const ExpressionActionsChain
     }
 
     return prepared_sets;
+}
+
+void mergePreparedSets(const PreparedSetsPtr & target, const PreparedSetsPtr & source)
+{
+    if (!target || !source)
+        return;
+
+    for (const auto & [_, tuple_sets] : source->getSetsFromTuple())
+        for (const auto & tuple_set : tuple_sets)
+            target->addSet(tuple_set);
+
+    for (const auto & [_, storage_set] : source->getSetsFromStorage())
+        target->addSet(storage_set);
+
+    for (const auto & subquery_set : source->getSubqueries())
+        target->addSet(subquery_set);
 }
 
 bool astContainsSubquery(const ASTPtr & ast)
@@ -476,6 +494,14 @@ ASTPtr getPartitionAndPredicateExpressionForMutationCommand(
     if (command.predicate && command.partition)
         return makeASTOperator("and", command.predicate->clone(), std::move(partition_predicate_as_ast_func));
     return command.predicate ? command.predicate->clone() : partition_predicate_as_ast_func;
+}
+
+size_t evaluateMutationCommandsSize(
+    const MutationCommands & commands,
+    const StoragePtr & storage,
+    ContextPtr context)
+{
+    return prepareQueryAffectedAST(commands, storage, context)->size();
 }
 
 MutationsInterpreter::Source::Source(StoragePtr storage_) : storage(std::move(storage_))
@@ -1674,17 +1700,34 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
                 *storage_snapshot->virtual_columns,
                 context,
                 execute_scalar_subqueries);
+            stage.prepared_sets = analysis_result.prepared_sets;
 
             const auto & analyzed_outputs = analysis_result.actions_dag.getOutputs();
             size_t analyzed_output_index = 0;
 
+            ActionsDAG::NodeRawConstPtrs passthrough_output_nodes;
+            passthrough_output_nodes.reserve(output_columns_in_order.size());
+
+            const size_t output_columns_start_index = stage.filters.size() + stage_updates.size();
+            if (analyzed_outputs.size() < output_columns_start_index + output_columns_in_order.size())
+            {
+                throw Exception(
+                    ErrorCodes::LOGICAL_ERROR,
+                    "Unexpected number of analyzer outputs in mutation stage {}. Got {}, expected at least {}",
+                    i,
+                    analyzed_outputs.size(),
+                    output_columns_start_index + output_columns_in_order.size());
+            }
+
+            for (size_t output_column_index = 0; output_column_index < output_columns_in_order.size(); ++output_column_index)
+                passthrough_output_nodes.push_back(analyzed_outputs[output_columns_start_index + output_column_index]);
+
             for (size_t filter_index = 0; filter_index < stage.filters.size(); ++filter_index, ++analyzed_output_index)
             {
                 ActionsDAG::NodeRawConstPtrs filter_output_nodes;
-                filter_output_nodes.reserve(1 + output_columns_in_order.size());
+                filter_output_nodes.reserve(1 + passthrough_output_nodes.size());
                 filter_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
-                for (const auto & output_column : output_columns_in_order)
-                    filter_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+                filter_output_nodes.insert(filter_output_nodes.end(), passthrough_output_nodes.begin(), passthrough_output_nodes.end());
 
                 auto filter_dag = ActionsDAG::cloneSubDAG(filter_output_nodes, false);
                 auto & filter_step = appendActionsDAGStep(actions_chain, std::move(filter_dag), true);
@@ -1703,10 +1746,11 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
                 update_output_nodes.reserve(stage_updates.size() + output_columns_in_order.size());
                 for (size_t update_index = 0; update_index < stage_updates.size(); ++update_index, ++analyzed_output_index)
                     update_output_nodes.push_back(analyzed_outputs[analyzed_output_index]);
-                for (const auto & output_column : output_columns_in_order)
+                for (size_t output_column_index = 0; output_column_index < output_columns_in_order.size(); ++output_column_index)
                 {
+                    const auto & output_column = output_columns_in_order[output_column_index];
                     if (!updated_output_columns.contains(output_column))
-                        update_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+                        update_output_nodes.push_back(passthrough_output_nodes[output_column_index]);
                 }
 
                 ActionsDAG::NodeMapping copied_update_nodes;
@@ -1725,9 +1769,8 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
                 actions_chain.lastStep(analysis_result.actions_dag.getRequiredColumns());
 
             ActionsDAG::NodeRawConstPtrs projection_output_nodes;
-            projection_output_nodes.reserve(output_columns_in_order.size());
-            for (const auto & output_column : output_columns_in_order)
-                projection_output_nodes.push_back(&analysis_result.actions_dag.findInOutputs(output_column));
+            projection_output_nodes.reserve(passthrough_output_nodes.size());
+            projection_output_nodes.insert(projection_output_nodes.end(), passthrough_output_nodes.begin(), passthrough_output_nodes.end());
 
             auto projection_dag = ActionsDAG::cloneSubDAG(projection_output_nodes, false);
             appendActionsDAGStep(actions_chain, std::move(projection_dag), false);
@@ -1787,7 +1830,25 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
         actions_chain.getLastActions();
         actions_chain.finalize();
         if (use_analyzer)
-            stage.prepared_sets = collectPreparedSetsFromActionsChain(actions_chain);
+        {
+            auto sets_from_actions_chain = collectPreparedSetsFromActionsChain(actions_chain);
+            if (!stage.prepared_sets)
+                stage.prepared_sets = std::move(sets_from_actions_chain);
+            else
+                mergePreparedSets(stage.prepared_sets, sets_from_actions_chain);
+
+            const size_t subquery_sets = stage.prepared_sets ? stage.prepared_sets->getSubqueries().size() : 0;
+            const size_t tuple_sets = stage.prepared_sets ? stage.prepared_sets->getSetsFromTuple().size() : 0;
+            const size_t storage_sets = stage.prepared_sets ? stage.prepared_sets->getSetsFromStorage().size() : 0;
+            LOG_TRACE(
+                logger,
+                "Mutation stage {} prepared sets: subqueries={}, tuple_sets={}, storage_sets={}",
+                i,
+                subquery_sets,
+                tuple_sets,
+                storage_sets);
+
+        }
 
         if (i)
         {
