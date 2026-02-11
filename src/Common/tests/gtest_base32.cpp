@@ -1,5 +1,6 @@
 #include <Common/Base32.h>
 
+#include <algorithm>
 #include <string_view>
 
 #include <gtest/gtest.h>

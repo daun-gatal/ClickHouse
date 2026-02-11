@@ -1,6 +1,7 @@
 #include <Core/SettingsChangesHistory.h>
 
 #include <Core/SettingsEnums.h>
+#include <mutex>
 
 #include <Common/Exception.h>
 

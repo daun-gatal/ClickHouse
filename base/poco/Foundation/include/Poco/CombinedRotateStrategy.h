@@ -3,6 +3,7 @@
 #include <Poco/LocalDateTime.h>
 #include <Poco/RotateStrategy.h>
 #include <Poco/Ascii.h>
+#include <optional>
 #include <vector>
 
 
