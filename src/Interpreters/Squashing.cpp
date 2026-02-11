@@ -35,7 +35,7 @@ Chunk Squashing::flush()
     /// In strict limits mode, the front chunk may be partially consumed (offset_first > 0).
     /// Consume the remaining portion before pulling whole chunks.
     /// In non-strict mode, chunks are never partially consumed, so we skip directly to pulling.
-    if (squash_with_strict_limits && !pending.empty() && pending.peekFront().getNumRows() != 0)
+    if (squash_with_strict_limits && !pending.empty() && pending.peekFront())
     {
         size_t rows = pending.peekFront().getNumRows();
         size_t bytes = pending.peekFront().bytes();
@@ -45,7 +45,7 @@ Chunk Squashing::flush()
 
     while (!pending.empty())
     {
-        if (pending.peekFront().getNumRows() == 0)
+        if (!pending.peekFront())
         {
             pending.dropFront();
             continue;
@@ -263,7 +263,7 @@ static Chunk sliceChunk(const Chunk & chunk, size_t offset, size_t length)
 
     Chunk result(std::move(sliced_columns), length);
     result.setChunkInfos((chunk.getChunkInfos().clone()));
-    
+
     return result;
 }
 
@@ -292,7 +292,7 @@ Chunk Squashing::squash(ChunksWithOffsetsAndLengths && input_data)
     {
         auto & front_data = input_data[0];
         auto & first_chunk = front_data.chunk;
-        auto exhausted = (front_data.length == first_chunk.getNumRows());
+        auto exhausted = (front_data.offset + front_data.length == first_chunk.getNumRows());
         mutable_columns.reserve(first_chunk.getNumColumns());
         Columns columns;
         if (exhausted && front_data.offset == 0)
