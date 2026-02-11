@@ -1,33 +1,14 @@
+#include <Functions/intDivOrZero.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionBinaryArithmetic.h>
-
 
 namespace DB
 {
 
-template <typename A, typename B>
-struct DivideIntegralOrZeroImpl
-{
-    using ResultType = typename NumberTraits::ResultOfIntegerDivision<A, B>::Type;
-    static const constexpr bool allow_fixed_string = false;
-    static const constexpr bool allow_string_integer = false;
-
-    template <typename Result = ResultType>
-    static Result apply(A a, B b)
-    {
-        if (unlikely(divisionLeadsToFPE(a, b)))
-            return 0;
-
-        return DivideIntegralImpl<A, B>::template apply<Result>(a, b);
-    }
-
-#if USE_EMBEDDED_COMPILER
-    static constexpr bool compilable = false; /// TODO implement the checks
-#endif
-};
-
-struct NameIntDivOrZero { static constexpr auto name = "intDivOrZero"; };
-using FunctionIntDivOrZero = BinaryArithmeticOverloadResolver<DivideIntegralOrZeroImpl, NameIntDivOrZero>;
+/// Suppress ALL implicit instantiation of the intDivOrZero arithmetic classes.
+/// The class bodies are explicitly instantiated in intDivOrZeroHalf1.cpp.
+extern template class FunctionBinaryArithmetic<DivideIntegralOrZeroImpl, NameIntDivOrZero>;
+extern template class FunctionBinaryArithmeticWithConstants<DivideIntegralOrZeroImpl, NameIntDivOrZero>;
+extern template class BinaryArithmeticOverloadResolver<DivideIntegralOrZeroImpl, NameIntDivOrZero>;
 
 REGISTER_FUNCTION(IntDivOrZero)
 {

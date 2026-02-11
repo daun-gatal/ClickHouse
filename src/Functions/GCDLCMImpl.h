@@ -46,7 +46,7 @@ struct GCDLCMImpl
                                 a_s, b_s, min, max);
         }
 
-        return Impl::applyImpl(a, b);
+        return static_cast<Result>(Impl::applyImpl(a, b));
     }
 
 #if USE_EMBEDDED_COMPILER

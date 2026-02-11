@@ -1,14 +1,12 @@
+#include <Functions/positiveModulo.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionBinaryArithmetic.h>
 
 namespace DB
 {
 
-struct NamePositiveModulo
-{
-    static constexpr auto name = "positiveModulo";
-};
-using FunctionPositiveModulo = BinaryArithmeticOverloadResolver<PositiveModuloImpl, NamePositiveModulo, false>;
+extern template class FunctionBinaryArithmetic<PositiveModuloImpl, NamePositiveModulo, false>;
+extern template class FunctionBinaryArithmeticWithConstants<PositiveModuloImpl, NamePositiveModulo, false>;
+extern template class BinaryArithmeticOverloadResolver<PositiveModuloImpl, NamePositiveModulo, false>;
 
 REGISTER_FUNCTION(PositiveModulo)
 {

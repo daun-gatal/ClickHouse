@@ -1,11 +1,14 @@
+#include <Functions/intDivOrNull.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionBinaryArithmetic.h>
 
 namespace DB
 {
 
-struct NameIntDivOrNull { static constexpr auto name = "intDivOrNull"; };
-using FunctionIntDivOrNull = BinaryArithmeticOverloadResolver<DivideIntegralOrNullImpl, NameIntDivOrNull, false>;
+/// Suppress ALL implicit instantiation of the intDivOrNull arithmetic classes.
+/// The class bodies are explicitly instantiated in intDivOrNullHalf1.cpp.
+extern template class FunctionBinaryArithmetic<DivideIntegralOrNullImpl, NameIntDivOrNull, false>;
+extern template class FunctionBinaryArithmeticWithConstants<DivideIntegralOrNullImpl, NameIntDivOrNull, false>;
+extern template class BinaryArithmeticOverloadResolver<DivideIntegralOrNullImpl, NameIntDivOrNull, false>;
 
 REGISTER_FUNCTION(IntDivOrNull)
 {

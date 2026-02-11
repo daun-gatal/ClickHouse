@@ -13,6 +13,7 @@
 #include <DataTypes/DataTypesNumber.h>
 #include <DataTypes/getLeastSupertype.h>
 
+#include <Functions/FunctionBinaryArithmetic.h>
 #include <Functions/IFunction.h>
 #include <Functions/IFunctionAdaptors.h>
 #include <Functions/castTypeToEither.h>
@@ -506,5 +507,8 @@ public:
 protected:
     ContextPtr context;
 };
+
+struct NameMidpoint { static constexpr auto name = "midpoint"; };
+using FunctionMidpointBinary = FunctionBinaryArithmetic<MidpointImpl, NameMidpoint>;
 
 }

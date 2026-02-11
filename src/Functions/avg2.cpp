@@ -1,15 +1,12 @@
-#include <Functions/FunctionBinaryArithmetic.h>
-#include <Functions/FunctionFactory.h>
 #include <Functions/midpoint.h>
+#include <Functions/FunctionFactory.h>
 
 namespace DB
 {
 
-struct NameMidpoint
-{
-    static constexpr auto name = "midpoint";
-};
-using FunctionMidpointBinary = FunctionBinaryArithmetic<MidpointImpl, NameMidpoint>;
+/// Suppress ALL implicit instantiation of the midpoint arithmetic class.
+/// The class body is explicitly instantiated in midpointHalf1.cpp.
+extern template class FunctionBinaryArithmetic<MidpointImpl, NameMidpoint>;
 
 template <typename SpecializedFunction>
 class Avg2Resolver : public MidpointResolver<SpecializedFunction>

@@ -1,33 +1,15 @@
+#include <Functions/gcd.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionBinaryArithmetic.h>
-#include <Functions/GCDLCMImpl.h>
-
-#include <boost/integer/common_factor.hpp>
 
 
 namespace DB
 {
 
-namespace
-{
-
-struct NameGCD { static constexpr auto name = "gcd"; };
-
-template <typename A, typename B>
-struct GCDImpl : public GCDLCMImpl<A, B, GCDImpl<A, B>, NameGCD>
-{
-    using ResultType = typename GCDLCMImpl<A, B, GCDImpl, NameGCD>::ResultType;
-
-    static ResultType applyImpl(A a, B b)
-    {
-        using Int = typename NumberTraits::ToInteger<ResultType>::Type;
-        return boost::integer::gcd(Int(a), Int(b)); // NOLINT(clang-analyzer-core.UndefinedBinaryOperatorResult)
-    }
-};
-
-using FunctionGCD = BinaryArithmeticOverloadResolver<GCDImpl, NameGCD, false, false>;
-
-}
+/// Suppress ALL implicit instantiation of the gcd arithmetic classes.
+/// The class bodies are explicitly instantiated in gcdHalf1.cpp.
+extern template class FunctionBinaryArithmetic<GCDImpl, NameGCD, false, false>;
+extern template class FunctionBinaryArithmeticWithConstants<GCDImpl, NameGCD, false, false>;
+extern template class BinaryArithmeticOverloadResolver<GCDImpl, NameGCD, false, false>;
 
 REGISTER_FUNCTION(GCD)
 {

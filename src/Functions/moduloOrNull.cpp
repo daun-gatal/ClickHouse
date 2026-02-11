@@ -1,11 +1,12 @@
+#include <Functions/moduloOrNull.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionBinaryArithmetic.h>
 
 namespace DB
 {
 
-struct NameModuloOrNull { static constexpr auto name = "moduloOrNull"; };
-using FunctionModuloOrNull = BinaryArithmeticOverloadResolver<ModuloOrNullImpl, NameModuloOrNull, false>;
+extern template class FunctionBinaryArithmetic<ModuloOrNullImpl, NameModuloOrNull, false>;
+extern template class FunctionBinaryArithmeticWithConstants<ModuloOrNullImpl, NameModuloOrNull, false>;
+extern template class BinaryArithmeticOverloadResolver<ModuloOrNullImpl, NameModuloOrNull, false>;
 
 REGISTER_FUNCTION(ModuloOrNull)
 {
