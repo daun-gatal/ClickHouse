@@ -13,6 +13,7 @@
 #include <Storages/ObjectStorage/DataLakes/Iceberg/SchemaProcessor.h>
 #include <Common/ProxyConfigurationResolverProvider.h>
 #include <Databases/DataLake/Common.h>
+#include <Common/logger_useful.h>
 
 namespace DB::ErrorCodes
 {
@@ -109,7 +110,7 @@ DB::Names HiveCatalog::getTables() const
 
 void HiveCatalog::checkDatabase(std::string database_name) const
 {
-    LOG_TEST(log, "Checking database '{}'", database_name);
+    LOG_TEST(getLogger("HiveCatalog"), "Checking database '{}'", database_name);
 
     std::vector<std::string> result;
 
