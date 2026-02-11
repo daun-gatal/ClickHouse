@@ -1,4 +1,6 @@
+#include <atomic>
 #include <chrono>
+#include <thread>
 #include <gtest/gtest.h>
 
 #include <Common/Scheduler/ResourceGuard.h>
@@ -459,12 +461,15 @@ TEST(TimeSharedWorkloadNode, ResourceGuardException)
 
     t.enqueue(all, {10, 10}); // enqueue reqeuests to be canceled
 
-    std::thread consumer([link = all->getLink()]
+    std::atomic<bool> request_enqueued{false};
+    std::thread consumer([link = all->getLink(), &request_enqueued]
     {
         bool caught = false;
         try
         {
-            ResourceGuard rg(ResourceGuard::Metrics::getIOWrite(), link);
+            ResourceGuard rg(ResourceGuard::Metrics::getIOWrite(), link, 1, ResourceGuard::Lock::Defer);
+            request_enqueued.store(true); // Signal that the request has been enqueued
+            rg.lock(); // Now wait for the resource (this will throw when the queue is destroyed)
         }
         catch (...)
         {
@@ -473,7 +478,11 @@ TEST(TimeSharedWorkloadNode, ResourceGuardException)
         ASSERT_TRUE(caught);
     });
 
-    // This will destroy the queue and fail both requests
+    // Wait until consumer thread has enqueued its request before destroying the queue
+    while (!request_enqueued.load())
+        std::this_thread::yield();
+
+    // This will destroy the queue and fail both requests (consumer's ResourceGuard uses internal Request, not counted)
     auto a = t.createUnifiedNode("A", all);
     t.failed(20);
     consumer.join();
