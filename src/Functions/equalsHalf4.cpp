@@ -3,9 +3,8 @@
 namespace DB
 {
 
-/// Explicitly instantiate decimal comparison dispatch for equals.
-/// This provides the executeDecimal definition that equalsHalf3.cpp suppresses
-/// via COMPARISON_EXTERN_DECIMAL_TEMPLATES.
-COMPARISON_INSTANTIATE_DECIMAL(EqualsOp, NameEquals)
+/// Explicitly instantiate decimal comparison dispatch Part1 for equals.
+/// Handles Decimal32, Decimal64, Decimal128 type combinations.
+COMPARISON_INSTANTIATE_DECIMAL_PART1(EqualsOp, NameEquals)
 
 }

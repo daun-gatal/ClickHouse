@@ -3,9 +3,8 @@
 namespace DB
 {
 
-/// Explicitly instantiate decimal comparison dispatch for lessOrEquals.
-/// This provides the executeDecimal definition that lessOrEqualsHalf3.cpp suppresses
-/// via COMPARISON_EXTERN_DECIMAL_TEMPLATES.
-COMPARISON_INSTANTIATE_DECIMAL(LessOrEqualsOp, NameLessOrEquals)
+/// Explicitly instantiate decimal comparison dispatch Part1 for lessOrEquals.
+/// Handles Decimal32, Decimal64, Decimal128 type combinations.
+COMPARISON_INSTANTIATE_DECIMAL_PART1(LessOrEqualsOp, NameLessOrEquals)
 
 }

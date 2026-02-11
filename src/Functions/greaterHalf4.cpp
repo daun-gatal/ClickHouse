@@ -3,9 +3,8 @@
 namespace DB
 {
 
-/// Explicitly instantiate decimal comparison dispatch for greater.
-/// This provides the executeDecimal definition that greaterHalf3.cpp suppresses
-/// via COMPARISON_EXTERN_DECIMAL_TEMPLATES.
-COMPARISON_INSTANTIATE_DECIMAL(GreaterOp, NameGreater)
+/// Explicitly instantiate decimal comparison dispatch Part1 for greater.
+/// Handles Decimal32, Decimal64, Decimal128 type combinations.
+COMPARISON_INSTANTIATE_DECIMAL_PART1(GreaterOp, NameGreater)
 
 }

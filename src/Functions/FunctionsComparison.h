@@ -109,8 +109,12 @@ static inline bool callOnAtLeastOneDecimalType(TypeIndex type_num1, TypeIndex ty
     return false;
 }
 
+/// Split executeDecimal into two halves for TU splitting.
+/// Part1 handles Decimal32, Decimal64, Decimal128 as the primary decimal type.
+/// Part2 handles Decimal256, DateTime64, Time64 as the primary decimal type.
+/// Each part handles cases where its types appear as either the left or right operand.
 template <template <typename, typename> class Operation, typename Name>
-ColumnPtr executeDecimal(const ColumnWithTypeAndName & col_left, const ColumnWithTypeAndName & col_right, bool check_decimal_overflow)
+ColumnPtr executeDecimalPart1(const ColumnWithTypeAndName & col_left, const ColumnWithTypeAndName & col_right, bool check_decimal_overflow)
 {
     TypeIndex left_number = col_left.type->getTypeId();
     TypeIndex right_number = col_right.type->getTypeId();
@@ -126,11 +130,99 @@ ColumnPtr executeDecimal(const ColumnWithTypeAndName & col_left, const ColumnWit
             != nullptr;
     };
 
-    if (!callOnAtLeastOneDecimalType<true, false, true, true>(left_number, right_number, call))
-        throw Exception(
-            ErrorCodes::LOGICAL_ERROR, "Wrong call for {} with {} and {}", Name::name, col_left.type->getName(), col_right.type->getName());
+    switch (left_number)
+    {
+        case TypeIndex::Decimal32:
+            callOnBasicType<Decimal32, true, false, true, true>(right_number, call);
+            return res;
+        case TypeIndex::Decimal64:
+            callOnBasicType<Decimal64, true, false, true, true>(right_number, call);
+            return res;
+        case TypeIndex::Decimal128:
+            callOnBasicType<Decimal128, true, false, true, true>(right_number, call);
+            return res;
+        default:
+            break;
+    }
 
-    return res;
+    switch (right_number)
+    {
+        case TypeIndex::Decimal32:
+            callOnBasicTypeSecondArg<Decimal32, true, false, true, true>(left_number, call);
+            return res;
+        case TypeIndex::Decimal64:
+            callOnBasicTypeSecondArg<Decimal64, true, false, true, true>(left_number, call);
+            return res;
+        case TypeIndex::Decimal128:
+            callOnBasicTypeSecondArg<Decimal128, true, false, true, true>(left_number, call);
+            return res;
+        default:
+            break;
+    }
+
+    return nullptr;
+}
+
+template <template <typename, typename> class Operation, typename Name>
+ColumnPtr executeDecimalPart2(const ColumnWithTypeAndName & col_left, const ColumnWithTypeAndName & col_right, bool check_decimal_overflow)
+{
+    TypeIndex left_number = col_left.type->getTypeId();
+    TypeIndex right_number = col_right.type->getTypeId();
+    ColumnPtr res;
+
+    auto call = [&](const auto & types) -> bool
+    {
+        using Types = std::decay_t<decltype(types)>;
+        using LeftDataType = typename Types::LeftType;
+        using RightDataType = typename Types::RightType;
+
+        return (res = DecimalComparison<LeftDataType, RightDataType, Operation>::apply(col_left, col_right, check_decimal_overflow))
+            != nullptr;
+    };
+
+    switch (left_number)
+    {
+        case TypeIndex::Decimal256:
+            callOnBasicType<Decimal256, true, false, true, true>(right_number, call);
+            return res;
+        case TypeIndex::DateTime64:
+            callOnBasicType<DateTime64, true, false, true, true>(right_number, call);
+            return res;
+        case TypeIndex::Time64:
+            callOnBasicType<Time64, true, false, true, true>(right_number, call);
+            return res;
+        default:
+            break;
+    }
+
+    switch (right_number)
+    {
+        case TypeIndex::Decimal256:
+            callOnBasicTypeSecondArg<Decimal256, true, false, true, true>(left_number, call);
+            return res;
+        case TypeIndex::DateTime64:
+            callOnBasicTypeSecondArg<DateTime64, true, false, true, true>(left_number, call);
+            return res;
+        case TypeIndex::Time64:
+            callOnBasicTypeSecondArg<Time64, true, false, true, true>(left_number, call);
+            return res;
+        default:
+            break;
+    }
+
+    return nullptr;
+}
+
+template <template <typename, typename> class Operation, typename Name>
+ColumnPtr executeDecimal(const ColumnWithTypeAndName & col_left, const ColumnWithTypeAndName & col_right, bool check_decimal_overflow)
+{
+    if (auto res = executeDecimalPart1<Operation, Name>(col_left, col_right, check_decimal_overflow))
+        return res;
+    if (auto res = executeDecimalPart2<Operation, Name>(col_left, col_right, check_decimal_overflow))
+        return res;
+
+    throw Exception(
+        ErrorCodes::LOGICAL_ERROR, "Wrong call for {} with {} and {}", Name::name, col_left.type->getName(), col_right.type->getName());
 }
 
 
@@ -1747,14 +1839,19 @@ ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumLeftTyp
     template ColumnPtr FunctionComparison<Op, Name>::executeImpl(const ColumnsWithTypeAndName &, const DataTypePtr &, size_t) const;
 
 /// Macro for suppressing decimal dispatch in Half3 files.
-/// executeDecimal is a free function template called from executeImpl; suppressing it
-/// prevents instantiation of the entire DecimalComparison type matrix (~2076 templates).
+/// The split executeDecimalPart1/Part2 functions contain the heavy DecimalComparison
+/// type matrix (~1000+ templates each); suppressing them prevents instantiation in Half3.
+/// executeDecimal itself is a thin wrapper and can be instantiated cheaply anywhere.
 #define COMPARISON_EXTERN_DECIMAL_TEMPLATES(Op, Name) \
-    extern template ColumnPtr executeDecimal<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
+    extern template ColumnPtr executeDecimalPart1<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool); \
+    extern template ColumnPtr executeDecimalPart2<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
 
-/// Macro for explicit instantiation of decimal dispatch (used in Half4 files)
-#define COMPARISON_INSTANTIATE_DECIMAL(Op, Name) \
-    template ColumnPtr executeDecimal<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
+/// Macros for explicit instantiation of decimal dispatch halves (used in Half4/Half5 files)
+#define COMPARISON_INSTANTIATE_DECIMAL_PART1(Op, Name) \
+    template ColumnPtr executeDecimalPart1<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
+
+#define COMPARISON_INSTANTIATE_DECIMAL_PART2(Op, Name) \
+    template ColumnPtr executeDecimalPart2<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
 
 
 }
