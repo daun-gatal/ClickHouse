@@ -1969,6 +1969,15 @@ QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::v
 
     QueryPlanOptimizationSettings do_not_optimize_plan_settings(context);
     do_not_optimize_plan_settings.optimize_plan = false;
+    /// Disable PREWHERE optimization for mutation pipelines. The mutation pipeline builds
+    /// its own filter/update/projection steps (FilterStep, ExpressionStep) on top of the
+    /// source step's output header. The PREWHERE optimization moves the filter from the
+    /// FilterStep into the source step (via updatePrewhereInfo), which changes the source
+    /// step's output header to include prewhere columns. This causes a mismatch between
+    /// the source's declared header and the chunks it produces, leading to "Invalid number
+    /// of columns in chunk" errors. The filter is already applied as a separate pipeline
+    /// step, so PREWHERE is not needed.
+    do_not_optimize_plan_settings.optimize_prewhere = false;
 
     auto pipeline = std::move(*plan.buildQueryPipeline(do_not_optimize_plan_settings, BuildQueryPipelineSettings(context)));
 
