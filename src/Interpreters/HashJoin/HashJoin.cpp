@@ -803,19 +803,24 @@ bool HashJoin::addBlockToJoin(const Block & block, ScatteredBlock::Selector sele
                     });
             }
 
+            /// NullMapHolder stores a raw pointer to stored_columns, don't pop the block if a nullmap references it
+            bool nullmap_stored_for_block = false;
+
             if (!flag_per_row && save_nullmap && is_inserted)
             {
                 auto & h = data->nullmaps.emplace_back(stored_columns, null_map_holder);
                 data->nullmaps_allocated_size += h.allocatedBytes();
+                nullmap_stored_for_block = true;
             }
 
             if (!flag_per_row && not_joined_map && (is_inserted || has_right_not_joined))
             {
                 auto & h = data->nullmaps.emplace_back(stored_columns, std::move(not_joined_map));
                 data->nullmaps_allocated_size += h.allocatedBytes();
+                nullmap_stored_for_block = true;
             }
 
-            if (!flag_per_row && !is_inserted)
+            if (!flag_per_row && !is_inserted && !nullmap_stored_for_block)
             {
                 doDebugAsserts();
                 LOG_TRACE(log, "Skipping inserting block with {} rows", rows);
@@ -1888,7 +1893,7 @@ void HashJoin::tryRerangeRightTableData()
     if (!data
         || data->sorted
         || data->columns.empty()
-        || data->maps.size() != 1
+        || data->maps.size() > 1
         || data->rows_to_join > table_join->sortRightMaximumTableRows()
         || data->avgPerKeyRows() < table_join->sortRightMinimumPerkeyRows())
     {
