@@ -359,9 +359,9 @@ public:
     {
         if (!current_result)
         {
-            /// Skip dispatched blocks with no rows to avoid running the full join
-            /// machinery (key extraction, map lookup, result construction) for nothing
-            while (next_block < dispatched_blocks.size() && dispatched_blocks[next_block].rows() == 0)
+            /// Skip empty dispatched blocks to avoid running the full join machinery for nothing,
+            /// keep the last block so joinScatteredBlock produces the correct output header
+            while (next_block + 1 < dispatched_blocks.size() && dispatched_blocks[next_block].rows() == 0)
                 ++next_block;
 
             if (next_block >= dispatched_blocks.size())
