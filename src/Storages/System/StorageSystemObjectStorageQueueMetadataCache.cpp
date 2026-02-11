@@ -15,6 +15,7 @@
 #include <Storages/ObjectStorageQueue/ObjectStorageQueueMetadataFactory.h>
 #include <Storages/ObjectStorageQueue/StorageObjectStorageQueue.h>
 #include <Disks/IDisk.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

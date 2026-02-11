@@ -9,7 +9,7 @@
 #include <Disks/IVolume.h>
 #include <Processors/Sources/SourceFromSingleChunk.h>
 #include <Interpreters/Context.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <QueryPipeline/Pipe.h>
 
 

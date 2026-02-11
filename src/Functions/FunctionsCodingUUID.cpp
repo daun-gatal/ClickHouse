@@ -16,6 +16,7 @@
 #include <Interpreters/Context_fwd.h>
 
 #include <span>
+#include <magic_enum.hpp>
 
 
 namespace DB::ErrorCodes

@@ -9,7 +9,7 @@
 
 #include <Common/MatchGenerator.h>
 
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Common/Exception.h>
 #include <Common/thread_local_rng.h>
 

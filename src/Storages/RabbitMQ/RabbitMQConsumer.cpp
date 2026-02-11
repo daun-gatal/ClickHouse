@@ -10,6 +10,7 @@
 #include <Common/logger_useful.h>
 #include <Poco/Timer.h>
 #include <amqpcpp.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

@@ -5,7 +5,7 @@
 #include <IO/WriteBufferFromString.h>
 #include <Interpreters/Cache/FileCache.h>
 #include <Interpreters/Cache/FileCacheUtils.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <base/getThreadId.h>
 #include <base/hex.h>
 #include <Common/CurrentThread.h>

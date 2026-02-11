@@ -2,6 +2,7 @@
 #include <Interpreters/Cache/EvictionCandidates.h>
 #include <Common/CurrentMetrics.h>
 #include <Common/Exception.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

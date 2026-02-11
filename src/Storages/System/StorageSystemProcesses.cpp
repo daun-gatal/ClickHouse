@@ -14,6 +14,7 @@
 #include <Columns/ColumnArray.h>
 
 #include <Poco/Net/SocketAddress.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

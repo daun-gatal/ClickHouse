@@ -16,6 +16,7 @@
 #include <Functions/FunctionHelpers.h>
 
 #include <memory>
+#include <magic_enum.hpp>
 
 namespace DB
 {

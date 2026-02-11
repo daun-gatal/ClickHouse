@@ -24,6 +24,7 @@
 #include <Interpreters/Context.h>
 
 #include <Parsers/ASTCreateResourceQuery.h>
+#include <magic_enum.hpp>
 #if ENABLE_DISTRIBUTED_CACHE
 #include <DistributedCache/Utils.h>
 #endif

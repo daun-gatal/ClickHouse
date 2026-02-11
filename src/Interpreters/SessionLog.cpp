@@ -29,6 +29,7 @@
 #include <Poco/Net/SocketAddress.h>
 
 #include <cassert>
+#include <magic_enum.hpp>
 
 
 namespace

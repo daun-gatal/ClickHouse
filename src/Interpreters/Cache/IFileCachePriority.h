@@ -101,16 +101,29 @@ public:
             [[maybe_unused]] auto prev = state.exchange(to_state, std::memory_order_relaxed);
             chassert(
                 prev == from_state,
-                printUnexpectedState(prev, magic_enum::enum_name(from_state), fmt::format("{}", magic_enum::enum_name(to_state))));
+                printUnexpectedState(prev, stateToString(from_state), std::string(stateToString(to_state))));
         }
 
     private:
+        static std::string_view stateToString(State s)
+        {
+            switch (s)
+            {
+                case State::Active: return "Active";
+                case State::Evicting: return "Evicting";
+                case State::Moving: return "Moving";
+                case State::Invalidated: return "Invalidated";
+                case State::Removed: return "Removed";
+            }
+            return "Unknown";
+        }
+
         std::string printUnexpectedState(
             State prev_state, std::string_view expected_state, std::string type) const
         {
             return fmt::format(
                 "Previous state is {}, but expected state to be {} while setting {} flag for {}",
-                magic_enum::enum_name(prev_state), expected_state, type, toString());
+                stateToString(prev_state), expected_state, type, toString());
         }
 
         std::atomic<State> state = State::Active;

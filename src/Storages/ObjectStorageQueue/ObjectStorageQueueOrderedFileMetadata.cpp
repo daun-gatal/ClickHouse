@@ -9,6 +9,7 @@
 #include <numeric>
 
 #include <boost/algorithm/string/replace.hpp>
+#include <magic_enum.hpp>
 
 namespace DB
 {

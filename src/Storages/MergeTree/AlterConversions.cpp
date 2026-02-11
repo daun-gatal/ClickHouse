@@ -11,6 +11,7 @@
 #include <Common/ProfileEvents.h>
 #include <Core/Settings.h>
 #include <ranges>
+#include <magic_enum.hpp>
 
 namespace ProfileEvents
 {

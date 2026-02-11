@@ -24,9 +24,6 @@
 namespace DB
 {
 
-template <typename Type>
-constexpr auto getEnumValues();
-
 /// NOLINTNEXTLINE
 #define DECLARE_SETTING_ENUM(ENUM_TYPE) \
     DECLARE_SETTING_ENUM_WITH_RENAME(ENUM_TYPE, ENUM_TYPE)
@@ -46,10 +43,6 @@ constexpr auto getEnumValues();
 /// NOLINTNEXTLINE
 #define IMPLEMENT_SETTING_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, ...) \
     IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, EnumValuePairs, __VA_ARGS__)
-
-/// NOLINTNEXTLINE
-#define IMPLEMENT_SETTING_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME) \
-    IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, , getEnumValues<EnumType>())
 
 /// NOLINTNEXTLINE
 #define IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, PAIRS_TYPE, ...) \
@@ -117,13 +110,6 @@ constexpr auto getEnumValues();
     IMPLEMENT_SETTING_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, __VA_ARGS__)\
     size_t SettingField##NEW_NAME##Traits::getEnumSize() {\
         return std::initializer_list<std::pair<const char*, NEW_NAME>> __VA_ARGS__ .size();\
-    }
-
-/// NOLINTNEXTLINE
-#define IMPLEMENT_SETTING_MULTI_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME) \
-    IMPLEMENT_SETTING_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME)\
-    size_t SettingField##NEW_NAME##Traits::getEnumSize() {\
-        return getEnumValues<EnumType>().size();\
     }
 
 DECLARE_SETTING_ENUM(LoadBalancing)

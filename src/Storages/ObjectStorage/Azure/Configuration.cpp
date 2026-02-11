@@ -1,5 +1,6 @@
 #include "config.h"
 #include <Poco/URI.h>
+#include <magic_enum.hpp>
 
 
 #if USE_AZURE_BLOB_STORAGE

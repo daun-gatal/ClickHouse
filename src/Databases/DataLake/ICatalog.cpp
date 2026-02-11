@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include <Common/FailPoint.h>
+#include <magic_enum.hpp>
 
 namespace DB::ErrorCodes
 {

@@ -13,7 +13,7 @@
 #include <IO/WriteBufferFromString.h>
 #include <Interpreters/InstrumentationManager.h>
 
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

@@ -1,6 +1,6 @@
 #include <Access/Common/HTTPAuthenticationScheme.h>
 
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <base/types.h>
 #include <Poco/String.h>
 #include <Common/Exception.h>

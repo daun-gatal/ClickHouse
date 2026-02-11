@@ -6,6 +6,7 @@
 #include <Functions/keyvaluepair/impl/StateHandler.h>
 #include <Functions/keyvaluepair/impl/StateHandlerImpl.h>
 #include <absl/container/flat_hash_map.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

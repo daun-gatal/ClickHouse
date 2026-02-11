@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cstdio>
+#include <concepts>
 #include <limits>
 #include <algorithm>
 #include <bit>
@@ -1175,7 +1176,13 @@ template <typename T>
 requires is_floating_point<T>
 inline void writeText(T x, WriteBuffer & buf) { writeFloatText(x, buf); }
 
-inline void writeText(is_enum auto x, WriteBuffer & buf) { writeText(magic_enum::enum_name(x), buf); }
+inline void writeText(is_enum auto x, WriteBuffer & buf)
+{
+    if constexpr (requires { { toString(x) } -> std::convertible_to<std::string_view>; })
+        writeText(toString(x), buf);
+    else
+        writeIntText(static_cast<int64_t>(static_cast<std::underlying_type_t<decltype(x)>>(x)), buf);
+}
 
 inline void writeText(std::string_view x, WriteBuffer & buf) { writeString(x, buf); }
 

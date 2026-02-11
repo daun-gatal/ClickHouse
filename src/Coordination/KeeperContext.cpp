@@ -20,6 +20,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "config.h"
+#include <magic_enum.hpp>
 #if USE_ROCKSDB
 #include <rocksdb/table.h>
 #include <rocksdb/convenience.h>

@@ -2,6 +2,7 @@
 #include <Common/ErrorCodes.h>
 #include <Common/Exception.h>
 #include <Common/logger_useful.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

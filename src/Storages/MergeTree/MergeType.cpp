@@ -1,5 +1,6 @@
 #include <Storages/MergeTree/MergeType.h>
 #include <Common/Exception.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

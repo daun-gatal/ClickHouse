@@ -7,6 +7,7 @@
 #include <Interpreters/FilesystemReadPrefetchesLog.h>
 #include <base/getFQDNOrHostName.h>
 #include <Common/DateLUTImpl.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

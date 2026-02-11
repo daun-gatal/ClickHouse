@@ -13,6 +13,7 @@
 #include <string>
 #include <thread>
 #include <unordered_set>
+#include <magic_enum.hpp>
 
 namespace DB::ErrorCodes
 {

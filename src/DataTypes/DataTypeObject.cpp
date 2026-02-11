@@ -27,6 +27,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "config.h"
+#include <magic_enum.hpp>
 
 #if USE_SIMDJSON
 #  include <Common/JSONParsers/SimdJSONParser.h>

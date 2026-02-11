@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <fmt/ranges.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

@@ -16,6 +16,7 @@
 #include <Common/assert_cast.h>
 #include <Common/getRandomASCIIString.h>
 #include <Common/logger_useful.h>
+#include <magic_enum.hpp>
 
 
 namespace ProfileEvents

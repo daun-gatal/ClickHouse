@@ -7,8 +7,6 @@
 
 #include <Poco/Util/AbstractConfiguration.h>
 
-#include <base/EnumReflection.h>
-
 #include <Core/Field.h>
 #include <Core/TypeId.h>
 #include <IO/ReadBufferFromString.h>
@@ -18,7 +16,7 @@
 
 namespace DB
 {
-using TypeIndexUnderlying = magic_enum::underlying_type_t<TypeIndex>;
+using TypeIndexUnderlying = std::underlying_type_t<TypeIndex>;
 
 // We need to be able to map TypeIndex -> AttributeUnderlyingType and AttributeUnderlyingType -> real type
 // The first can be done by defining AttributeUnderlyingType enum values to TypeIndex values and then performing
@@ -82,11 +80,33 @@ struct DictionaryAttributeType
 template <typename F>
 constexpr void callOnDictionaryAttributeType(AttributeUnderlyingType type, F && func)
 {
-    static_for<AttributeUnderlyingType>([type, my_func = std::forward<F>(func)](auto other)
+    switch (type)
     {
-        if (type == other)
-            my_func(DictionaryAttributeType<other>{});
-    });
+        case AttributeUnderlyingType::Int8: func(DictionaryAttributeType<AttributeUnderlyingType::Int8>{}); break;
+        case AttributeUnderlyingType::Int16: func(DictionaryAttributeType<AttributeUnderlyingType::Int16>{}); break;
+        case AttributeUnderlyingType::Int32: func(DictionaryAttributeType<AttributeUnderlyingType::Int32>{}); break;
+        case AttributeUnderlyingType::Int64: func(DictionaryAttributeType<AttributeUnderlyingType::Int64>{}); break;
+        case AttributeUnderlyingType::Int128: func(DictionaryAttributeType<AttributeUnderlyingType::Int128>{}); break;
+        case AttributeUnderlyingType::Int256: func(DictionaryAttributeType<AttributeUnderlyingType::Int256>{}); break;
+        case AttributeUnderlyingType::UInt8: func(DictionaryAttributeType<AttributeUnderlyingType::UInt8>{}); break;
+        case AttributeUnderlyingType::UInt16: func(DictionaryAttributeType<AttributeUnderlyingType::UInt16>{}); break;
+        case AttributeUnderlyingType::UInt32: func(DictionaryAttributeType<AttributeUnderlyingType::UInt32>{}); break;
+        case AttributeUnderlyingType::UInt64: func(DictionaryAttributeType<AttributeUnderlyingType::UInt64>{}); break;
+        case AttributeUnderlyingType::UInt128: func(DictionaryAttributeType<AttributeUnderlyingType::UInt128>{}); break;
+        case AttributeUnderlyingType::UInt256: func(DictionaryAttributeType<AttributeUnderlyingType::UInt256>{}); break;
+        case AttributeUnderlyingType::Float32: func(DictionaryAttributeType<AttributeUnderlyingType::Float32>{}); break;
+        case AttributeUnderlyingType::Float64: func(DictionaryAttributeType<AttributeUnderlyingType::Float64>{}); break;
+        case AttributeUnderlyingType::Decimal32: func(DictionaryAttributeType<AttributeUnderlyingType::Decimal32>{}); break;
+        case AttributeUnderlyingType::Decimal64: func(DictionaryAttributeType<AttributeUnderlyingType::Decimal64>{}); break;
+        case AttributeUnderlyingType::Decimal128: func(DictionaryAttributeType<AttributeUnderlyingType::Decimal128>{}); break;
+        case AttributeUnderlyingType::Decimal256: func(DictionaryAttributeType<AttributeUnderlyingType::Decimal256>{}); break;
+        case AttributeUnderlyingType::DateTime64: func(DictionaryAttributeType<AttributeUnderlyingType::DateTime64>{}); break;
+        case AttributeUnderlyingType::UUID: func(DictionaryAttributeType<AttributeUnderlyingType::UUID>{}); break;
+        case AttributeUnderlyingType::String: func(DictionaryAttributeType<AttributeUnderlyingType::String>{}); break;
+        case AttributeUnderlyingType::Array: func(DictionaryAttributeType<AttributeUnderlyingType::Array>{}); break;
+        case AttributeUnderlyingType::IPv4: func(DictionaryAttributeType<AttributeUnderlyingType::IPv4>{}); break;
+        case AttributeUnderlyingType::IPv6: func(DictionaryAttributeType<AttributeUnderlyingType::IPv6>{}); break;
+    }
 }
 
 struct DictionaryTypedSpecialAttribute final

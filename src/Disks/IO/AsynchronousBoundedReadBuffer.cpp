@@ -9,6 +9,7 @@
 #include <Interpreters/FilesystemReadPrefetchesLog.h>
 #include <Interpreters/Context.h>
 #include <base/getThreadId.h>
+#include <magic_enum.hpp>
 
 
 namespace CurrentMetrics

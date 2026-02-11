@@ -14,6 +14,7 @@
 #include <IO/WriteBufferFromPocoSocket.h>
 #include <IO/ReadBufferFromPocoSocket.h>
 #include <Poco/Net/StreamSocket.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

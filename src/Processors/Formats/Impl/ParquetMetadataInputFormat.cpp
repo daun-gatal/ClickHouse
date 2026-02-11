@@ -1,4 +1,5 @@
 #include <Processors/Formats/Impl/ParquetMetadataInputFormat.h>
+#include <magic_enum.hpp>
 
 #if USE_PARQUET
 

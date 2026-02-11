@@ -5,6 +5,7 @@
 #include <Parsers/ExpressionElementParsers.h>
 #include <Parsers/ParserCreateQuery.h>
 #include <IO/ReadHelpers.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

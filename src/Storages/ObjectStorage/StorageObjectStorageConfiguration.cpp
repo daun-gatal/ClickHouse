@@ -8,6 +8,7 @@
 #include <Common/logger_useful.h>
 #include <Core/Settings.h>
 #include <Storages/ObjectStorage/Common.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

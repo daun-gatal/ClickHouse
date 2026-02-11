@@ -12,6 +12,7 @@
 #include <Common/thread_local_rng.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
+#include <magic_enum.hpp>
 
 
 namespace DB

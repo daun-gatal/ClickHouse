@@ -21,7 +21,7 @@
 #include <QueryPipeline/BlockIO.h>
 #include <QueryPipeline/Pipe.h>
 #include <Server/IServer.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Poco/FileStream.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/URI.h>

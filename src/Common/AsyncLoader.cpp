@@ -3,7 +3,7 @@
 #include <limits>
 #include <optional>
 
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <base/defines.h>
 #include <base/scope_guard.h>
 #include <fmt/format.h>

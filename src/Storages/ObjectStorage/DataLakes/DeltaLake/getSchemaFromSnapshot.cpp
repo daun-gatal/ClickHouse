@@ -1,4 +1,5 @@
 #include "config.h"
+#include <magic_enum.hpp>
 
 #if USE_DELTA_KERNEL_RS
 #include <DataTypes/DataTypeFactory.h>

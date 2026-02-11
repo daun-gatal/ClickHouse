@@ -42,6 +42,7 @@
 #include <Common/typeid_cast.h>
 
 #include <AggregateFunctions/AggregateFunctionFactory.h>
+#include <magic_enum.hpp>
 
 #if USE_BUZZHOUSE
 #    include <Client/BuzzHouse/Generator/RandomGenerator.h>

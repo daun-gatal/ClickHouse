@@ -16,6 +16,7 @@
 #include <DataTypes/DataTypeArray.h>
 #include <DataTypes/DataTypesNumber.h>
 #include <Functions/FunctionHelpers.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

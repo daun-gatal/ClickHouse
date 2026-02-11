@@ -37,6 +37,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/inlined_vector.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

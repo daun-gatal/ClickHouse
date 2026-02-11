@@ -1,3 +1,4 @@
+#include <magic_enum.hpp>
 #if defined(OS_LINUX)
 
 #include <gtest/gtest.h>

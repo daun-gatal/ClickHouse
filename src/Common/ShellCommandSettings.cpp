@@ -1,4 +1,4 @@
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Common/Exception.h>
 #include <Common/ShellCommandSettings.h>
 

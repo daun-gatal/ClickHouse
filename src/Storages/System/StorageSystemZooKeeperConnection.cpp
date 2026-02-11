@@ -11,6 +11,7 @@
 #include <Storages/System/StorageSystemZooKeeperConnection.h>
 
 #include <Poco/NumberParser.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

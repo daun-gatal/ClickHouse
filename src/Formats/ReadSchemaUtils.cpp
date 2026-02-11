@@ -11,6 +11,7 @@
 #include <Storages/IStorage.h>
 #include <Common/assert_cast.h>
 #include <base/scope_guard.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

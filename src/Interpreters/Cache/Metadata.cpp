@@ -7,6 +7,7 @@
 #include <Common/ElapsedTimeProfileEventIncrement.h>
 #include <filesystem>
 #include <Interpreters/Cache/FileSegmentInfo.h>
+#include <magic_enum.hpp>
 
 namespace fs = std::filesystem;
 

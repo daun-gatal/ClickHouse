@@ -12,6 +12,7 @@
 
 #include <Functions/keyvaluepair/impl/KeyValuePairExtractorBuilder.h>
 #include <Functions/keyvaluepair/ArgumentExtractor.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

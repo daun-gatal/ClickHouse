@@ -9,6 +9,7 @@
 #include <Interpreters/ProfileEventsExt.h>
 #include <Interpreters/FilesystemCacheLog.h>
 #include <Storages/ColumnsDescription.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

@@ -1,5 +1,5 @@
 #include <Interpreters/Cache/FileSegmentKeyType.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

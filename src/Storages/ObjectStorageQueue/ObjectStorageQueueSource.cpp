@@ -20,6 +20,7 @@
 #include <Storages/HivePartitioningUtils.h>
 #include <Disks/DiskObjectStorage/ObjectStorages/ObjectStorageIterator.h>
 #include <Processors/Executors/PullingPipelineExecutor.h>
+#include <magic_enum.hpp>
 
 
 namespace ProfileEvents

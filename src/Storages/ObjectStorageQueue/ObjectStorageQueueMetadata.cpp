@@ -23,6 +23,7 @@
 #include <Interpreters/DDLTask.h>
 #include <shared_mutex>
 #include <Core/ServerUUID.h>
+#include <magic_enum.hpp>
 
 
 namespace ProfileEvents

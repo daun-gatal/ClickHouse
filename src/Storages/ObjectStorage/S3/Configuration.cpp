@@ -1,5 +1,6 @@
 #include <memory>
 #include <Storages/ObjectStorage/S3/Configuration.h>
+#include <magic_enum.hpp>
 
 #if USE_AWS_S3
 #include <Common/HTTPHeaderFilter.h>

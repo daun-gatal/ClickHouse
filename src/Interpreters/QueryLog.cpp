@@ -33,6 +33,7 @@
 #include <Poco/Net/SocketAddress.h>
 
 #include <array>
+#include <magic_enum.hpp>
 
 
 namespace DB

@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 #include <bit>
+#include <magic_enum.hpp>
 
 #if USE_JEMALLOC
 #include <Common/Jemalloc.h>

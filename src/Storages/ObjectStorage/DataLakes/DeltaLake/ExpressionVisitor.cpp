@@ -1,5 +1,6 @@
 #include <Storages/ObjectStorage/DataLakes/DeltaLake/ExpressionVisitor.h>
 #include <Functions/FunctionFactory.h>
+#include <magic_enum.hpp>
 
 #if USE_DELTA_KERNEL_RS
 

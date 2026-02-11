@@ -7,6 +7,7 @@
 #if USE_SSL
 
 #include <base/types.h>
+#include <memory>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
 #include <openssl/stack.h>

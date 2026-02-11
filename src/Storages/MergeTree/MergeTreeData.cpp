@@ -108,6 +108,7 @@
 #include <boost/container_hash/hash.hpp>
 #include <fmt/format.h>
 #include <Poco/Net/NetException.h>
+#include <magic_enum.hpp>
 
 #if USE_AZURE_BLOB_STORAGE
 #endif

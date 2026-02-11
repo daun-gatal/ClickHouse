@@ -13,6 +13,7 @@
 #include <IO/WriteBufferFromVector.h>
 
 #include <pcg_random.hpp>
+#include <magic_enum.hpp>
 
 namespace DB
 {

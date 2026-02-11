@@ -142,6 +142,7 @@
 #include <base/defines.h>
 
 #include <Processors/QueryPlan/Optimizations/RuntimeDataflowStatistics.h>
+#include <magic_enum.hpp>
 
 namespace fs = std::filesystem;
 

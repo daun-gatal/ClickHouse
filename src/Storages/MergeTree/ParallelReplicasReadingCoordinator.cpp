@@ -26,6 +26,7 @@
 #include <Common/logger_useful.h>
 
 #include <fmt/ranges.h>
+#include <magic_enum.hpp>
 
 using namespace DB;
 

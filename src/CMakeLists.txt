@@ -384,6 +384,7 @@ target_link_libraries (clickhouse_common_io
             ${LINK_LIBRARIES_ONLY_ON_X86_64}
         PUBLIC
             common
+            ch_contrib::magic_enum
             ch_contrib::double_conversion
             ch_contrib::dragonbox_to_chars
             ch_contrib::libdivide

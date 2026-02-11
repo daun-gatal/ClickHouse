@@ -1,5 +1,6 @@
 #pragma once
 #include "config.h"
+#include <magic_enum.hpp>
 
 #if USE_HIVE
 

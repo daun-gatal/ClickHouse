@@ -2,6 +2,7 @@
 #include <Parsers/ASTTTLElement.h>
 #include <Parsers/ASTWithAlias.h>
 #include <IO/Operators.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

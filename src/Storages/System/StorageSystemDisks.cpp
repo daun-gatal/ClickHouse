@@ -5,6 +5,7 @@
 #include <QueryPipeline/Pipe.h>
 #include <Interpreters/Context.h>
 #include <Interpreters/Cache/FileCacheFactory.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

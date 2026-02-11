@@ -5,6 +5,7 @@
 #include <Parsers/CommonParsers.h>
 #include <Parsers/IAST_erase.h>
 #include <IO/WriteHelpers.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

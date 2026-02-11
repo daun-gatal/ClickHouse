@@ -9,7 +9,7 @@
 #include <DataTypes/DataTypeEnum.h>
 #include <DataTypes/DataTypeDateTime64.h>
 #include <Interpreters/Context.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Common/AsyncLoader.h>
 
 

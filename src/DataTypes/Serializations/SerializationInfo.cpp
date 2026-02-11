@@ -6,7 +6,7 @@
 #include <IO/ReadHelpers.h>
 #include <IO/WriteHelpers.h>
 #include <Core/Block.h>
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 
 #include <Poco/JSON/JSON.h>
 #include <Poco/JSON/Object.h>

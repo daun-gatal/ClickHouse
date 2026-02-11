@@ -50,6 +50,7 @@
 #include <exception>
 #include <optional>
 #include <string_view>
+#include <magic_enum.hpp>
 
 
 namespace CurrentMetrics

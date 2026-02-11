@@ -22,6 +22,7 @@
 #include <DataTypes/DataTypeFactory.h>
 #include <DataTypes/DataTypeVariant.h>
 #include <DataTypes/DataTypeDynamic.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

@@ -1,6 +1,6 @@
 #include <Storages/System/StorageSystemNamedCollections.h>
 
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnTuple.h>
 #include <Core/Settings.h>

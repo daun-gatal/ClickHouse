@@ -1,4 +1,4 @@
-#include <base/EnumReflection.h>
+#include <magic_enum.hpp>
 #include <Poco/Util/XMLConfiguration.h>
 #include <Common/Exception.h>
 #include <Common/FieldVisitorToString.h>

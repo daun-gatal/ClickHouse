@@ -17,6 +17,7 @@
 #include <Common/CurrentThread.h>
 #include <Common/DateLUTImpl.h>
 #include <Common/ZooKeeper/KeeperFeatureFlags.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

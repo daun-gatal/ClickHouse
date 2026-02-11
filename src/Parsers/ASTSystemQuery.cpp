@@ -7,6 +7,7 @@
 #include <Interpreters/InstrumentationManager.h>
 #include <IO/WriteBuffer.h>
 #include <IO/Operators.h>
+#include <magic_enum.hpp>
 
 namespace DB
 {

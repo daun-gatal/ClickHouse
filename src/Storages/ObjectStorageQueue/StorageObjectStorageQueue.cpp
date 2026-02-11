@@ -40,6 +40,7 @@
 #include <filesystem>
 
 #include <fmt/ranges.h>
+#include <magic_enum.hpp>
 
 namespace fs = std::filesystem;
 

@@ -5,6 +5,7 @@
 
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/IPAddress.h>
+#include <magic_enum.hpp>
 
 
 namespace DB

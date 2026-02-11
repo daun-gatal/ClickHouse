@@ -12,6 +12,7 @@
 #include <Common/logger_useful.h>
 #include <Common/Exception.h>
 #include <Interpreters/Context_fwd.h>
+#include <magic_enum.hpp>
 
 namespace Coordination
 {

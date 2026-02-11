@@ -17,6 +17,7 @@
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <magic_enum.hpp>
 
 namespace DB
 {

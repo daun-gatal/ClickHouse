@@ -16,6 +16,7 @@
 #include <DataTypes/DataTypesDecimal.h>
 #include <Columns/ColumnVector.h>
 #include <Columns/ColumnDecimal.h>
+#include <magic_enum.hpp>
 
 
 /** This is simple, not numerically stable
