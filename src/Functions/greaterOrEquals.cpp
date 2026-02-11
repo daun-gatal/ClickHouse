@@ -7,6 +7,8 @@ namespace DB
 
 /// Suppress heavy numeric dispatch — instantiated in greaterOrEqualsNumHalf1.cpp / greaterOrEqualsNumHalf2.cpp.
 COMPARISON_EXTERN_NUMERIC_TEMPLATES(GreaterOrEqualsOp, NameGreaterOrEquals)
+/// Suppress non-numeric member functions — instantiated in greaterOrEqualsHalf3.cpp.
+COMPARISON_EXTERN_NON_NUMERIC_TEMPLATES(GreaterOrEqualsOp, NameGreaterOrEquals)
 
 using FunctionGreaterOrEquals = FunctionComparison<GreaterOrEqualsOp, NameGreaterOrEquals>;
 using FunctionGreater = FunctionComparison<GreaterOp, NameGreater>;

@@ -762,233 +762,15 @@ private:
     template <typename T0>
     ColumnPtr executeNumLeftType(const IColumn * col_left_untyped, const IColumn * col_right_untyped) const;
 
-    ColumnPtr executeString(const IColumn * c0, const IColumn * c1) const
-    {
-        checkStackSize();
-
-        const ColumnString * c0_string = checkAndGetColumn<ColumnString>(c0);
-        const ColumnString * c1_string = checkAndGetColumn<ColumnString>(c1);
-        const ColumnFixedString * c0_fixed_string = checkAndGetColumn<ColumnFixedString>(c0);
-        const ColumnFixedString * c1_fixed_string = checkAndGetColumn<ColumnFixedString>(c1);
-
-        const ColumnConst * c0_const = checkAndGetColumnConstStringOrFixedString(c0);
-        const ColumnConst * c1_const = checkAndGetColumnConstStringOrFixedString(c1);
-
-        if (!((c0_string || c0_fixed_string || c0_const) && (c1_string || c1_fixed_string || c1_const)))
-            return nullptr;
-
-        const ColumnString::Chars * c0_const_chars = nullptr;
-        const ColumnString::Chars * c1_const_chars = nullptr;
-        ColumnString::Offset c0_const_size = 0;
-        ColumnString::Offset c1_const_size = 0;
-
-        if (c0_const)
-        {
-            const ColumnString * c0_const_string = checkAndGetColumn<ColumnString>(&c0_const->getDataColumn());
-            const ColumnFixedString * c0_const_fixed_string = checkAndGetColumn<ColumnFixedString>(&c0_const->getDataColumn());
-
-            if (c0_const_string)
-            {
-                c0_const_chars = &c0_const_string->getChars();
-                c0_const_size = c0_const_string->getDataAt(0).size();
-            }
-            else if (c0_const_fixed_string)
-            {
-                c0_const_chars = &c0_const_fixed_string->getChars();
-                c0_const_size = c0_const_fixed_string->getN();
-            }
-            else
-                throw Exception(ErrorCodes::ILLEGAL_COLUMN, "ColumnConst contains not String nor FixedString column");
-        }
-
-        if (c1_const)
-        {
-            const ColumnString * c1_const_string = checkAndGetColumn<ColumnString>(&c1_const->getDataColumn());
-            const ColumnFixedString * c1_const_fixed_string = checkAndGetColumn<ColumnFixedString>(&c1_const->getDataColumn());
-
-            if (c1_const_string)
-            {
-                c1_const_chars = &c1_const_string->getChars();
-                c1_const_size = c1_const_string->getDataAt(0).size();
-            }
-            else if (c1_const_fixed_string)
-            {
-                c1_const_chars = &c1_const_fixed_string->getChars();
-                c1_const_size = c1_const_fixed_string->getN();
-            }
-            else
-                throw Exception(ErrorCodes::ILLEGAL_COLUMN, "ColumnConst contains not String nor FixedString column");
-        }
-
-        using StringImpl = StringComparisonImpl<Op<int, int>>;
-
-        if (c0_const && c1_const)
-        {
-            auto res = executeString(&c0_const->getDataColumn(), &c1_const->getDataColumn());
-            if (!res)
-                return nullptr;
-
-            return ColumnConst::create(res, c0_const->size());
-        }
-
-        auto c_res = ColumnUInt8::create();
-        ColumnUInt8::Container & vec_res = c_res->getData();
-        vec_res.resize(c0->size());
-
-        if (c0_string && c1_string)
-            StringImpl::string_vector_string_vector(
-                c0_string->getChars(), c0_string->getOffsets(), c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
-        else if (c0_string && c1_fixed_string)
-            StringImpl::string_vector_fixed_string_vector(
-                c0_string->getChars(), c0_string->getOffsets(), c1_fixed_string->getChars(), c1_fixed_string->getN(), c_res->getData());
-        else if (c0_string && c1_const)
-            StringImpl::string_vector_constant(
-                c0_string->getChars(), c0_string->getOffsets(), *c1_const_chars, c1_const_size, c_res->getData());
-        else if (c0_fixed_string && c1_string)
-            StringImpl::fixed_string_vector_string_vector(
-                c0_fixed_string->getChars(), c0_fixed_string->getN(), c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
-        else if (c0_fixed_string && c1_fixed_string)
-            StringImpl::fixed_string_vector_fixed_string_vector(
-                c0_fixed_string->getChars(),
-                c0_fixed_string->getN(),
-                c1_fixed_string->getChars(),
-                c1_fixed_string->getN(),
-                c_res->getData());
-        else if (c0_fixed_string && c1_const)
-            StringImpl::fixed_string_vector_constant(
-                c0_fixed_string->getChars(), c0_fixed_string->getN(), *c1_const_chars, c1_const_size, c_res->getData());
-        else if (c0_const && c1_string)
-            StringImpl::constant_string_vector(
-                *c0_const_chars, c0_const_size, c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
-        else if (c0_const && c1_fixed_string)
-            StringImpl::constant_fixed_string_vector(
-                *c0_const_chars, c0_const_size, c1_fixed_string->getChars(), c1_fixed_string->getN(), c_res->getData());
-        else
-            throw Exception(
-                ErrorCodes::ILLEGAL_COLUMN,
-                "Illegal columns {} and {} of arguments of function {}",
-                c0->getName(),
-                c1->getName(),
-                getName());
-
-        return c_res;
-    }
+    ColumnPtr executeString(const IColumn * c0, const IColumn * c1) const;
 
     ColumnPtr executeWithConstString(
             const DataTypePtr & result_type, const IColumn * col_left_untyped, const IColumn * col_right_untyped,
-            const DataTypePtr & left_type, const DataTypePtr & right_type, size_t input_rows_count) const
-    {
-        checkStackSize();
-
-        /// To compare something with const string, we cast constant to appropriate type and compare as usual.
-        /// It is ok to throw exception if value is not convertible.
-        /// We should deal with possible overflows, e.g. toUInt8(1) = '257' should return false.
-
-        const ColumnConst * left_const = checkAndGetColumnConstStringOrFixedString(col_left_untyped);
-        const ColumnConst * right_const = checkAndGetColumnConstStringOrFixedString(col_right_untyped);
-
-        if (!left_const && !right_const)
-            return nullptr;
-
-        const IDataType * type_string = left_const ? left_type.get() : right_type.get();
-        const DataTypePtr & type_to_compare = !left_const ? left_type : right_type;
-
-        Field string_value = left_const ? left_const->getField() : right_const->getField();
-
-        auto is_string_not_in_enum = [this, &string_value]<typename T>(const EnumValues<T> * enum_values) -> bool
-        {
-            if constexpr (!IsOperation<Op>::equals && IsOperation<Op>::not_equals)
-                return false;
-            if (params.validate_enum_literals_in_operators)
-                return false;
-            if (!enum_values || string_value.getType() != Field::Types::String)
-                return false;
-            T res;
-            return !enum_values->tryGetValue(res, string_value.safeGet<String>());
-        };
-
-        if (is_string_not_in_enum(typeid_cast<const DataTypeEnum8 *>(type_to_compare.get()))
-         || is_string_not_in_enum(typeid_cast<const DataTypeEnum16 *>(type_to_compare.get())))
-        {
-            return DataTypeUInt8().createColumnConst(input_rows_count, IsOperation<Op>::not_equals);
-        }
-
-        Field converted = convertFieldToType(string_value, *type_to_compare, type_string, params.format_settings);
-
-        /// If not possible to convert, comparison with =, <, >, <=, >= yields to false and comparison with != yields to true.
-        if (converted.isNull())
-        {
-            return DataTypeUInt8().createColumnConst(input_rows_count, IsOperation<Op>::not_equals);
-        }
-
-        auto column_converted = type_to_compare->createColumnConst(input_rows_count, converted);
-
-        ColumnsWithTypeAndName tmp_columns{
-            {left_const ? column_converted : col_left_untyped->getPtr(), type_to_compare, ""},
-            {!left_const ? column_converted : col_right_untyped->getPtr(), type_to_compare, ""},
-        };
-
-        return executeImpl(tmp_columns, result_type, input_rows_count);
-    }
+            const DataTypePtr & left_type, const DataTypePtr & right_type, size_t input_rows_count) const;
 
     ColumnPtr executeTuple(
         const DataTypePtr & result_type, const ColumnWithTypeAndName & c0, const ColumnWithTypeAndName & c1,
-        size_t input_rows_count) const
-    {
-        /** We will lexicographically compare the tuples. This is done as follows:
-          * x == y : x1 == y1 && x2 == y2 ...
-          * x != y : x1 != y1 || x2 != y2 ...
-          *
-          * x < y:   x1 < y1 || (x1 == y1 && (x2 < y2 || (x2 == y2 ... && xn < yn))
-          * x > y:   x1 > y1 || (x1 == y1 && (x2 > y2 || (x2 == y2 ... && xn > yn))
-          * x <= y:  x1 < y1 || (x1 == y1 && (x2 < y2 || (x2 == y2 ... && xn <= yn))
-          *
-          * Recursive form:
-          * x <= y:  x1 < y1 || (x1 == y1 && x_tail <= y_tail)
-          *
-          * x >= y:  x1 > y1 || (x1 == y1 && (x2 > y2 || (x2 == y2 ... && xn >= yn))
-          */
-        const size_t tuple_size = typeid_cast<const DataTypeTuple &>(*c0.type).getElements().size();
-
-        if (0 == tuple_size)
-            throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Comparison of zero-sized tuples is not implemented.");
-
-        if (tuple_size != typeid_cast<const DataTypeTuple &>(*c1.type).getElements().size())
-            throw Exception(ErrorCodes::BAD_ARGUMENTS, "Cannot compare tuples of different sizes.");
-
-        if (result_type->onlyNull())
-            return result_type->createColumnConstWithDefaultValue(input_rows_count);
-
-        ColumnsWithTypeAndName x(tuple_size);
-        ColumnsWithTypeAndName y(tuple_size);
-
-        const auto * x_const = checkAndGetColumnConst<ColumnTuple>(c0.column.get());
-        const auto * y_const = checkAndGetColumnConst<ColumnTuple>(c1.column.get());
-
-        Columns x_columns;
-        Columns y_columns;
-
-        if (x_const)
-            x_columns = convertConstTupleToConstantElements(*x_const);
-        else
-            x_columns = assert_cast<const ColumnTuple &>(*c0.column).getColumnsCopy();
-
-        if (y_const)
-            y_columns = convertConstTupleToConstantElements(*y_const);
-        else
-            y_columns = assert_cast<const ColumnTuple &>(*c1.column).getColumnsCopy();
-
-        for (size_t i = 0; i < tuple_size; ++i)
-        {
-            x[i].type = static_cast<const DataTypeTuple &>(*c0.type).getElements()[i];
-            y[i].type = static_cast<const DataTypeTuple &>(*c1.type).getElements()[i];
-
-            x[i].column = x_columns[i];
-            y[i].column = y_columns[i];
-        }
-
-        return executeTupleImpl(x, y, tuple_size, input_rows_count);
-    }
+        size_t input_rows_count) const;
 
     ColumnPtr executeTupleImpl(const ColumnsWithTypeAndName & x,
                           const ColumnsWithTypeAndName & y, size_t tuple_size,
@@ -1103,8 +885,387 @@ private:
         return tmp_columns[0].column;
     }
 
-    ColumnPtr executeGenericIdenticalTypes(const IColumn * c0, const IColumn * c1) const
+    ColumnPtr executeGenericIdenticalTypes(const IColumn * c0, const IColumn * c1) const;
+
+    ColumnPtr executeGeneric(const ColumnWithTypeAndName & c0, const ColumnWithTypeAndName & c1) const;
+
+public:
+    String getName() const override
     {
+        return name;
+    }
+
+    size_t getNumberOfArguments() const override { return 2; }
+
+    bool isSuitableForShortCircuitArgumentsExecution(const DataTypesWithConstInfo & /*arguments*/) const override { return false; }
+
+    /// Get result types by argument types. If the function does not apply to these arguments, throw an exception.
+    DataTypePtr getReturnTypeImpl(const DataTypes & arguments) const override;
+
+    DataTypePtr getReturnTypeForDefaultImplementationForDynamic() const override
+    {
+        return std::make_shared<DataTypeUInt8>();
+    }
+
+    ColumnPtr executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type, size_t input_rows_count) const override;
+
+    ColumnPtr getConstantResultForNonConstArguments(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type) const override
+    {
+        for (const auto & argument : arguments)
+        {
+            ColumnPtr column = argument.column;
+
+            if (!column || !isColumnConst(*column))
+                continue;
+
+            if (column->isNullAt(0))
+                return result_type->createColumnConst(1, Null());
+        }
+
+        return nullptr;
+    }
+
+#if USE_EMBEDDED_COMPILER
+    template <typename F>
+    static bool castType(const IDataType * type, F && f)
+    {
+        return castTypeToEither<
+            DataTypeUInt8,
+            DataTypeUInt16,
+            DataTypeUInt32,
+            DataTypeUInt64,
+            DataTypeInt8,
+            DataTypeInt16,
+            DataTypeInt32,
+            DataTypeInt64,
+            DataTypeFloat32,
+            DataTypeFloat64>(type, std::forward<F>(f));
+    }
+
+    template <typename F>
+    static bool castBothTypes(const IDataType * left, const IDataType * right, F && f)
+    {
+        return castType(left, [&](const auto & left_)
+        {
+            return castType(right, [&](const auto & right_)
+            {
+                return f(left_, right_);
+            });
+        });
+    }
+
+    bool isCompilableImpl(const DataTypes & arguments, const DataTypePtr & result_type) const override
+    {
+        if (2 != arguments.size())
+            return false;
+
+        if (!canBeNativeType(*arguments[0]) || !canBeNativeType(*arguments[1]) || !canBeNativeType(*result_type))
+            return false;
+
+        WhichDataType data_type_lhs(arguments[0]);
+        WhichDataType data_type_rhs(arguments[1]);
+        /// TODO support date/date32
+        if ((data_type_lhs.isDateOrDate32() || data_type_lhs.isDateTime()) ||
+            (data_type_rhs.isDateOrDate32() || data_type_rhs.isDateTime()))
+            return false;
+
+        return castBothTypes(arguments[0].get(), arguments[1].get(), [&](const auto & left, const auto & right)
+        {
+            using LeftDataType = std::decay_t<decltype(left)>;
+            using RightDataType = std::decay_t<decltype(right)>;
+            using LeftType = typename LeftDataType::FieldType;
+            using RightType = typename RightDataType::FieldType;
+            using PromotedType = typename NumberTraits::ResultOfIf<LeftType, RightType>::Type;
+            if constexpr (
+                !std::is_same_v<DataTypeFixedString, LeftDataType> && !std::is_same_v<DataTypeFixedString, RightDataType>
+                && !std::is_same_v<DataTypeString, LeftDataType> && !std::is_same_v<DataTypeString, RightDataType>
+                && (std::is_integral_v<PromotedType> || std::is_floating_point_v<PromotedType>))
+            {
+                using OpSpec = Op<typename LeftDataType::FieldType, typename RightDataType::FieldType>;
+                return OpSpec::compilable;
+            }
+            return false;
+        });
+        return false;
+    }
+
+    llvm::Value * compileImpl(llvm::IRBuilderBase & builder, const ValuesWithType & arguments, const DataTypePtr &) const override
+    {
+        assert(2 == arguments.size());
+
+        llvm::Value * result = nullptr;
+        castBothTypes(arguments[0].type.get(), arguments[1].type.get(), [&](const auto & left, const auto & right)
+        {
+            using LeftDataType = std::decay_t<decltype(left)>;
+            using RightDataType = std::decay_t<decltype(right)>;
+            using LeftType = typename LeftDataType::FieldType;
+            using RightType = typename RightDataType::FieldType;
+            using PromotedType = typename NumberTraits::ResultOfIf<LeftType, RightType>::Type;
+
+            if constexpr (
+                !std::is_same_v<DataTypeFixedString, LeftDataType> && !std::is_same_v<DataTypeFixedString, RightDataType>
+                && !std::is_same_v<DataTypeString, LeftDataType> && !std::is_same_v<DataTypeString, RightDataType>
+                && (std::is_integral_v<PromotedType> || std::is_floating_point_v<PromotedType>))
+            {
+                using OpSpec = Op<typename LeftDataType::FieldType, typename RightDataType::FieldType>;
+                if constexpr (OpSpec::compilable)
+                {
+                    auto promoted_type = std::make_shared<DataTypeNumber<PromotedType>>();
+                    auto & b = static_cast<llvm::IRBuilder<> &>(builder);
+                    auto * left_value = nativeCast(b, arguments[0], promoted_type);
+                    auto * right_value = nativeCast(b, arguments[1], promoted_type);
+                    result = b.CreateSelect(
+                        CompileOp<Op>::compile(b, left_value, right_value, std::is_signed_v<PromotedType>), b.getInt8(1), b.getInt8(0));
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        return result;
+    }
+#endif
+};
+
+
+
+/// Out-of-line definitions of non-numeric member functions.
+/// Moving these out of the class body allows extern template to suppress their instantiation.
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeString(const IColumn * c0, const IColumn * c1) const
+{
+        checkStackSize();
+
+        const ColumnString * c0_string = checkAndGetColumn<ColumnString>(c0);
+        const ColumnString * c1_string = checkAndGetColumn<ColumnString>(c1);
+        const ColumnFixedString * c0_fixed_string = checkAndGetColumn<ColumnFixedString>(c0);
+        const ColumnFixedString * c1_fixed_string = checkAndGetColumn<ColumnFixedString>(c1);
+
+        const ColumnConst * c0_const = checkAndGetColumnConstStringOrFixedString(c0);
+        const ColumnConst * c1_const = checkAndGetColumnConstStringOrFixedString(c1);
+
+        if (!((c0_string || c0_fixed_string || c0_const) && (c1_string || c1_fixed_string || c1_const)))
+            return nullptr;
+
+        const ColumnString::Chars * c0_const_chars = nullptr;
+        const ColumnString::Chars * c1_const_chars = nullptr;
+        ColumnString::Offset c0_const_size = 0;
+        ColumnString::Offset c1_const_size = 0;
+
+        if (c0_const)
+        {
+            const ColumnString * c0_const_string = checkAndGetColumn<ColumnString>(&c0_const->getDataColumn());
+            const ColumnFixedString * c0_const_fixed_string = checkAndGetColumn<ColumnFixedString>(&c0_const->getDataColumn());
+
+            if (c0_const_string)
+            {
+                c0_const_chars = &c0_const_string->getChars();
+                c0_const_size = c0_const_string->getDataAt(0).size();
+            }
+            else if (c0_const_fixed_string)
+            {
+                c0_const_chars = &c0_const_fixed_string->getChars();
+                c0_const_size = c0_const_fixed_string->getN();
+            }
+            else
+                throw Exception(ErrorCodes::ILLEGAL_COLUMN, "ColumnConst contains not String nor FixedString column");
+        }
+
+        if (c1_const)
+        {
+            const ColumnString * c1_const_string = checkAndGetColumn<ColumnString>(&c1_const->getDataColumn());
+            const ColumnFixedString * c1_const_fixed_string = checkAndGetColumn<ColumnFixedString>(&c1_const->getDataColumn());
+
+            if (c1_const_string)
+            {
+                c1_const_chars = &c1_const_string->getChars();
+                c1_const_size = c1_const_string->getDataAt(0).size();
+            }
+            else if (c1_const_fixed_string)
+            {
+                c1_const_chars = &c1_const_fixed_string->getChars();
+                c1_const_size = c1_const_fixed_string->getN();
+            }
+            else
+                throw Exception(ErrorCodes::ILLEGAL_COLUMN, "ColumnConst contains not String nor FixedString column");
+        }
+
+        using StringImpl = StringComparisonImpl<Op<int, int>>;
+
+        if (c0_const && c1_const)
+        {
+            auto res = executeString(&c0_const->getDataColumn(), &c1_const->getDataColumn());
+            if (!res)
+                return nullptr;
+
+            return ColumnConst::create(res, c0_const->size());
+        }
+
+        auto c_res = ColumnUInt8::create();
+        ColumnUInt8::Container & vec_res = c_res->getData();
+        vec_res.resize(c0->size());
+
+        if (c0_string && c1_string)
+            StringImpl::string_vector_string_vector(
+                c0_string->getChars(), c0_string->getOffsets(), c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
+        else if (c0_string && c1_fixed_string)
+            StringImpl::string_vector_fixed_string_vector(
+                c0_string->getChars(), c0_string->getOffsets(), c1_fixed_string->getChars(), c1_fixed_string->getN(), c_res->getData());
+        else if (c0_string && c1_const)
+            StringImpl::string_vector_constant(
+                c0_string->getChars(), c0_string->getOffsets(), *c1_const_chars, c1_const_size, c_res->getData());
+        else if (c0_fixed_string && c1_string)
+            StringImpl::fixed_string_vector_string_vector(
+                c0_fixed_string->getChars(), c0_fixed_string->getN(), c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
+        else if (c0_fixed_string && c1_fixed_string)
+            StringImpl::fixed_string_vector_fixed_string_vector(
+                c0_fixed_string->getChars(),
+                c0_fixed_string->getN(),
+                c1_fixed_string->getChars(),
+                c1_fixed_string->getN(),
+                c_res->getData());
+        else if (c0_fixed_string && c1_const)
+            StringImpl::fixed_string_vector_constant(
+                c0_fixed_string->getChars(), c0_fixed_string->getN(), *c1_const_chars, c1_const_size, c_res->getData());
+        else if (c0_const && c1_string)
+            StringImpl::constant_string_vector(
+                *c0_const_chars, c0_const_size, c1_string->getChars(), c1_string->getOffsets(), c_res->getData());
+        else if (c0_const && c1_fixed_string)
+            StringImpl::constant_fixed_string_vector(
+                *c0_const_chars, c0_const_size, c1_fixed_string->getChars(), c1_fixed_string->getN(), c_res->getData());
+        else
+            throw Exception(
+                ErrorCodes::ILLEGAL_COLUMN,
+                "Illegal columns {} and {} of arguments of function {}",
+                c0->getName(),
+                c1->getName(),
+                getName());
+
+        return c_res;
+    }
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeWithConstString(
+            const DataTypePtr & result_type, const IColumn * col_left_untyped, const IColumn * col_right_untyped,
+            const DataTypePtr & left_type, const DataTypePtr & right_type, size_t input_rows_count) const
+{
+        checkStackSize();
+
+        /// To compare something with const string, we cast constant to appropriate type and compare as usual.
+        /// It is ok to throw exception if value is not convertible.
+        /// We should deal with possible overflows, e.g. toUInt8(1) = '257' should return false.
+
+        const ColumnConst * left_const = checkAndGetColumnConstStringOrFixedString(col_left_untyped);
+        const ColumnConst * right_const = checkAndGetColumnConstStringOrFixedString(col_right_untyped);
+
+        if (!left_const && !right_const)
+            return nullptr;
+
+        const IDataType * type_string = left_const ? left_type.get() : right_type.get();
+        const DataTypePtr & type_to_compare = !left_const ? left_type : right_type;
+
+        Field string_value = left_const ? left_const->getField() : right_const->getField();
+
+        auto is_string_not_in_enum = [this, &string_value]<typename T>(const EnumValues<T> * enum_values) -> bool
+        {
+            if constexpr (!IsOperation<Op>::equals && IsOperation<Op>::not_equals)
+                return false;
+            if (params.validate_enum_literals_in_operators)
+                return false;
+            if (!enum_values || string_value.getType() != Field::Types::String)
+                return false;
+            T res;
+            return !enum_values->tryGetValue(res, string_value.safeGet<String>());
+        };
+
+        if (is_string_not_in_enum(typeid_cast<const DataTypeEnum8 *>(type_to_compare.get()))
+         || is_string_not_in_enum(typeid_cast<const DataTypeEnum16 *>(type_to_compare.get())))
+        {
+            return DataTypeUInt8().createColumnConst(input_rows_count, IsOperation<Op>::not_equals);
+        }
+
+        Field converted = convertFieldToType(string_value, *type_to_compare, type_string, params.format_settings);
+
+        /// If not possible to convert, comparison with =, <, >, <=, >= yields to false and comparison with != yields to true.
+        if (converted.isNull())
+        {
+            return DataTypeUInt8().createColumnConst(input_rows_count, IsOperation<Op>::not_equals);
+        }
+
+        auto column_converted = type_to_compare->createColumnConst(input_rows_count, converted);
+
+        ColumnsWithTypeAndName tmp_columns{
+            {left_const ? column_converted : col_left_untyped->getPtr(), type_to_compare, ""},
+            {!left_const ? column_converted : col_right_untyped->getPtr(), type_to_compare, ""},
+        };
+
+        return executeImpl(tmp_columns, result_type, input_rows_count);
+    }
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeTuple(
+        const DataTypePtr & result_type, const ColumnWithTypeAndName & c0, const ColumnWithTypeAndName & c1,
+        size_t input_rows_count) const
+{
+        /** We will lexicographically compare the tuples. This is done as follows:
+          * x == y : x1 == y1 && x2 == y2 ...
+          * x != y : x1 != y1 || x2 != y2 ...
+          *
+          * x < y:   x1 < y1 || (x1 == y1 && (x2 < y2 || (x2 == y2 ... && xn < yn))
+          * x > y:   x1 > y1 || (x1 == y1 && (x2 > y2 || (x2 == y2 ... && xn > yn))
+          * x <= y:  x1 < y1 || (x1 == y1 && (x2 < y2 || (x2 == y2 ... && xn <= yn))
+          *
+          * Recursive form:
+          * x <= y:  x1 < y1 || (x1 == y1 && x_tail <= y_tail)
+          *
+          * x >= y:  x1 > y1 || (x1 == y1 && (x2 > y2 || (x2 == y2 ... && xn >= yn))
+          */
+        const size_t tuple_size = typeid_cast<const DataTypeTuple &>(*c0.type).getElements().size();
+
+        if (0 == tuple_size)
+            throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Comparison of zero-sized tuples is not implemented.");
+
+        if (tuple_size != typeid_cast<const DataTypeTuple &>(*c1.type).getElements().size())
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "Cannot compare tuples of different sizes.");
+
+        if (result_type->onlyNull())
+            return result_type->createColumnConstWithDefaultValue(input_rows_count);
+
+        ColumnsWithTypeAndName x(tuple_size);
+        ColumnsWithTypeAndName y(tuple_size);
+
+        const auto * x_const = checkAndGetColumnConst<ColumnTuple>(c0.column.get());
+        const auto * y_const = checkAndGetColumnConst<ColumnTuple>(c1.column.get());
+
+        Columns x_columns;
+        Columns y_columns;
+
+        if (x_const)
+            x_columns = convertConstTupleToConstantElements(*x_const);
+        else
+            x_columns = assert_cast<const ColumnTuple &>(*c0.column).getColumnsCopy();
+
+        if (y_const)
+            y_columns = convertConstTupleToConstantElements(*y_const);
+        else
+            y_columns = assert_cast<const ColumnTuple &>(*c1.column).getColumnsCopy();
+
+        for (size_t i = 0; i < tuple_size; ++i)
+        {
+            x[i].type = static_cast<const DataTypeTuple &>(*c0.type).getElements()[i];
+            y[i].type = static_cast<const DataTypeTuple &>(*c1.type).getElements()[i];
+
+            x[i].column = x_columns[i];
+            y[i].column = y_columns[i];
+        }
+
+        return executeTupleImpl(x, y, tuple_size, input_rows_count);
+    }
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeGenericIdenticalTypes(const IColumn * c0, const IColumn * c1) const
+{
         bool c0_const = isColumnConst(*c0);
         bool c1_const = isColumnConst(*c1);
 
@@ -1134,8 +1295,9 @@ private:
         return c_res;
     }
 
-    ColumnPtr executeGeneric(const ColumnWithTypeAndName & c0, const ColumnWithTypeAndName & c1) const
-    {
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeGeneric(const ColumnWithTypeAndName & c0, const ColumnWithTypeAndName & c1) const
+{
         DataTypePtr common_type = getLeastSupertype(DataTypes{c0.type, c1.type});
         ColumnPtr c0_converted = castColumn(c0, common_type);
         ColumnPtr c1_converted = castColumn(c1, common_type);
@@ -1143,19 +1305,9 @@ private:
         return executeGenericIdenticalTypes(c0_converted.get(), c1_converted.get());
     }
 
-public:
-    String getName() const override
-    {
-        return name;
-    }
-
-    size_t getNumberOfArguments() const override { return 2; }
-
-    bool isSuitableForShortCircuitArgumentsExecution(const DataTypesWithConstInfo & /*arguments*/) const override { return false; }
-
-    /// Get result types by argument types. If the function does not apply to these arguments, throw an exception.
-    DataTypePtr getReturnTypeImpl(const DataTypes & arguments) const override
-    {
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+DataTypePtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::getReturnTypeImpl(const DataTypes & arguments) const
+{
         if ((name == NameEquals::name || name == NameNotEquals::name))
         {
             if (!arguments[0]->isComparableForEquality() || !arguments[1]->isComparableForEquality())
@@ -1246,13 +1398,9 @@ public:
         return std::make_shared<DataTypeUInt8>();
     }
 
-    DataTypePtr getReturnTypeForDefaultImplementationForDynamic() const override
-    {
-        return std::make_shared<DataTypeUInt8>();
-    }
-
-    ColumnPtr executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type, size_t input_rows_count) const override
-    {
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type, size_t input_rows_count) const
+{
         checkStackSize();
 
         const auto & col_with_type_and_name_left = arguments[0];
@@ -1427,125 +1575,6 @@ public:
         return executeGeneric(col_with_type_and_name_left, col_with_type_and_name_right);
     }
 
-    ColumnPtr getConstantResultForNonConstArguments(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type) const override
-    {
-        for (const auto & argument : arguments)
-        {
-            ColumnPtr column = argument.column;
-
-            if (!column || !isColumnConst(*column))
-                continue;
-
-            if (column->isNullAt(0))
-                return result_type->createColumnConst(1, Null());
-        }
-
-        return nullptr;
-    }
-
-#if USE_EMBEDDED_COMPILER
-    template <typename F>
-    static bool castType(const IDataType * type, F && f)
-    {
-        return castTypeToEither<
-            DataTypeUInt8,
-            DataTypeUInt16,
-            DataTypeUInt32,
-            DataTypeUInt64,
-            DataTypeInt8,
-            DataTypeInt16,
-            DataTypeInt32,
-            DataTypeInt64,
-            DataTypeFloat32,
-            DataTypeFloat64>(type, std::forward<F>(f));
-    }
-
-    template <typename F>
-    static bool castBothTypes(const IDataType * left, const IDataType * right, F && f)
-    {
-        return castType(left, [&](const auto & left_)
-        {
-            return castType(right, [&](const auto & right_)
-            {
-                return f(left_, right_);
-            });
-        });
-    }
-
-    bool isCompilableImpl(const DataTypes & arguments, const DataTypePtr & result_type) const override
-    {
-        if (2 != arguments.size())
-            return false;
-
-        if (!canBeNativeType(*arguments[0]) || !canBeNativeType(*arguments[1]) || !canBeNativeType(*result_type))
-            return false;
-
-        WhichDataType data_type_lhs(arguments[0]);
-        WhichDataType data_type_rhs(arguments[1]);
-        /// TODO support date/date32
-        if ((data_type_lhs.isDateOrDate32() || data_type_lhs.isDateTime()) ||
-            (data_type_rhs.isDateOrDate32() || data_type_rhs.isDateTime()))
-            return false;
-
-        return castBothTypes(arguments[0].get(), arguments[1].get(), [&](const auto & left, const auto & right)
-        {
-            using LeftDataType = std::decay_t<decltype(left)>;
-            using RightDataType = std::decay_t<decltype(right)>;
-            using LeftType = typename LeftDataType::FieldType;
-            using RightType = typename RightDataType::FieldType;
-            using PromotedType = typename NumberTraits::ResultOfIf<LeftType, RightType>::Type;
-            if constexpr (
-                !std::is_same_v<DataTypeFixedString, LeftDataType> && !std::is_same_v<DataTypeFixedString, RightDataType>
-                && !std::is_same_v<DataTypeString, LeftDataType> && !std::is_same_v<DataTypeString, RightDataType>
-                && (std::is_integral_v<PromotedType> || std::is_floating_point_v<PromotedType>))
-            {
-                using OpSpec = Op<typename LeftDataType::FieldType, typename RightDataType::FieldType>;
-                return OpSpec::compilable;
-            }
-            return false;
-        });
-        return false;
-    }
-
-    llvm::Value * compileImpl(llvm::IRBuilderBase & builder, const ValuesWithType & arguments, const DataTypePtr &) const override
-    {
-        assert(2 == arguments.size());
-
-        llvm::Value * result = nullptr;
-        castBothTypes(arguments[0].type.get(), arguments[1].type.get(), [&](const auto & left, const auto & right)
-        {
-            using LeftDataType = std::decay_t<decltype(left)>;
-            using RightDataType = std::decay_t<decltype(right)>;
-            using LeftType = typename LeftDataType::FieldType;
-            using RightType = typename RightDataType::FieldType;
-            using PromotedType = typename NumberTraits::ResultOfIf<LeftType, RightType>::Type;
-
-            if constexpr (
-                !std::is_same_v<DataTypeFixedString, LeftDataType> && !std::is_same_v<DataTypeFixedString, RightDataType>
-                && !std::is_same_v<DataTypeString, LeftDataType> && !std::is_same_v<DataTypeString, RightDataType>
-                && (std::is_integral_v<PromotedType> || std::is_floating_point_v<PromotedType>))
-            {
-                using OpSpec = Op<typename LeftDataType::FieldType, typename RightDataType::FieldType>;
-                if constexpr (OpSpec::compilable)
-                {
-                    auto promoted_type = std::make_shared<DataTypeNumber<PromotedType>>();
-                    auto & b = static_cast<llvm::IRBuilder<> &>(builder);
-                    auto * left_value = nativeCast(b, arguments[0], promoted_type);
-                    auto * right_value = nativeCast(b, arguments[1], promoted_type);
-                    result = b.CreateSelect(
-                        CompileOp<Op>::compile(b, left_value, right_value, std::is_signed_v<PromotedType>), b.getInt8(1), b.getInt8(0));
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        return result;
-    }
-#endif
-};
-
-
 /// Out-of-line definitions of numeric comparison dispatch member functions.
 /// These are NOT inline, which allows extern template to suppress their instantiation.
 
@@ -1687,6 +1716,37 @@ ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumLeftTyp
     template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<BFloat16>(const IColumn *, const IColumn *) const; \
     template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float32>(const IColumn *, const IColumn *) const; \
     template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float64>(const IColumn *, const IColumn *) const;
+
+/// Macro for suppressing non-numeric member function instantiation in operator .cpp files.
+/// These are non-template members moved out-of-line, suppressible via per-function extern template.
+#define COMPARISON_EXTERN_NON_NUMERIC_TEMPLATES(Op, Name) \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeString(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeWithConstString( \
+            const DataTypePtr &, const IColumn *, const IColumn *, \
+            const DataTypePtr &, const DataTypePtr &, size_t) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeTuple( \
+        const DataTypePtr &, const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, \
+        size_t) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeGenericIdenticalTypes(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeGeneric(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &) const; \
+    extern template DataTypePtr FunctionComparison<Op, Name>::getReturnTypeImpl(const DataTypes &) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeImpl(const ColumnsWithTypeAndName &, const DataTypePtr &, size_t) const;
+
+/// Macro for explicit instantiation of non-numeric member functions (used in Half3 files)
+#define COMPARISON_INSTANTIATE_NON_NUMERIC(Op, Name) \
+    template ColumnPtr FunctionComparison<Op, Name>::executeString(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeWithConstString( \
+            const DataTypePtr &, const IColumn *, const IColumn *, \
+            const DataTypePtr &, const DataTypePtr &, size_t) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeTuple( \
+        const DataTypePtr &, const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, \
+        size_t) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeGenericIdenticalTypes(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeGeneric(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &) const; \
+    template DataTypePtr FunctionComparison<Op, Name>::getReturnTypeImpl(const DataTypes &) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeImpl(const ColumnsWithTypeAndName &, const DataTypePtr &, size_t) const;
+
+
 
 
 }

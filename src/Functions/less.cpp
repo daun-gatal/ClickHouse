@@ -7,6 +7,8 @@ namespace DB
 
 /// Suppress heavy numeric dispatch — instantiated in lessNumHalf1.cpp / lessNumHalf2.cpp.
 COMPARISON_EXTERN_NUMERIC_TEMPLATES(LessOp, NameLess)
+/// Suppress non-numeric member functions — instantiated in lessHalf3.cpp.
+COMPARISON_EXTERN_NON_NUMERIC_TEMPLATES(LessOp, NameLess)
 
 using FunctionLess = FunctionComparison<LessOp, NameLess>;
 using FunctionEquals = FunctionComparison<EqualsOp, NameEquals>;
