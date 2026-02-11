@@ -110,8 +110,6 @@ DB::Names HiveCatalog::getTables() const
 
 void HiveCatalog::checkDatabase(std::string database_name) const
 {
-    LOG_TEST(getLogger("HiveCatalog"), "Checking database '{}'", database_name);
-
     std::vector<std::string> result;
 
     std::lock_guard lock(client_mutex);

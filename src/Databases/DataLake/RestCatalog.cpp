@@ -550,7 +550,6 @@ DB::Names RestCatalog::getTables(const std::string & base_namespace, size_t limi
 
 void RestCatalog::checkDatabase(std::string database_name) const
 {
-    LOG_TEST(log, "Checking database '{}'", database_name);
     getTables(database_name, /* limit */ 1);
 }
 

@@ -450,7 +450,6 @@ DB::Names PaimonRestCatalog::getTables() const
 
 void PaimonRestCatalog::checkDatabase(std::string database_name) const
 {
-    LOG_TEST(log, "Checking database '{}'", database_name);
     DB::Names tables;
     auto list_database_stop_condition = [this, &tables](const String & name)
     {

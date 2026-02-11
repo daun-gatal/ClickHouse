@@ -281,7 +281,6 @@ DB::Names GlueCatalog::getTables() const
 
 void GlueCatalog::checkDatabase(std::string database_name) const
 {
-    LOG_TEST(log, "Checking database '{}'", database_name);
     getTablesForDatabase(database_name, /* limit */ 1);
 }
 

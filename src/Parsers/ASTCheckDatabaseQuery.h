@@ -50,7 +50,6 @@ protected:
         if (database)
         {
             database->format(ostr, settings, state, frame);
-            ostr << '.';
         }
     }
 };

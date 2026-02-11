@@ -821,8 +821,10 @@ ASTPtr DatabaseDataLake::getCreateDatabaseQueryImpl() const
 
 void DatabaseDataLake::checkDatabase() const
 {
+	const auto name = getDatabaseName();
+	LOG_TEST(log, "Checking database '{}'", name);
     auto catalog = getCatalog();
-    catalog->checkDatabase(getDatabaseName());
+    catalog->checkDatabase(name);
 }
 
 ASTPtr DatabaseDataLake::getCreateTableQueryImpl(
