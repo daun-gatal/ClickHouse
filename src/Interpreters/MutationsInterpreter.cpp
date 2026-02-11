@@ -1738,6 +1738,12 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
             }
 
             stage.required_columns = Names(needed.begin(), needed.end());
+
+            /// When all columns are updated with constants and the WHERE clause doesn't
+            /// reference any table columns, required_columns can end up empty. But the
+            /// storage reader needs at least one column to know how many rows exist.
+            if (stage.required_columns.empty() && !stage.output_columns.empty())
+                stage.required_columns.push_back(*stage.output_columns.begin());
         }
 
         if (i)
