@@ -829,21 +829,31 @@ class FunctionBinaryArithmetic : public IFunction
 
     static bool castType(const IDataType * type, auto && f)
     {
-        using Types = TypeList<
+        using NumericAndDateTypes = TypeList<
             DataTypeUInt8, DataTypeUInt16, DataTypeUInt32, DataTypeUInt64, DataTypeUInt128, DataTypeUInt256,
             DataTypeInt8, DataTypeInt16, DataTypeInt32, DataTypeInt64, DataTypeInt128, DataTypeInt256,
             DataTypeDecimal32, DataTypeDecimal64, DataTypeDecimal128, DataTypeDecimal256,
-            DataTypeDate, DataTypeDateTime, DataTypeTime,
-            DataTypeFixedString, DataTypeString,
-            DataTypeInterval>;
+            DataTypeDate, DataTypeDateTime, DataTypeTime>;
 
         using Floats = TypeList<DataTypeFloat32, DataTypeFloat64, DataTypeBFloat16>;
 
-        using ValidTypes = std::conditional_t<valid_on_float_arguments,
-            TypeListConcat<Types, Floats>,
-            Types>;
-
-        return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
+        /// Only plus, minus, and bitwise operations need String, FixedString, and Interval types.
+        /// For all other operations these types are rejected by the dispatch lambda anyway,
+        /// so we skip them to reduce the template instantiation matrix.
+        if constexpr (is_plus || is_minus || is_bit_hamming_distance)
+        {
+            using Types = TypeListConcat<NumericAndDateTypes,
+                TypeList<DataTypeFixedString, DataTypeString, DataTypeInterval>>;
+            using ValidTypes = std::conditional_t<valid_on_float_arguments,
+                TypeListConcat<Types, Floats>, Types>;
+            return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
+        }
+        else
+        {
+            using ValidTypes = std::conditional_t<valid_on_float_arguments,
+                TypeListConcat<NumericAndDateTypes, Floats>, NumericAndDateTypes>;
+            return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
+        }
     }
 
     template <typename F>
