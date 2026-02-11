@@ -744,6 +744,10 @@ if (ENABLE_TESTS)
     grep_gtest_sources("${ClickHouse_SOURCE_DIR}/src" dbms_gtest_sources)
     clickhouse_add_executable(unit_tests_dbms ${dbms_gtest_sources})
 
+    # Limit gtest compilation parallelism to avoid starving critical-path TUs of cores.
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS gtest_pool=64)
+    set_property(TARGET unit_tests_dbms PROPERTY JOB_POOL_COMPILE gtest_pool)
+
     # gtest framework has substandard code
     target_compile_options(unit_tests_dbms PRIVATE
         -Wno-sign-compare
