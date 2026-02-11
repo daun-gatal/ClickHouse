@@ -1739,6 +1739,20 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
             stage.required_columns = Names(needed.begin(), needed.end());
 
+            /// When return_all_columns is true (e.g. Iceberg mutations, on-the-fly
+            /// mutations in SELECT), the caller expects ALL columns including virtual
+            /// columns in the output. The backwards propagation through action steps
+            /// should include all output_columns, but the projection step with
+            /// project_input=false doesn't create DAG inputs for pass-through
+            /// columns. Ensure all output_columns are explicitly requested from
+            /// the source so the storage produces data for them.
+            if (settings.return_all_columns)
+            {
+                for (const auto & name : stage.output_columns)
+                    needed.insert(name);
+                stage.required_columns = Names(needed.begin(), needed.end());
+            }
+
             /// When all columns are updated with constants and the WHERE clause doesn't
             /// reference any table columns, required_columns can end up empty. But the
             /// storage reader needs at least one column to know how many rows exist.
