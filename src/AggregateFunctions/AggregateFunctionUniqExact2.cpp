@@ -9,16 +9,9 @@
 #include <DataTypes/DataTypeUUID.h>
 #include <DataTypes/DataTypeIPv4andIPv6.h>
 
-#include <Core/Settings.h>
-
 
 namespace DB
 {
-
-namespace Setting
-{
-    extern const SettingsMaxThreads max_threads;
-}
 
 namespace ErrorCodes
 {
@@ -92,79 +85,9 @@ createAggregateFunctionUniq(const std::string & name, const DataTypes & argument
 
 }
 
-/// Defined in AggregateFunctionUniqExact2.cpp
-AggregateFunctionPtr createAggregateFunctionUniqExactSerial(const std::string & name, const DataTypes & argument_types, const Array & params, const Settings * settings);
-
-void registerAggregateFunctionUniqExact(AggregateFunctionFactory & factory)
+AggregateFunctionPtr createAggregateFunctionUniqExactSerial(const std::string & name, const DataTypes & argument_types, const Array & params, const Settings * settings)
 {
-    AggregateFunctionProperties properties = { .returns_default_when_only_null = true, .is_order_dependent = false };
-
-    auto assign_bool_param = [](const std::string & name, const DataTypes & argument_types, const Array & params, const Settings * settings)
-    {
-        /// Using two level hash set if we wouldn't be able to merge in parallel can cause ~10% slowdown.
-        if (settings && (*settings)[Setting::max_threads] > 1)
-            return createAggregateFunctionUniq<
-                true, AggregateFunctionUniqExactData, AggregateFunctionUniqExactDataForVariadic, true /* is_able_to_parallelize_merge */>(name, argument_types, params, settings);
-        return createAggregateFunctionUniqExactSerial(name, argument_types, params, settings);
-    };
-
-    FunctionDocumentation::Description description = R"(
-Calculates the exact number of different argument values.
-
-:::warning
-The `uniqExact` function uses more memory than `uniq`, because the size of the state has unbounded growth as the number of different values increases.
-Use the `uniqExact` function if you absolutely need an exact result.
-Otherwise use the [`uniq`](https://clickhouse.com/docs/sql-reference/aggregate-functions/reference/uniq) function.
-:::
-    )";
-    FunctionDocumentation::Syntax syntax = R"(
-uniqExact(x[, ...])
-    )";
-    FunctionDocumentation::Arguments arguments = {
-        {"x", "The function takes a variable number of parameters.", {"Tuple(T)", "Array(T)", "Date", "DateTime", "String", "(U)Int*", "Float*", "Decimal"}}
-    };
-    FunctionDocumentation::ReturnedValue returned_value = {"Returns the exact number of different argument values as a UInt64.", {"UInt64"}};
-    FunctionDocumentation::Examples examples = {
-    {
-        "Basic usage",
-        R"(
-CREATE TABLE example_data
-(
-    id UInt32,
-    category String
-)
-ENGINE = Memory;
-
-INSERT INTO example_data VALUES
-(1, 'A'), (2, 'B'), (3, 'A'), (4, 'C'), (5, 'B'), (6, 'A');
-
-SELECT uniqExact(category) as exact_unique_categories
-FROM example_data;
-        )",
-        R"(
-┌─exact_unique_categories─┐
-│                       3 │
-└─────────────────────────┘
-        )"
-    },
-    {
-        "Multiple arguments",
-        R"(
-SELECT uniqExact(id, category) as exact_unique_combinations
-FROM example_data;
-        )",
-        R"(
-┌─exact_unique_combinations─┐
-│                         6 │
-└───────────────────────────┘
-        )"
-    }
-    };
-    FunctionDocumentation::IntroducedIn introduced_in = {1, 1};
-    FunctionDocumentation::Category category = FunctionDocumentation::Category::AggregateFunction;
-    FunctionDocumentation documentation = {description, syntax, arguments, {}, returned_value, examples, introduced_in, category};
-
-    factory.registerFunction("uniqExact", {assign_bool_param, properties, documentation});
+    return createAggregateFunctionUniq<true, AggregateFunctionUniqExactData, AggregateFunctionUniqExactDataForVariadic, false /* is_able_to_parallelize_merge */>(name, argument_types, params, settings);
 }
 
 }

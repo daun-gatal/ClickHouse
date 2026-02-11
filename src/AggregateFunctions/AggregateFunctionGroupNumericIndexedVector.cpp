@@ -16,6 +16,10 @@ extern const int ILLEGAL_TYPE_OF_ARGUMENT;
 extern const int BAD_ARGUMENTS;
 }
 
+/// Defined in AggregateFunctionGroupNumericIndexedVector2.cpp
+IAggregateFunction * createBSIVectorWithTwoNumericTypesFirstHalf2(
+    const IDataType & first_type, const IDataType & second_type, const DataTypes & types, const Array & params, UInt32 integer_bit_num, UInt32 fraction_bit_num);
+
 namespace
 {
 template <typename FirstType, template <typename, typename> class VectorImpl, typename... TArgs>
@@ -37,11 +41,15 @@ IAggregateFunction * createBSIVectorWithTwoNumericTypesFirst(
     const IDataType & first_type, const IDataType & second_type, const DataTypes & types, const Array & params, TArgs &&... args)
 {
     WhichDataType which(first_type);
-#define DISPATCH(TYPE) \
-    if (which.idx == TypeIndex::TYPE) \
-        return createBSIVectorWithTwoNumericTypesSecond<TYPE, VectorImpl>(second_type, types, params, std::forward<TArgs>(args)...);
-    FOR_NUMERIC_INDEXED_VECTOR_INDEX_TYPES(DISPATCH)
-#undef DISPATCH
+    /// First half: UInt types
+    if (which.idx == TypeIndex::UInt8)
+        return createBSIVectorWithTwoNumericTypesSecond<UInt8, VectorImpl>(second_type, types, params, std::forward<TArgs>(args)...);
+    if (which.idx == TypeIndex::UInt16)
+        return createBSIVectorWithTwoNumericTypesSecond<UInt16, VectorImpl>(second_type, types, params, std::forward<TArgs>(args)...);
+    if (which.idx == TypeIndex::UInt32)
+        return createBSIVectorWithTwoNumericTypesSecond<UInt32, VectorImpl>(second_type, types, params, std::forward<TArgs>(args)...);
+    if (which.idx == TypeIndex::UInt64)
+        return createBSIVectorWithTwoNumericTypesSecond<UInt64, VectorImpl>(second_type, types, params, std::forward<TArgs>(args)...);
     return nullptr;
 }
 
@@ -146,8 +154,16 @@ AggregateFunctionPtr createAggregateFunctionNumericIndexedVector(
                 ErrorCodes::ILLEGAL_TYPE_OF_ARGUMENT,
                 "The second argument type must be one of Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64");
 
-        res = std::shared_ptr<const IAggregateFunction>(createBSIVectorWithTwoNumericTypesFirst<BSINumericIndexedVector>(
-            *argument_types[0], *argument_types[1], argument_types, parameters, integer_bit_num, fraction_bit_num));
+        /// Try first half (UInt index types)
+        auto * ptr = createBSIVectorWithTwoNumericTypesFirst<BSINumericIndexedVector>(
+            *argument_types[0], *argument_types[1], argument_types, parameters, integer_bit_num, fraction_bit_num);
+
+        /// Try second half (Int index types), defined in AggregateFunctionGroupNumericIndexedVector2.cpp
+        if (!ptr)
+            ptr = createBSIVectorWithTwoNumericTypesFirstHalf2(
+                *argument_types[0], *argument_types[1], argument_types, parameters, integer_bit_num, fraction_bit_num);
+
+        res = std::shared_ptr<const IAggregateFunction>(ptr);
     }
     else
     {
