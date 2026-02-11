@@ -661,9 +661,11 @@ bool HashJoin::addBlockToJoin(const Block & block, ScatteredBlock::Selector sele
                 auto new_selector = ScatteredBlock::Indexes::create();
                 auto & new_selector_data = new_selector->getData();
 
-                for (size_t i = 0; i < asof_column_nullable.size(); ++i)
-                    if (!asof_column_nullable[i])
-                        new_selector_data.push_back(i);
+                /// Intersect with the original selector to keep only rows that
+                /// both belong to this partition and have a non-NULL ASOF key
+                for (size_t r : selector)
+                    if (!asof_column_nullable[r])
+                        new_selector_data.push_back(r);
 
                 selector = ScatteredBlock::Selector(std::move(new_selector));
             }
@@ -744,9 +746,15 @@ bool HashJoin::addBlockToJoin(const Block & block, ScatteredBlock::Selector sele
             UInt8 save_nullmap = 0;
             if (isRightOrFull(kind) && null_map)
             {
-                /// Save rows with NULL keys
-                for (size_t i = 0; !save_nullmap && i < null_map->size(); ++i)
-                    save_nullmap |= (*null_map)[i];
+                /// Only check rows belonging to this partition's selector
+                for (size_t r : stored_columns->selector)
+                {
+                    if ((*null_map)[r])
+                    {
+                        save_nullmap = 1;
+                        break;
+                    }
+                }
             }
 
             auto join_mask_col = JoinCommon::getColumnAsMask(block, onexprs[onexpr_idx].condColumnNames().second);
