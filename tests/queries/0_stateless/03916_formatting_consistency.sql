@@ -243,7 +243,7 @@ DETACH TABLE test_fmt_mem2;
 ATTACH TABLE test_fmt_mem2;
 
 -- SYSTEM
-SYSTEM FLUSH LOGS;
+SYSTEM FLUSH LOGS query_log;
 
 -- DROP
 DROP VIEW test_fmt_mv;
