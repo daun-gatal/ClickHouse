@@ -1519,6 +1519,37 @@ void addBuildSubqueriesForMaterializedCTEsIfNeeded(
 
     auto plan_header = query_plan.getCurrentHeader();
 
+    // The main idea of the algorithm is to unite plans for Materialized CTEs of the same level
+    // with the main query plan by MaterializingCTEsStep.
+    //
+    // This allows to ensure following properties:
+    // 1) All CTEs are executed before the main query.
+    // 2) If CTE A depends on CTE B, then A will be executed after B, because A will be on the next level after B.
+    // 3) CTEs on the same level are independent.
+    // 3) CTEs of the same level will be executed in the same MaterializingCTEsStep, so they will be executed in parallel.
+    // 4) Materialized CTEs are executed only once.
+    //
+    // Example of query plan structure for query with 2 levels of CTEs:
+    //
+    //                                  ┌───────────────────────┐
+    //                                  │                       │
+    //                             ┌────│ MaterializingCTEsStep │────────────────────────────┐
+    //                             │    │                       │         │                  │
+    //                             │    └───────────────────────┘         │                  │
+    //                             │                                      │                  │
+    //                             │                                      │                  │
+    //                 ┌───────────▼───────────┐                 ┌────────▼───────┐ ┌────────▼───────┐
+    //                 │                       │                 │                │ │                │
+    //        ┌────────│ MaterializingCTEsStep │─────────┐       │ CTE (level: 0) │ │ CTE (level: 0) │
+    //        │        │                       │         │       │                │ │                │
+    //        │        └───────────────────────┘         │       └────────────────┘ └────────────────┘
+    //        │                                          │
+    //        │                                          │
+    // ┌──────▼─────┐                           ┌────────▼───────┐
+    // │            │                           │                │
+    // │ Query Plan │                           │ CTE (level: 1) │
+    // │            │                           │                │
+    // └────────────┘                           └────────────────┘
     for (const auto & cte_level : materialized_ctes)
     {
         SharedHeaders headers;
