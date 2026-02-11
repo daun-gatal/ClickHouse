@@ -820,6 +820,7 @@ bool HashJoin::addBlockToJoin(const Block & block, ScatteredBlock::Selector sele
                 doDebugAsserts();
                 LOG_TRACE(log, "Skipping inserting block with {} rows", rows);
                 data->allocated_size -= data_allocated_bytes;
+                data->rows_to_join -= rows;
                 data->columns.pop_back();
                 doDebugAsserts();
             }
