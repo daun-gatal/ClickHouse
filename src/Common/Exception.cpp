@@ -66,7 +66,7 @@ void abortOnFailedAssertion(const String & description)
 bool terminate_on_any_exception = false;
 std::atomic_bool abort_on_logical_error = false;
 static int terminate_status_code = 128 + SIGABRT;
-std::function<void(std::string_view format_string, int code, bool remote, const Exception::Trace & trace)> Exception::callback = {};
+Exception::ExceptionCallback Exception::callback = nullptr;
 
 constexpr bool debug_or_sanitizer_build =
 #ifdef DEBUG_OR_SANITIZER_BUILD

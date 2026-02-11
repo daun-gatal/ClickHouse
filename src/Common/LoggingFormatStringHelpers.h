@@ -2,7 +2,7 @@
 
 #include <base/EnumReflection.h>
 #include <base/defines.h>
-#include <fmt/base.h>
+#include <fmt/format.h>
 
 #include <type_traits>
 #include <vector>

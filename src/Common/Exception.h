@@ -10,7 +10,6 @@
 #include <atomic>
 #include <cerrno>
 #include <exception>
-#include <functional>
 #include <optional>
 #include <vector>
 
@@ -137,7 +136,8 @@ public:
     static void clearThreadFramePointers();
 
     /// Callback for any exception
-    static std::function<void(std::string_view format_string, int code, bool remote, const Exception::Trace & trace)> callback;
+    using ExceptionCallback = void(*)(std::string_view format_string, int code, bool remote, const Exception::Trace & trace);
+    static ExceptionCallback callback;
 
 protected:
     static thread_local bool can_use_thread_frame_pointers;

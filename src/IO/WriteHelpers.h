@@ -1176,7 +1176,8 @@ template <typename T>
 requires is_floating_point<T>
 inline void writeText(T x, WriteBuffer & buf) { writeFloatText(x, buf); }
 
-inline void writeText(is_enum auto x, WriteBuffer & buf)
+template <typename T> requires std::is_enum_v<T>
+inline void writeText(T x, WriteBuffer & buf)
 {
     if constexpr (requires { { toString(x) } -> std::convertible_to<std::string_view>; })
         writeText(toString(x), buf);

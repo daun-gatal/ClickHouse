@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <unordered_map>
 #include <cstdint>
 #include <memory>
 #include <variant>
