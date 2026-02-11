@@ -614,6 +614,30 @@ SortDescription getSortDescriptionFromNames(const Names & names)
     return order_descr;
 }
 
+bool testForAggregationLimitPushdownOptimization(const AggregationAnalysisResult & aggregation_analysis_result,
+        const QueryAnalysisResult & query_analysis_result)
+{
+    if (aggregation_analysis_result.aggregation_keys.empty())
+        return false;
+
+    SortDescription sort_description_for_group_by_limit_pushdown = query_analysis_result.sort_description;
+
+    // TODO support GROUP BY y, z ORDER BY y
+    if (sort_description_for_group_by_limit_pushdown.size() != aggregation_analysis_result.aggregation_keys.size())
+        return false;
+
+    for (size_t i = 0; i < sort_description_for_group_by_limit_pushdown.size(); ++i)
+    {
+        if (sort_description_for_group_by_limit_pushdown[i].column_name != aggregation_analysis_result.aggregation_keys[i])
+            return false;
+    }
+
+    if (query_analysis_result.limit_length < 1)  // FIXME what does negative limit mean?
+        return false;
+
+    return true;
+}
+
 void addAggregationStep(QueryPlan & query_plan,
     const AggregationAnalysisResult & aggregation_analysis_result,
     const QueryAnalysisResult & query_analysis_result,
@@ -627,35 +651,13 @@ void addAggregationStep(QueryPlan & query_plan,
     SortDescription group_by_sort_description;
 
     {
-        bool match = true;
+        auto applicable = testForAggregationLimitPushdownOptimization(aggregation_analysis_result, query_analysis_result);
+        LOG_DEBUG(getLogger("Planner"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", applicable);
 
-        SortDescription sort_description_for_group_by_limit_pushdown = query_analysis_result.sort_description;
-
-        // TODO support GROUP BY y, z ORDER BY y
-        if (sort_description_for_group_by_limit_pushdown.size() != aggregation_analysis_result.aggregation_keys.size())
-            match = false;
-
-        for (size_t i = 0; i < sort_description_for_group_by_limit_pushdown.size(); ++i)
-        {
-            if (!match)
-                break;
-
-            if (sort_description_for_group_by_limit_pushdown[i].column_name != aggregation_analysis_result.aggregation_keys[i])
-            {
-                match = false;
-                break;
-            }
-        }
-
-        if (query_analysis_result.limit_length < 1)  // FIXME what does negative limit mean?
-            match = false;
-
-        LOG_DEBUG(getLogger("Planner"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
-
-        if (match && settings[Setting::top_n_group_by_limit_pushdown])
+        if (applicable && settings[Setting::top_n_group_by_limit_pushdown])
         {
             aggregator_params.top_n_keys = query_analysis_result.limit_length;
-            aggregator_params.top_n_keys_sort_direction = sort_description_for_group_by_limit_pushdown[0].direction; // FIXME
+            aggregator_params.top_n_keys_sort_direction = query_analysis_result.sort_description[0].direction; // FIXME
         }
     }
 
