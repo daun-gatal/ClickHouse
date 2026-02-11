@@ -752,107 +752,15 @@ public:
 private:
     const ComparisonParams params;
 
+    /// Defined out-of-line after the class to allow extern template suppression.
     template <typename T0, typename T1>
-    ColumnPtr executeNumRightType(const ColumnVector<T0> * col_left, const IColumn * col_right_untyped) const
-    {
-        if (const ColumnVector<T1> * col_right = checkAndGetColumn<ColumnVector<T1>>(col_right_untyped))
-        {
-            auto col_res = ColumnUInt8::create();
-
-            ColumnUInt8::Container & vec_res = col_res->getData();
-            vec_res.resize(col_left->getData().size());
-            NumComparisonImpl<T0, T1, Op<T0, T1>>::vectorVector(col_left->getData(), col_right->getData(), vec_res);
-
-            return col_res;
-        }
-        if (auto col_right_const = checkAndGetColumnConst<ColumnVector<T1>>(col_right_untyped))
-        {
-            auto col_res = ColumnUInt8::create();
-
-            ColumnUInt8::Container & vec_res = col_res->getData();
-            vec_res.resize(col_left->size());
-            NumComparisonImpl<T0, T1, Op<T0, T1>>::vectorConstant(col_left->getData(), col_right_const->template getValue<T1>(), vec_res);
-
-            return col_res;
-        }
-
-        return nullptr;
-    }
+    ColumnPtr executeNumRightType(const ColumnVector<T0> * col_left, const IColumn * col_right_untyped) const;
 
     template <typename T0, typename T1>
-    ColumnPtr executeNumConstRightType(const ColumnConst * col_left, const IColumn * col_right_untyped) const
-    {
-        if (const ColumnVector<T1> * col_right = checkAndGetColumn<ColumnVector<T1>>(col_right_untyped))
-        {
-            auto col_res = ColumnUInt8::create();
-
-            ColumnUInt8::Container & vec_res = col_res->getData();
-            vec_res.resize(col_left->size());
-            NumComparisonImpl<T0, T1, Op<T0, T1>>::constantVector(col_left->template getValue<T0>(), col_right->getData(), vec_res);
-
-            return col_res;
-        }
-        if (auto col_right_const = checkAndGetColumnConst<ColumnVector<T1>>(col_right_untyped))
-        {
-            UInt8 res = 0;
-            NumComparisonImpl<T0, T1, Op<T0, T1>>::constantConstant(
-                col_left->template getValue<T0>(), col_right_const->template getValue<T1>(), res);
-
-            return DataTypeUInt8().createColumnConst(col_left->size(), toField(res));
-        }
-
-        return nullptr;
-    }
+    ColumnPtr executeNumConstRightType(const ColumnConst * col_left, const IColumn * col_right_untyped) const;
 
     template <typename T0>
-    ColumnPtr executeNumLeftType(const IColumn * col_left_untyped, const IColumn * col_right_untyped) const
-    {
-        ColumnPtr res = nullptr;
-        if (const ColumnVector<T0> * col_left = checkAndGetColumn<ColumnVector<T0>>(col_left_untyped))
-        {
-            if (   (res = executeNumRightType<T0, UInt8>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, UInt16>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, UInt32>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, UInt64>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, UInt128>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, UInt256>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int8>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int16>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int32>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int64>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int128>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Int256>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, BFloat16>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Float32>(col_left, col_right_untyped))
-                || (res = executeNumRightType<T0, Float64>(col_left, col_right_untyped)))
-                return res;
-            throw Exception(
-                ErrorCodes::ILLEGAL_COLUMN, "Illegal column {} of second argument of function {}", col_right_untyped->getName(), getName());
-        }
-        if (auto col_left_const = checkAndGetColumnConst<ColumnVector<T0>>(col_left_untyped))
-        {
-            if ((res = executeNumConstRightType<T0, UInt8>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, UInt16>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, UInt32>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, UInt64>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, UInt128>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, UInt256>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int8>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int16>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int32>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int64>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int128>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Int256>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, BFloat16>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Float32>(col_left_const, col_right_untyped))
-                || (res = executeNumConstRightType<T0, Float64>(col_left_const, col_right_untyped)))
-                return res;
-            throw Exception(
-                ErrorCodes::ILLEGAL_COLUMN, "Illegal column {} of second argument of function {}", col_right_untyped->getName(), getName());
-        }
-
-        return nullptr;
-    }
+    ColumnPtr executeNumLeftType(const IColumn * col_left_untyped, const IColumn * col_right_untyped) const;
 
     ColumnPtr executeString(const IColumn * c0, const IColumn * c1) const
     {
@@ -1636,5 +1544,149 @@ public:
     }
 #endif
 };
+
+
+/// Out-of-line definitions of numeric comparison dispatch member functions.
+/// These are NOT inline, which allows extern template to suppress their instantiation.
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+template <typename T0, typename T1>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumRightType(
+    const ColumnVector<T0> * col_left, const IColumn * col_right_untyped) const
+{
+    if (const ColumnVector<T1> * col_right = checkAndGetColumn<ColumnVector<T1>>(col_right_untyped))
+    {
+        auto col_res = ColumnUInt8::create();
+        ColumnUInt8::Container & vec_res = col_res->getData();
+        vec_res.resize(col_left->getData().size());
+        NumComparisonImpl<T0, T1, Op<T0, T1>>::vectorVector(col_left->getData(), col_right->getData(), vec_res);
+        return col_res;
+    }
+    if (auto col_right_const = checkAndGetColumnConst<ColumnVector<T1>>(col_right_untyped))
+    {
+        auto col_res = ColumnUInt8::create();
+        ColumnUInt8::Container & vec_res = col_res->getData();
+        vec_res.resize(col_left->size());
+        NumComparisonImpl<T0, T1, Op<T0, T1>>::vectorConstant(col_left->getData(), col_right_const->template getValue<T1>(), vec_res);
+        return col_res;
+    }
+    return nullptr;
+}
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+template <typename T0, typename T1>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumConstRightType(
+    const ColumnConst * col_left, const IColumn * col_right_untyped) const
+{
+    if (const ColumnVector<T1> * col_right = checkAndGetColumn<ColumnVector<T1>>(col_right_untyped))
+    {
+        auto col_res = ColumnUInt8::create();
+        ColumnUInt8::Container & vec_res = col_res->getData();
+        vec_res.resize(col_left->size());
+        NumComparisonImpl<T0, T1, Op<T0, T1>>::constantVector(col_left->template getValue<T0>(), col_right->getData(), vec_res);
+        return col_res;
+    }
+    if (auto col_right_const = checkAndGetColumnConst<ColumnVector<T1>>(col_right_untyped))
+    {
+        UInt8 res = 0;
+        NumComparisonImpl<T0, T1, Op<T0, T1>>::constantConstant(
+            col_left->template getValue<T0>(), col_right_const->template getValue<T1>(), res);
+        return DataTypeUInt8().createColumnConst(col_left->size(), toField(res));
+    }
+    return nullptr;
+}
+
+template <template <typename, typename> class Op, typename Name, bool is_null_safe_cmp_mode>
+template <typename T0>
+ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumLeftType(
+    const IColumn * col_left_untyped, const IColumn * col_right_untyped) const
+{
+    ColumnPtr res = nullptr;
+    if (const ColumnVector<T0> * col_left = checkAndGetColumn<ColumnVector<T0>>(col_left_untyped))
+    {
+        if (   (res = executeNumRightType<T0, UInt8>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, UInt16>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, UInt32>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, UInt64>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, UInt128>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, UInt256>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int8>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int16>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int32>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int64>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int128>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Int256>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, BFloat16>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Float32>(col_left, col_right_untyped))
+            || (res = executeNumRightType<T0, Float64>(col_left, col_right_untyped)))
+            return res;
+        throw Exception(
+            ErrorCodes::ILLEGAL_COLUMN, "Illegal column {} of second argument of function {}", col_right_untyped->getName(), getName());
+    }
+    if (auto col_left_const = checkAndGetColumnConst<ColumnVector<T0>>(col_left_untyped))
+    {
+        if ((res = executeNumConstRightType<T0, UInt8>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, UInt16>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, UInt32>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, UInt64>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, UInt128>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, UInt256>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int8>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int16>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int32>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int64>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int128>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Int256>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, BFloat16>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Float32>(col_left_const, col_right_untyped))
+            || (res = executeNumConstRightType<T0, Float64>(col_left_const, col_right_untyped)))
+            return res;
+        throw Exception(
+            ErrorCodes::ILLEGAL_COLUMN, "Illegal column {} of second argument of function {}", col_right_untyped->getName(), getName());
+    }
+    return nullptr;
+}
+
+
+/// Macro for suppressing numeric comparison dispatch instantiation in operator .cpp files.
+/// Usage: COMPARISON_EXTERN_NUMERIC_TEMPLATES(EqualsOp, NameEquals)
+#define COMPARISON_EXTERN_NUMERIC_TEMPLATES(Op, Name) \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt8>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt16>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt32>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt64>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt128>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt256>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int8>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int16>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int32>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int64>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int128>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int256>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<BFloat16>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float32>(const IColumn *, const IColumn *) const; \
+    extern template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float64>(const IColumn *, const IColumn *) const;
+
+/// Macro for explicit instantiation of first-half left types (UInt8..Int64)
+#define COMPARISON_INSTANTIATE_HALF1(Op, Name) \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt8>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt16>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt32>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt64>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int8>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int16>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int32>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int64>(const IColumn *, const IColumn *) const;
+
+/// Macro for explicit instantiation of second-half left types (UInt128..Float64)
+#define COMPARISON_INSTANTIATE_HALF2(Op, Name) \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt128>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<UInt256>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int128>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Int256>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<BFloat16>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float32>(const IColumn *, const IColumn *) const; \
+    template ColumnPtr FunctionComparison<Op, Name>::executeNumLeftType<Float64>(const IColumn *, const IColumn *) const;
+
 
 }

@@ -5,6 +5,9 @@
 namespace DB
 {
 
+/// Suppress heavy numeric dispatch — instantiated in greaterNumHalf1.cpp / greaterNumHalf2.cpp.
+COMPARISON_EXTERN_NUMERIC_TEMPLATES(GreaterOp, NameGreater)
+
 using FunctionGreater = FunctionComparison<GreaterOp, NameGreater>;
 using FunctionEquals = FunctionComparison<EqualsOp, NameEquals>;
 extern template class FunctionComparison<EqualsOp, NameEquals>;

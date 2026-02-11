@@ -2,9 +2,11 @@
 #include <Functions/FunctionsComparison.h>
 #include <Functions/FunctionsLogical.h>
 
-
 namespace DB
 {
+
+/// Suppress heavy numeric dispatch — instantiated in lessNumHalf1.cpp / lessNumHalf2.cpp.
+COMPARISON_EXTERN_NUMERIC_TEMPLATES(LessOp, NameLess)
 
 using FunctionLess = FunctionComparison<LessOp, NameLess>;
 using FunctionEquals = FunctionComparison<EqualsOp, NameEquals>;
