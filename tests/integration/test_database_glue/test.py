@@ -719,3 +719,23 @@ def test_table_without_metadata_location(started_cluster):
     assert "Iceberg" in create_table_result, f"Expected Iceberg engine in: {create_table_result}"
 
     node.query(f"DROP DATABASE IF EXISTS {db_name} SYNC")
+
+def test_check_database(started_cluster):
+    node = started_cluster.instances["node1"]
+
+    root_namespace = f"clickhouse_{uuid.uuid4()}"
+    namespace = f"{root_namespace}_test"
+    namespace_tables = ["tableA", "tableB"]
+
+    catalog = load_catalog_impl(started_cluster)
+
+    catalog.create_namespace(namespace)
+
+    create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
+
+    for table in namespace_tables:
+        create_table(catalog, namespace, table)
+
+    node.query(
+        f"CHECK DATABASE {namespace}"
+    )
