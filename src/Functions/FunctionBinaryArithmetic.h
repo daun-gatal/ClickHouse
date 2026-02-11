@@ -837,23 +837,24 @@ class FunctionBinaryArithmetic : public IFunction
 
         using Floats = TypeList<DataTypeFloat32, DataTypeFloat64, DataTypeBFloat16>;
 
-        /// Only plus, minus, and bitwise operations need String, FixedString, and Interval types.
-        /// For all other operations these types are rejected by the dispatch lambda anyway,
+        /// Only include extra types that this specific operation actually uses.
+        /// String/FixedString: needed for bitwise ops (allow_fixed_string/allow_string_integer)
+        ///   and bitHammingDistance.
+        /// Interval: needed for plus/minus (date/time +/- interval arithmetic).
+        /// All other operations reject these types in the dispatch lambda anyway,
         /// so we skip them to reduce the template instantiation matrix.
-        if constexpr (is_plus || is_minus || is_bit_hamming_distance)
-        {
-            using Types = TypeListConcat<NumericAndDateTypes,
-                TypeList<DataTypeFixedString, DataTypeString, DataTypeInterval>>;
-            using ValidTypes = std::conditional_t<valid_on_float_arguments,
-                TypeListConcat<Types, Floats>, Types>;
-            return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
-        }
-        else
-        {
-            using ValidTypes = std::conditional_t<valid_on_float_arguments,
-                TypeListConcat<NumericAndDateTypes, Floats>, NumericAndDateTypes>;
-            return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
-        }
+        static constexpr bool needs_string_types =
+            Op<UInt8, UInt8>::allow_fixed_string || Op<UInt8, UInt8>::allow_string_integer || is_bit_hamming_distance;
+        static constexpr bool needs_interval = is_plus || is_minus;
+
+        using WithStrings = std::conditional_t<needs_string_types,
+            TypeListConcat<NumericAndDateTypes, TypeList<DataTypeFixedString, DataTypeString>>, NumericAndDateTypes>;
+        using WithInterval = std::conditional_t<needs_interval,
+            TypeListConcat<WithStrings, TypeList<DataTypeInterval>>, WithStrings>;
+        using ValidTypes = std::conditional_t<valid_on_float_arguments,
+            TypeListConcat<WithInterval, Floats>, WithInterval>;
+
+        return castTypeToEither(ValidTypes{}, type, std::forward<decltype(f)>(f));
     }
 
     template <typename F>
