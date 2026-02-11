@@ -1,7 +1,9 @@
 #include <Functions/isDistinctFrom.h>
 #include <Functions/FunctionFactory.h>
-#include <Functions/FunctionsLogical.h>
 
+/// Suppress implicit instantiation — definition is in FunctionsNullSafeCmp.cpp.
+extern template class DB::FunctionsNullSafeCmp<
+    DB::NameFunctionIsDistinctFrom, DB::NullSafeCmpMode::NullSafeNotEqual, DB::NotEqualsOp, DB::NameNotEquals>;
 
 namespace DB
 {
@@ -52,22 +54,6 @@ SELECT
     FunctionDocumentation documentation = {description, syntax, arguments, {}, returned_value, examples, introduced_in, category};
 
     factory.registerFunction<FunctionIsDistinctFrom>(documentation);
-}
-
-template <>
-ColumnPtr FunctionComparison<NotEqualsOp, NameNotEquals, true /* is null safe cmp*/>::executeTupleImpl(
-    const ColumnsWithTypeAndName & x, const ColumnsWithTypeAndName & y, size_t tuple_size, size_t input_rows_count) const
-{
-    FunctionOverloadResolverPtr func_builder_not_equals
-        = std::make_unique<FunctionToOverloadResolverAdaptor>(std::make_shared<FunctionIsDistinctFrom>(params));
-
-    FunctionOverloadResolverPtr func_builder_and
-        = std::make_unique<FunctionToOverloadResolverAdaptor>(std::make_shared<FunctionOr>());
-
-    return executeTupleEqualityImpl(
-        func_builder_not_equals,
-        func_builder_and,
-        x, y, tuple_size, input_rows_count);
 }
 
 }
