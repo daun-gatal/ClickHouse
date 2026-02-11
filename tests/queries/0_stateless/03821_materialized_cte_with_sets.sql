@@ -24,3 +24,18 @@ WITH
     b AS MATERIALIZED (SELECT uid FROM a),
     a AS MATERIALIZED (SELECT uid FROM users)
 SELECT count() FROM b as l LEFT SEMI JOIN b AS r ON l.uid = r.uid;
+
+WITH
+    b AS MATERIALIZED (SELECT uid FROM a, a),
+    a AS MATERIALIZED (SELECT uid FROM users)
+SELECT count() FROM b as l LEFT SEMI JOIN b AS r ON l.uid = r.uid;
+
+WITH
+    a AS MATERIALIZED (SELECT uid FROM users),
+    b AS MATERIALIZED (SELECT uid FROM a, a)
+SELECT count() FROM b as l LEFT SEMI JOIN b AS r ON l.uid = r.uid;
+
+WITH
+    b AS MATERIALIZED (SELECT uid FROM a, a),
+    a AS MATERIALIZED (SELECT uid FROM users)
+SELECT count() FROM (SELECT * FROM b WHERE uid in b) as l LEFT SEMI JOIN a AS r ON l.uid = r.uid;

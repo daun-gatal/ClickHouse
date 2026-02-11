@@ -9,8 +9,11 @@
 namespace DB
 {
 
-TableHolderToCTEMap collectMaterializedCTEs(const QueryTreeNodePtr & node)
+TableHolderToCTEMap collectMaterializedCTEs(const QueryTreeNodePtr & node, const SelectQueryOptions & select_query_options)
 {
+    if (select_query_options.is_subquery)
+        return {};
+
     TableHolderToCTEMap materialized_ctes;
 
     traverseQueryTree(node, ExceptSubqueries{},
@@ -20,8 +23,8 @@ TableHolderToCTEMap collectMaterializedCTEs(const QueryTreeNodePtr & node)
         {
             if (table_node->isMaterializedCTE())
             {
-                LOG_DEBUG(getLogger("collectMaterializedCTEs"), "Found materialized CTE:\n{}", table_node->dumpTree());
-                materialized_ctes.emplace(table_node->getTemporaryTableHolder().get(), current_node);
+                auto [_, inserted] = materialized_ctes.emplace(table_node->getTemporaryTableHolder().get(), current_node);
+                LOG_DEBUG(getLogger("collectMaterializedCTEs"), "Found materialized CTE (inserted: {}):\n{}", inserted, table_node->dumpTree());
             }
         }
     });

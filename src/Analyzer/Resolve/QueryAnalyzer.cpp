@@ -1411,6 +1411,7 @@ IdentifierResolveResult QueryAnalyzer::tryResolveIdentifier(const IdentifierLook
                     true /*create_for_global_subquery*/);
 
                 auto table_node = std::make_shared<TableNode>(std::move(storage_holder), cte_node, scope.context);
+                table_node->setTemporaryTableName(full_name);
 
                 cte_node = table_node;
             }
@@ -2827,6 +2828,7 @@ ProjectionNames QueryAnalyzer::resolveExpressionNode(
                     /// If table identifier is resolved as CTE clone it and resolve
                     auto * subquery_node = resolved_identifier_node->as<QueryNode>();
                     auto * union_node = resolved_identifier_node->as<UnionNode>();
+                    auto * table_node = resolved_identifier_node->as<TableNode>();
                     bool resolved_as_cte = (subquery_node && subquery_node->isCTE()) || (union_node && union_node->isCTE());
 
                     /// Non-materialized CTEs must be resolved here
@@ -2860,6 +2862,10 @@ ProjectionNames QueryAnalyzer::resolveExpressionNode(
                             resolveUnion(resolved_identifier_node, subquery_scope);
 
                         ctes_in_resolve_process.erase(original_cte_node);
+                    }
+                    else if (table_node != nullptr && table_node->isMaterializedCTE())
+                    {
+                        resolved_identifier_node = resolved_identifier_node->clone();
                     }
                 }
             }

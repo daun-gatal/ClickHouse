@@ -1821,7 +1821,7 @@ void Planner::buildPlanForQueryNode()
     }
 
     collectSets(query_tree, *planner_context);
-    auto materialized_ctes = collectMaterializedCTEs(query_tree);
+    auto materialized_ctes = collectMaterializedCTEs(query_tree, select_query_options);
 
     const auto & settings = query_context->getSettingsRef();
     if (query_context->canUseTaskBasedParallelReplicas())
