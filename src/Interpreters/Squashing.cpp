@@ -262,7 +262,8 @@ static Chunk sliceChunk(const Chunk & chunk, size_t offset, size_t length)
     }
 
     Chunk result(std::move(sliced_columns), length);
-
+    result.setChunkInfos((chunk.getChunkInfos().clone()));
+    
     return result;
 }
 
