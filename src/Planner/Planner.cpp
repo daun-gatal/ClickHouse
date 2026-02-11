@@ -650,7 +650,7 @@ void addAggregationStep(QueryPlan & query_plan,
         if (query_analysis_result.limit_length < 1)  // FIXME what does negative limit mean?
             match = false;
 
-        LOG_DEBUG(getLogger("uwu"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
+        LOG_DEBUG(getLogger("Planner"), "GROUP BY ... ORDER BY ... LIMIT optimization can be applied: {}", match);
 
         if (match && settings[Setting::top_n_group_by_limit_pushdown])
         {

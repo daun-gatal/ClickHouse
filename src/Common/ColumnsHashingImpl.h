@@ -183,8 +183,6 @@ public:
     static constexpr bool has_mapped = !std::is_same_v<Mapped, void>;
     using Cache = LastElementCache<Value, nullable>;
 
-    // TODO uwu take a look
-
     static HashMethodContextPtr createContext(const HashMethodContextSettings &) { return nullptr; }
 
     template <typename Data>

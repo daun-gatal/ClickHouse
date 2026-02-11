@@ -7,6 +7,48 @@
 namespace DB
 {
 class IColumn;
+
+struct MultiWayHeap
+{
+    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue_asc;
+    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+
+    int direction;
+
+    void setDirection(int dir) { direction = dir; }
+
+    size_t size() const
+    {
+        return direction == 1 ? pqueue_asc.size() : pqueue_desc.size();
+    }
+
+    bool empty() const
+    {
+        return direction == 1 ? pqueue_asc.empty() : pqueue_desc.empty();
+    }
+
+    const Field & top() const
+    {
+        return direction == 1 ? pqueue_asc.top() : pqueue_desc.top();
+    }
+
+    void push(const Field & value)
+    {
+        if (direction == 1)
+            pqueue_asc.push(value);
+        else
+            pqueue_desc.push(value);
+    }
+
+    void pop()
+    {
+        if (direction == 1)
+            pqueue_asc.pop();
+        else
+            pqueue_desc.pop();
+    }
+};
+
 /// For the case where there is one numeric key.
 /// FieldType is UInt8/16/32/64 for any type with corresponding bit width.
 template <typename FieldType, typename TData,
@@ -18,8 +60,7 @@ struct AggregationMethodOneNumber
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodOneNumber() = default;
 
@@ -63,8 +104,7 @@ struct AggregationMethodString
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodString() = default;
 
@@ -101,8 +141,7 @@ struct AggregationMethodStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodStringNoCache() = default;
 
@@ -136,8 +175,7 @@ struct AggregationMethodFixedString
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodFixedString() = default;
 
@@ -171,8 +209,7 @@ struct AggregationMethodFixedStringNoCache
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodFixedStringNoCache() = default;
 
@@ -207,8 +244,7 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
     using Key = typename Base::Key;
     using Mapped = typename Base::Mapped;
     using Base::data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     template <bool use_cache>
     using BaseStateImpl = typename Base::template StateImpl<use_cache>;
@@ -246,8 +282,7 @@ struct AggregationMethodKeysFixed
     static constexpr bool has_low_cardinality = has_low_cardinality_;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodKeysFixed() = default;
 
@@ -295,8 +330,7 @@ struct AggregationMethodSerialized
     using Mapped = typename Data::mapped_type;
 
     Data data;
-    std::priority_queue<Field, std::vector<Field>, std::less<>> pqueue;
-    std::priority_queue<Field, std::vector<Field>, std::greater<>> pqueue_desc;
+    MultiWayHeap pqueue;
 
     AggregationMethodSerialized() = default;
 
