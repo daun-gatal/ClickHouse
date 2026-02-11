@@ -140,12 +140,6 @@ private:
     }
 };
 
-template <typename A, typename B>
-struct ModuloLegacyByConstantImpl : ModuloByConstantImpl<A, B>
-{
-    using Op = ModuloLegacyImpl<A, B>;
-};
-
 }
 
 /** Specializations are specified for dividing numbers of the type UInt64 and UInt32 by the numbers of the same sign.
@@ -204,48 +198,6 @@ REGISTER_FUNCTION(Modulo)
     FunctionDocumentation documentation = {description, syntax, arguments, {}, returned_value, examples, introduced_in, categories};
     factory.registerFunction<FunctionModulo>(documentation);
     factory.registerAlias("mod", "modulo", FunctionFactory::Case::Insensitive);
-}
-
-struct NameModuloLegacy { static constexpr auto name = "moduloLegacy"; };
-using FunctionModuloLegacy = BinaryArithmeticOverloadResolver<ModuloLegacyImpl, NameModuloLegacy, false>;
-
-REGISTER_FUNCTION(ModuloLegacy)
-{
-    factory.registerFunction<FunctionModuloLegacy>();
-}
-
-struct NamePositiveModulo
-{
-    static constexpr auto name = "positiveModulo";
-};
-using FunctionPositiveModulo = BinaryArithmeticOverloadResolver<PositiveModuloImpl, NamePositiveModulo, false>;
-
-REGISTER_FUNCTION(PositiveModulo)
-{
-    FunctionDocumentation::Description description = R"(
-Calculates the remainder when dividing `x` by `y`. Similar to function
-`modulo` except that `positiveModulo` always return non-negative number.
-    )";
-    FunctionDocumentation::Syntax syntax = "positiveModulo(x, y)";
-    FunctionDocumentation::Arguments arguments = {
-        {"x", "The dividend.", {"(U)Int*", "Float*", "Decimal"}},
-        {"y", "The divisor (modulus).", {"(U)Int*", "Float*", "Decimal"}}
-    };
-    FunctionDocumentation::ReturnedValue returned_value = {R"(
-Returns the difference between `x` and the nearest integer not greater than
-`x` divisible by `y`.
-    )"};
-    FunctionDocumentation::Examples example = {{"Usage example", "SELECT positiveModulo(-1, 10)", "9"}};
-    FunctionDocumentation::IntroducedIn introduced_in = {22, 11};
-    FunctionDocumentation::Category categories = FunctionDocumentation::Category::Arithmetic;
-    FunctionDocumentation documentation = {description, syntax, arguments, {}, returned_value, example, introduced_in, categories};
-
-    factory.registerFunction<FunctionPositiveModulo>(documentation,
-        FunctionFactory::Case::Insensitive);
-
-    factory.registerAlias("positive_modulo", "positiveModulo", FunctionFactory::Case::Insensitive);
-    /// Compatibility with Spark:
-    factory.registerAlias("pmod", "positiveModulo", FunctionFactory::Case::Insensitive);
 }
 
 }
