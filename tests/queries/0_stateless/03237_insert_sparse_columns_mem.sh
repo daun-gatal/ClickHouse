@@ -65,7 +65,7 @@ $MY_CLICKHOUSE_CLIENT --query "
     SYSTEM FLUSH LOGS query_log;
 
     SELECT written_bytes <= 10000000 FROM system.query_log
-    WHERE query LIKE 'INSERT INTO t_insert_mem%' AND current_database = '$CLICKHOUSE_DATABASE' AND type = 'QueryFinish'
+    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND query LIKE 'INSERT INTO t_insert_mem%' AND current_database = '$CLICKHOUSE_DATABASE' AND type = 'QueryFinish'
     ORDER BY event_time_microseconds;
 
     DROP TABLE IF EXISTS t_insert_mem;

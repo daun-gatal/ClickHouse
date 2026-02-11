@@ -37,7 +37,7 @@ ${CLICKHOUSE_CLIENT} -q "
            attribute['clickhouse.rows'] AS rows,
            attribute['clickhouse.bytes'] AS bytes
     FROM system.opentelemetry_span_log
-    WHERE finish_date >= yesterday()
+    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
     AND   lower(hex(trace_id))                = '${1}'
     AND   attribute['clickhouse.distributed'] = '${CLICKHOUSE_DATABASE}.dist_opentelemetry'
     AND   attribute['clickhouse.remote']      = '${CLICKHOUSE_DATABASE}.local_opentelemetry'
@@ -56,7 +56,7 @@ ${CLICKHOUSE_CLIENT} -q "
 
     SELECT count()
     FROM system.opentelemetry_span_log
-    WHERE finish_date >= yesterday()
+    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
     AND   lower(hex(trace_id))           = '${1}'
     AND   kind                           = '${2}'
     ;"

@@ -19,7 +19,7 @@ SELECT 'VALUES', query_duration_ms >= 250
 FROM system.query_log
 WHERE
       current_database = currentDatabase()
-  AND event_date >= yesterday()
+  AND event_date >= yesterday() AND event_time >= now() - 600
   AND query LIKE '-- INSERT USING VALUES%'
   AND type = 'QueryFinish'
 LIMIT 1;
@@ -28,7 +28,7 @@ SELECT 'TABLE', query_duration_ms >= 250
 FROM system.query_log
 WHERE
         current_database = currentDatabase()
-  AND event_date >= yesterday()
+  AND event_date >= yesterday() AND event_time >= now() - 600
   AND query LIKE '-- INSERT USING VALUES%'
   AND type = 'QueryFinish'
 LIMIT 1;
@@ -39,7 +39,7 @@ WITH
         FROM system.query_log
         WHERE
                 current_database = currentDatabase()
-          AND event_date >= yesterday()
+          AND event_date >= yesterday() AND event_time >= now() - 600
           AND query LIKE '-- INSERT USING VALUES%'
         LIMIT 1
     ) AS q_id
@@ -53,7 +53,7 @@ WITH
     FROM system.query_log
     WHERE
             current_database = currentDatabase()
-      AND event_date >= yesterday()
+      AND event_date >= yesterday() AND event_time >= now() - 600
       AND query LIKE '-- INSERT USING TABLE%'
     LIMIT 1
 ) AS q_id

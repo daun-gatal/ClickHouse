@@ -44,7 +44,7 @@ function check_span()
 
         SELECT count()
         FROM system.opentelemetry_span_log
-        WHERE finish_date >= yesterday()
+        WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
         AND   lower(hex(trace_id)) =    '${2}'
         AND   operation_name       like '${3}'
         ${extra_condition};")
@@ -58,7 +58,7 @@ function check_span()
         ${CLICKHOUSE_CLIENT} -q "
             SELECT operation_name, attribute
             FROM system.opentelemetry_span_log
-            WHERE finish_date >= yesterday()
+            WHERE event_date >= yesterday() AND event_time >= now() - 600 AND finish_date >= yesterday()
             AND   lower(hex(trace_id)) ='${2}'
             ORDER BY start_time_us
             Format PrettyCompact

@@ -81,7 +81,7 @@ SYSTEM FLUSH LOGS query_log;
 WITH
     (SELECT ProfileEvents['ZooKeeperTransactions']
     FROM system.query_log
-    WHERE current_database=currentDatabase() AND log_comment='02908_many_requests-baseline' AND type = 'QueryFinish') AS max_zookeeper_requests
+    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND current_database=currentDatabase() AND log_comment='02908_many_requests-baseline' AND type = 'QueryFinish') AS max_zookeeper_requests
 SELECT
     if (sum(ProfileEvents['ZooKeeperTransactions']) <= (max_zookeeper_requests * ${CONCURRENCY} / 2) as passed,
         passed::String,

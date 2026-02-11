@@ -30,7 +30,7 @@ SYSTEM FLUSH LOGS query_log;
 
 SELECT columns
 FROM system.query_log
-WHERE
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND
     initial_query_id = (
         SELECT query_id
         FROM system.query_log

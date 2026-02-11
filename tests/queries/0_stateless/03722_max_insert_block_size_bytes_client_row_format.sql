@@ -110,7 +110,7 @@ SYSTEM FLUSH LOGS query_log, part_log;
 -- We expect to see 8 parts inserted
 SELECT count()  
 FROM system.part_log 
-WHERE table = 'test_max_insert_bytes' 
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND table = 'test_max_insert_bytes' 
 AND event_type = 'NewPart' 
 AND (query_id = (
     SELECT argMax(query_id, event_time) 
@@ -123,7 +123,7 @@ AND (query_id = (
 -- We expect to see 4 parts inserted
 SELECT count()  
 FROM system.part_log 
-WHERE table = 'test_min_insert_rows_bytes' 
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND table = 'test_min_insert_rows_bytes' 
 AND event_type = 'NewPart' 
 AND (query_id = (
     SELECT argMax(query_id, event_time)  
@@ -136,7 +136,7 @@ AND (query_id = (
 -- We expect to see 2 parts inserted
 SELECT count()  
 FROM system.part_log 
-WHERE table = 'test_min_insert_rows' 
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND table = 'test_min_insert_rows' 
 AND event_type = 'NewPart' 
 AND (query_id = (
     SELECT argMax(query_id, event_time)  
@@ -149,7 +149,7 @@ AND (query_id = (
 -- We expect to see 2 parts inserted
 SELECT count()  
 FROM system.part_log 
-WHERE table = 'test_min_insert_bytes' 
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND table = 'test_min_insert_bytes' 
 AND event_type = 'NewPart' 
 AND (query_id = (
     SELECT argMax(query_id, event_time)  

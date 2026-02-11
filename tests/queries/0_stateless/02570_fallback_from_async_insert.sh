@@ -46,7 +46,7 @@ $CLICKHOUSE_CLIENT --query "SELECT * FROM t_async_insert_fallback ORDER BY a"
 $CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS text_log"
 $CLICKHOUSE_CLIENT --query "
     SELECT 'id_' || splitByChar('_', query_id)[1] AS id FROM system.text_log
-    WHERE query_id LIKE '%$query_id_suffix' AND message LIKE '%$message%'
+    WHERE event_date >= yesterday() AND event_time >= now() - 600 AND query_id LIKE '%$query_id_suffix' AND message LIKE '%$message%'
     ORDER BY id
     SETTINGS max_rows_to_read = 0
 "

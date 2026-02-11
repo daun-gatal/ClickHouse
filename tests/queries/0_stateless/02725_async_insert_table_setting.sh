@@ -25,7 +25,7 @@ SELECT count() FROM t_mt_sync_insert;
 
 SYSTEM FLUSH LOGS query_log;
 SELECT tables[1], ProfileEvents['AsyncInsertQuery'] FROM system.query_log
-WHERE
+WHERE event_date >= yesterday() AND event_time >= now() - 600 AND
     type = 'QueryFinish' AND
     current_database = currentDatabase() AND
     query ILIKE 'INSERT INTO t_mt_%sync_insert%'

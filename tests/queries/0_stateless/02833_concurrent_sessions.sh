@@ -89,7 +89,7 @@ function mysql_session()
 }
 
 ${CLICKHOUSE_CLIENT} -q "SYSTEM FLUSH LOGS session_log"
-${CLICKHOUSE_CLIENT} -q "DELETE FROM system.session_log WHERE user IN (${ALL_USERS_SQL_COLLECTION_STRING})"
+${CLICKHOUSE_CLIENT} -q "DELETE FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user IN (${ALL_USERS_SQL_COLLECTION_STRING})"
 
 export -f tcp_session;
 export -f http_session;
@@ -117,16 +117,16 @@ wait
 ${CLICKHOUSE_CLIENT} -q "SYSTEM FLUSH LOGS session_log"
 
 echo "sessions:"
-${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE user IN (${ALL_USERS_SQL_COLLECTION_STRING})"
+${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user IN (${ALL_USERS_SQL_COLLECTION_STRING})"
 
 echo "port_0_sessions:"
-${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE user IN (${ALL_USERS_SQL_COLLECTION_STRING}) AND client_port = 0"
+${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user IN (${ALL_USERS_SQL_COLLECTION_STRING}) AND client_port = 0"
 
 echo "address_0_sessions:"
-${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE user IN (${ALL_USERS_SQL_COLLECTION_STRING}) AND client_address = toIPv6('::')"
+${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user IN (${ALL_USERS_SQL_COLLECTION_STRING}) AND client_address = toIPv6('::')"
 
 echo "tcp_sessions"
-${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE user IN (${TCP_USERS_SQL_COLLECTION_STRING}) AND interface = 'TCP'"
+${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user IN (${TCP_USERS_SQL_COLLECTION_STRING}) AND interface = 'TCP'"
 echo "http_sessions"
 ${CLICKHOUSE_CLIENT} -q "SELECT count(*) FROM system.session_log WHERE user IN (${HTTP_USERS_SQL_COLLECTION_STRING}) AND interface = 'HTTP'"
 echo "http_with_session_id_sessions"
@@ -147,7 +147,7 @@ for user in "${ALL_USERS[@]}"; do
     do
         [[ 3 -eq $(${CLICKHOUSE_CLIENT} -q "
             SELECT COUNT(*) FROM (
-                SELECT ${SESSION_LOG_MATCHING_FIELDS} FROM system.session_log WHERE user = '${user}' AND type = 'LoginSuccess'
+                SELECT ${SESSION_LOG_MATCHING_FIELDS} FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user = '${user}' AND type = 'LoginSuccess'
                 INTERSECT
                 SELECT ${SESSION_LOG_MATCHING_FIELDS} FROM system.session_log WHERE user = '${user}' AND type = 'Logout'
             )") ]] && echo 3 && break;
@@ -155,5 +155,5 @@ for user in "${ALL_USERS[@]}"; do
     done
 
     echo "LoginFailure"
-    ${CLICKHOUSE_CLIENT} -q "SELECT COUNT(*) FROM system.session_log WHERE user = '${user}' AND type = 'LoginFailure'"
+    ${CLICKHOUSE_CLIENT} -q "SELECT COUNT(*) FROM system.session_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND user = '${user}' AND type = 'LoginFailure'"
  done

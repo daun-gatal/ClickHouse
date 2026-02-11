@@ -32,7 +32,7 @@ system flush logs query_log, query_thread_log;
 with queries as (
     select query_id, row_number() over(order by event_time_microseconds) as ordinal
     from system.query_log
-    where type = 'QueryFinish'
+    where event_date >= yesterday() AND event_time >= now() - 600 AND type = 'QueryFinish'
      and current_database = currentDatabase()
      and query_kind = 'Select'
      and Settings['min_bytes_to_use_direct_io'] = '1'

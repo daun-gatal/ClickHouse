@@ -6,4 +6,4 @@ CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 ${CLICKHOUSE_CURL} -sS "${CLICKHOUSE_URL}" -d 'SELECT 1' --referer 'https://meta.ua/'
 ${CLICKHOUSE_CLIENT} --query "SYSTEM FLUSH LOGS query_log"
-${CLICKHOUSE_CLIENT} --query "SELECT http_referer FROM system.query_log WHERE current_database = currentDatabase() AND http_referer LIKE '%meta%' LIMIT 1"
+${CLICKHOUSE_CLIENT} --query "SELECT http_referer FROM system.query_log WHERE event_date >= yesterday() AND event_time >= now() - 600 AND current_database = currentDatabase() AND http_referer LIKE '%meta%' LIMIT 1"
