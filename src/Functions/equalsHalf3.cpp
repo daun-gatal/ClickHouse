@@ -5,6 +5,8 @@ namespace DB
 
 /// Suppress numeric dispatch — provided by equalsNumHalf1.cpp / equalsNumHalf2.cpp.
 COMPARISON_EXTERN_NUMERIC_TEMPLATES(EqualsOp, NameEquals)
+/// Suppress decimal dispatch — provided by equalsHalf4.cpp.
+COMPARISON_EXTERN_DECIMAL_TEMPLATES(EqualsOp, NameEquals)
 
 /// Explicitly instantiate non-numeric member functions for equals.
 /// This provides all member function definitions that equals.cpp suppresses

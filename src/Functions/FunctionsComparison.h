@@ -1746,7 +1746,15 @@ ColumnPtr FunctionComparison<Op, Name, is_null_safe_cmp_mode>::executeNumLeftTyp
     template DataTypePtr FunctionComparison<Op, Name>::getReturnTypeImpl(const DataTypes &) const; \
     template ColumnPtr FunctionComparison<Op, Name>::executeImpl(const ColumnsWithTypeAndName &, const DataTypePtr &, size_t) const;
 
+/// Macro for suppressing decimal dispatch in Half3 files.
+/// executeDecimal is a free function template called from executeImpl; suppressing it
+/// prevents instantiation of the entire DecimalComparison type matrix (~2076 templates).
+#define COMPARISON_EXTERN_DECIMAL_TEMPLATES(Op, Name) \
+    extern template ColumnPtr executeDecimal<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
 
+/// Macro for explicit instantiation of decimal dispatch (used in Half4 files)
+#define COMPARISON_INSTANTIATE_DECIMAL(Op, Name) \
+    template ColumnPtr executeDecimal<Op, Name>(const ColumnWithTypeAndName &, const ColumnWithTypeAndName &, bool);
 
 
 }

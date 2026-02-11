@@ -5,6 +5,8 @@ namespace DB
 
 /// Suppress numeric dispatch — provided by lessNumHalf1.cpp / lessNumHalf2.cpp.
 COMPARISON_EXTERN_NUMERIC_TEMPLATES(LessOp, NameLess)
+/// Suppress decimal dispatch — provided by lessHalf4.cpp.
+COMPARISON_EXTERN_DECIMAL_TEMPLATES(LessOp, NameLess)
 
 /// Explicitly instantiate non-numeric member functions for less.
 /// This provides all member function definitions that less.cpp suppresses
