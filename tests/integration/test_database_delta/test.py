@@ -411,11 +411,11 @@ def test_check_database(started_cluster):
 
     schema_name = f"schema_check_database"
     execute_spark_query(node1, f"CREATE SCHEMA {schema_name}")
-    table_name_1 = f"table_check_database"
+    table_name = f"table_check_database"
 
-    create_query_1 = f"CREATE TABLE {schema_name}.{table_name_1} (id INT) using Delta location '/var/lib/clickhouse/user_files/tmp/{schema_name}/{table_name_1}'"
+    create_query_1 = f"CREATE TABLE {schema_name}.{table_name} (id INT) using Delta location '/var/lib/clickhouse/user_files/tmp/{schema_name}/{table_name}'"
 
-    execute_multiple_spark_queries(node1, [create_query_2, create_query_1])
+    node1.query(create_query_1)
 
     node1.query(
         f"""
