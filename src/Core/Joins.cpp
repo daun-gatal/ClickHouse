@@ -10,7 +10,7 @@ namespace ErrorCodes
     extern const int INCORRECT_DATA;
 }
 
-const char * toString(JoinKind kind)
+const char * enumToString(JoinKind kind)
 {
     switch (kind)
     {
@@ -24,7 +24,7 @@ const char * toString(JoinKind kind)
     }
 };
 
-const char * toString(JoinStrictness strictness)
+const char * enumToString(JoinStrictness strictness)
 {
     switch (strictness)
     {
@@ -38,7 +38,7 @@ const char * toString(JoinStrictness strictness)
     }
 }
 
-const char * toString(JoinLocality locality)
+const char * enumToString(JoinLocality locality)
 {
     switch (locality)
     {
@@ -48,7 +48,7 @@ const char * toString(JoinLocality locality)
     }
 }
 
-const char * toString(ASOFJoinInequality asof_join_inequality)
+const char * enumToString(ASOFJoinInequality asof_join_inequality)
 {
     switch (asof_join_inequality)
     {
@@ -60,7 +60,7 @@ const char * toString(ASOFJoinInequality asof_join_inequality)
     }
 }
 
-const char * toString(JoinAlgorithm join_algorithm)
+const char * enumToString(JoinAlgorithm join_algorithm)
 {
     switch (join_algorithm)
     {
@@ -76,7 +76,7 @@ const char * toString(JoinAlgorithm join_algorithm)
     }
 }
 
-const char * toString(JoinOrderAlgorithm join_order_algorithm)
+const char * enumToString(JoinOrderAlgorithm join_order_algorithm)
 {
     switch (join_order_algorithm)
     {
@@ -85,7 +85,7 @@ const char * toString(JoinOrderAlgorithm join_order_algorithm)
     }
 }
 
-const char * toString(JoinTableSide join_table_side)
+const char * enumToString(JoinTableSide join_table_side)
 {
     switch (join_table_side)
     {

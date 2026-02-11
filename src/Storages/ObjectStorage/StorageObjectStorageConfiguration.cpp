@@ -149,7 +149,7 @@ void StorageObjectStorageConfiguration::initPartitionStrategy(ASTPtr partition_b
     if (partition_strategy)
     {
         read_path = partition_strategy->getPathForRead(getRawPath().path);
-        LOG_DEBUG(getLogger("StorageObjectStorageConfiguration"), "Initialized partition strategy {}", magic_enum::enum_name(partition_strategy_type));
+        LOG_DEBUG(getLogger("StorageObjectStorageConfiguration"), "Initialized partition strategy {}", enumToString(partition_strategy_type));
     }
 }
 

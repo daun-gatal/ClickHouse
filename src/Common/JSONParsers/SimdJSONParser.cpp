@@ -20,7 +20,7 @@ void SimdJSONParser::reserve(size_t max_size)
         if (res == simdjson::error_code::MEMALLOC)
             throw Exception(ErrorCodes::CANNOT_ALLOCATE_MEMORY, "Couldn't allocate {} bytes when parsing JSON", max_size);
         else
-            throw Exception(ErrorCodes::UNKNOWN_EXCEPTION, "simdjson failed with: {}", res);
+            throw Exception(ErrorCodes::UNKNOWN_EXCEPTION, "simdjson failed with: {}", simdjson::error_message(res));
     }
 }
 

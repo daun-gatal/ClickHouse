@@ -198,14 +198,14 @@ private:
     {
         State prev = state.exchange(desired);
         if (prev != expected)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Invalid state transition from {} (got {}) to {}", expected, prev, desired);
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Invalid state transition from {} (got {}) to {}", static_cast<int>(expected), static_cast<int>(prev), static_cast<int>(desired));
     }
 
     void ensureState(State expected) const
     {
         State cur_state = state.load();
         if (cur_state != expected)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Invalid state transition, expected {}, got {}", expected, state.load());
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Invalid state transition, expected {}, got {}", static_cast<int>(expected), static_cast<int>(state.load()));
     }
 
     TemporaryBlockStreamHolder left_file;

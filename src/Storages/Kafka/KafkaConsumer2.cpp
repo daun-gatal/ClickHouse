@@ -114,7 +114,7 @@ void KafkaConsumer2::pollEvents()
         // All the partition queues are detached, so the consumer shouldn't be able to poll any real messages
         const auto err = msg.get_error();
         chassert(RD_KAFKA_RESP_ERR_NO_ERROR != err.get_error() && "Consumer returned a message when it was not expected");
-        LOG_ERROR(log, "Consumer received error while polling events, code {}, error '{}'", err.get_error(), err.to_string());
+        LOG_ERROR(log, "Consumer received error while polling events, code {}, error '{}'", static_cast<int>(err.get_error()), err.to_string());
     }
 };
 

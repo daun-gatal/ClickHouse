@@ -129,7 +129,7 @@ const ActionsDAG::Node & addClonedDAGToDAG(
         return new_node;
     }
 
-    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected node type in PREWHERE actions: {}", original_dag_node->type);
+    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected node type in PREWHERE actions: {}", ActionsDAG::enumToString(original_dag_node->type));
 }
 
 const ActionsDAG::Node & addFunction(

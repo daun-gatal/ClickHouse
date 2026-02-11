@@ -269,7 +269,7 @@ bool ReplicatedMergeTreeQueue::isIntersectingWithDropReplaceIntent(
                 LogToStr(out_reason, log),
                 fmt_string,
                 entry.znode_name,
-                entry.type,
+                entry.typeToString(),
                 entry.new_part_name,
                 part_name,
                 intent.getPartNameForLogs());
@@ -805,7 +805,7 @@ std::pair<int32_t, int32_t> ReplicatedMergeTreeQueue::pullLogsToQueue(zkutil::Zo
         bool not_completely_initialized = storage.is_readonly && !zookeeper->expired() && !storage.shutdown_prepared_called;
         if (not_completely_initialized)
             throw Exception(ErrorCodes::LOGICAL_ERROR, "Tried to pull logs to queue (reason: {}) on readonly replica {}, it's a bug",
-                            reason, storage.getStorageID().getNameForLogs());
+                            static_cast<int>(reason), storage.getStorageID().getNameForLogs());
     }
 
     if (pull_log_blocker.isCancelled())
@@ -1480,8 +1480,8 @@ bool ReplicatedMergeTreeQueue::isCoveredByFuturePartsImpl(const LogEntry & entry
         const LogEntry & another_entry = *entry_for_same_part_it->second;
         constexpr auto fmt_string = "Not executing log entry {} of type {} for part {} (actual part {})"
                                     "because another log entry {} of type {} for the same part ({}) is being processed.";
-        LOG_INFO(LogToStr(out_reason, log), fmt_string, entry.znode_name, entry.type, entry.new_part_name, new_part_name,
-                 another_entry.znode_name, another_entry.type, another_entry.new_part_name);
+        LOG_INFO(LogToStr(out_reason, log), fmt_string, entry.znode_name, entry.typeToString(), entry.new_part_name, new_part_name,
+                 another_entry.znode_name, another_entry.typeToString(), another_entry.new_part_name);
         return true;
 
         /** When the corresponding action is completed, then `isNotCoveredByFuturePart` next time, will succeed,

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string_view>
+#include <cstdint>
+
 namespace DB
 {
 
@@ -24,5 +27,19 @@ enum class MergeTreeDataPartState : uint8_t
     Deleting,        /// not active data part with identity refcounter, it is deleting right now by a cleaner
     DeleteOnDestroy, /// part was moved to another disk and should be deleted in own destructor
 };
+
+inline std::string_view enumToString(MergeTreeDataPartState state)
+{
+    switch (state)
+    {
+        case MergeTreeDataPartState::Temporary:       return "Temporary";
+        case MergeTreeDataPartState::PreActive:       return "PreActive";
+        case MergeTreeDataPartState::Active:          return "Active";
+        case MergeTreeDataPartState::Outdated:        return "Outdated";
+        case MergeTreeDataPartState::Deleting:        return "Deleting";
+        case MergeTreeDataPartState::DeleteOnDestroy: return "DeleteOnDestroy";
+    }
+    return "Unknown";
+}
 
 }

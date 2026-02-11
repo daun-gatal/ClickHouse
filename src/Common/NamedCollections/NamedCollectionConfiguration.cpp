@@ -1,4 +1,3 @@
-#include <base/EnumReflection.h>
 #include <Poco/Util/XMLConfiguration.h>
 #include <Common/Exception.h>
 #include <Common/FieldVisitorToString.h>
@@ -13,6 +12,39 @@ namespace ErrorCodes
 {
     extern const int BAD_ARGUMENTS;
     extern const int NOT_IMPLEMENTED;
+}
+
+namespace
+{
+    std::string_view fieldTypeName(Field::Types::Which which)
+    {
+        switch (which)
+        {
+            case Field::Types::Null: return "Null";
+            case Field::Types::UInt64: return "UInt64";
+            case Field::Types::Int64: return "Int64";
+            case Field::Types::Float64: return "Float64";
+            case Field::Types::UInt128: return "UInt128";
+            case Field::Types::Int128: return "Int128";
+            case Field::Types::String: return "String";
+            case Field::Types::Array: return "Array";
+            case Field::Types::Tuple: return "Tuple";
+            case Field::Types::Decimal32: return "Decimal32";
+            case Field::Types::Decimal64: return "Decimal64";
+            case Field::Types::Decimal128: return "Decimal128";
+            case Field::Types::AggregateFunctionState: return "AggregateFunctionState";
+            case Field::Types::Decimal256: return "Decimal256";
+            case Field::Types::UInt256: return "UInt256";
+            case Field::Types::Int256: return "Int256";
+            case Field::Types::Map: return "Map";
+            case Field::Types::UUID: return "UUID";
+            case Field::Types::Bool: return "Bool";
+            case Field::Types::Object: return "Object";
+            case Field::Types::IPv4: return "IPv4";
+            case Field::Types::IPv6: return "IPv6";
+            case Field::Types::CustomType: return "CustomType";
+        }
+    }
 }
 
 namespace NamedCollectionConfiguration
@@ -69,7 +101,7 @@ template <typename T> T getConfigValueOrDefault(
         throw Exception(
             ErrorCodes::BAD_ARGUMENTS,
             "Cannot extract {} from {}",
-            magic_enum::enum_name(Field::TypeToEnum<NearestFieldType<T>>::value),
+            fieldTypeName(Field::TypeToEnum<NearestFieldType<T>>::value),
             path);
     }
 }

@@ -515,6 +515,17 @@ enum class ListRequestType : uint8_t
     EPHEMERAL_ONLY
 };
 
+inline std::string_view enumToString(ListRequestType value)
+{
+    switch (value)
+    {
+        case ListRequestType::ALL: return "ALL";
+        case ListRequestType::PERSISTENT_ONLY: return "PERSISTENT_ONLY";
+        case ListRequestType::EPHEMERAL_ONLY: return "EPHEMERAL_ONLY";
+    }
+    return "Unknown";
+}
+
 struct ListRequest : virtual Request
 {
     String path;

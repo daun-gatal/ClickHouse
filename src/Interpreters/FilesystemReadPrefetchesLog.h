@@ -7,6 +7,9 @@
 #include <Interpreters/SystemLog.h>
 #include <Storages/ColumnsDescription.h>
 
+#include <string_view>
+#include <stdexcept>
+
 namespace DB
 {
 
@@ -17,6 +20,18 @@ enum class FilesystemPrefetchState : uint8_t
     CANCELLED_WITH_RANGE_CHANGE,
     UNNEEDED,
 };
+
+inline std::string_view enumToString(FilesystemPrefetchState state)
+{
+    switch (state)
+    {
+        case FilesystemPrefetchState::USED: return "USED";
+        case FilesystemPrefetchState::CANCELLED_WITH_SEEK: return "CANCELLED_WITH_SEEK";
+        case FilesystemPrefetchState::CANCELLED_WITH_RANGE_CHANGE: return "CANCELLED_WITH_RANGE_CHANGE";
+        case FilesystemPrefetchState::UNNEEDED: return "UNNEEDED";
+    }
+    throw std::logic_error("Unknown FilesystemPrefetchState");
+}
 
 struct FilesystemReadPrefetchesLogElement
 {

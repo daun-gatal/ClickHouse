@@ -7,7 +7,7 @@
 namespace DB::S3
 {
 
-std::string_view toString(ProviderType provider_type)
+std::string_view enumToString(ProviderType provider_type)
 {
     using enum ProviderType;
 
@@ -22,7 +22,7 @@ std::string_view toString(ProviderType provider_type)
     }
 }
 
-std::string_view toString(ApiMode api_mode)
+std::string_view enumToString(ApiMode api_mode)
 {
     using enum ApiMode;
 

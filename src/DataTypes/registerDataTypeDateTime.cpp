@@ -29,7 +29,7 @@ PreformattedMessage getExceptionMessage(
     const std::string & context_data_type_name, Field::Types::Which field_type)
 {
     return PreformattedMessage::create("Parameter #{} '{}' for {}{}, expected {} literal",
-        argument_index, argument_name, context_data_type_name, message, field_type);
+        argument_index, argument_name, context_data_type_name, message, fieldTypeToString(field_type));
 }
 
 template <typename T, ArgumentKind Kind>

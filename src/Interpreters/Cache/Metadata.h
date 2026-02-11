@@ -116,6 +116,17 @@ struct KeyMetadata : private std::map<size_t, FileSegmentMetadataPtr>,
         REMOVED,
     };
 
+    static std::string_view enumToString(KeyState value)
+    {
+        switch (value)
+        {
+            case KeyState::ACTIVE: return "ACTIVE";
+            case KeyState::REMOVING: return "REMOVING";
+            case KeyState::REMOVED: return "REMOVED";
+        }
+        return "Unknown";
+    }
+
     const Key key;
     const OriginInfo origin;
 

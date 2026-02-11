@@ -9,7 +9,6 @@
 
 #include <Common/MatchGenerator.h>
 
-#include <base/EnumReflection.h>
 #include <Common/Exception.h>
 #include <Common/thread_local_rng.h>
 
@@ -29,6 +28,38 @@ extern const int LOGICAL_ERROR;
 
 namespace re2
 {
+
+namespace
+{
+    String regexpOpName(RegexpOp op)
+    {
+        switch (op)
+        {
+            case kRegexpNoMatch: return "kRegexpNoMatch";
+            case kRegexpEmptyMatch: return "kRegexpEmptyMatch";
+            case kRegexpLiteral: return "kRegexpLiteral";
+            case kRegexpLiteralString: return "kRegexpLiteralString";
+            case kRegexpConcat: return "kRegexpConcat";
+            case kRegexpAlternate: return "kRegexpAlternate";
+            case kRegexpStar: return "kRegexpStar";
+            case kRegexpPlus: return "kRegexpPlus";
+            case kRegexpQuest: return "kRegexpQuest";
+            case kRegexpRepeat: return "kRegexpRepeat";
+            case kRegexpCapture: return "kRegexpCapture";
+            case kRegexpAnyChar: return "kRegexpAnyChar";
+            case kRegexpAnyByte: return "kRegexpAnyByte";
+            case kRegexpBeginLine: return "kRegexpBeginLine";
+            case kRegexpEndLine: return "kRegexpEndLine";
+            case kRegexpWordBoundary: return "kRegexpWordBoundary";
+            case kRegexpNoWordBoundary: return "kRegexpNoWordBoundary";
+            case kRegexpBeginText: return "kRegexpBeginText";
+            case kRegexpEndText: return "kRegexpEndText";
+            case kRegexpCharClass: return "kRegexpCharClass";
+            case kRegexpHaveMatch: return "kRegexpHaveMatch";
+        }
+        return "Unknown(" + std::to_string(static_cast<int>(op)) + ")";
+    }
+}
 
 class RandomStringPrepareWalker : public Regexp::Walker<Regexp *>
 {
@@ -294,7 +325,7 @@ private:
     {
     public:
         explicit ThrowExceptionFunction(Regexp * re_)
-            : operation(magic_enum::enum_name(re_->op()))
+            : operation(regexpOpName(re_->op()))
         {
         }
 

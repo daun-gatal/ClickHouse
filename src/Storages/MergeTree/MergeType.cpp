@@ -11,8 +11,14 @@ namespace ErrorCodes
 
 MergeType checkAndGetMergeType(std::underlying_type_t<MergeType> merge_type)
 {
-    if (auto maybe_merge_type = magic_enum::enum_cast<MergeType>(merge_type))
-        return *maybe_merge_type;
+    switch (static_cast<MergeType>(merge_type))
+    {
+        case MergeType::Regular:
+        case MergeType::TTLDelete:
+        case MergeType::TTLRecompress:
+        case MergeType::TTLDrop:
+            return static_cast<MergeType>(merge_type);
+    }
 
     throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Unknown MergeType {}", static_cast<UInt64>(merge_type));
 }

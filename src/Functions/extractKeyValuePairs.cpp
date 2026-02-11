@@ -57,8 +57,8 @@ class ExtractKeyValuePairs : public IFunction
         if (parsed_arguments.unexpected_quoting_character_strategy)
         {
             const std::string unexpected_quoting_character_strategy_string{parsed_arguments.unexpected_quoting_character_strategy->getDataAt(0)};
-            const auto unexpected_quoting_character_strategy = magic_enum::enum_cast<extractKV::Configuration::UnexpectedQuotingCharacterStrategy>(
-                    unexpected_quoting_character_strategy_string, magic_enum::case_insensitive);
+            const auto unexpected_quoting_character_strategy = extractKV::Configuration::parseUnexpectedQuotingCharacterStrategy(
+                    unexpected_quoting_character_strategy_string);
 
             if (!unexpected_quoting_character_strategy)
             {

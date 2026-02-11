@@ -289,7 +289,7 @@ FileCache::FileCache(const std::string & cache_name, const FileCacheSettings & s
             cache_name
         );
     }
-    LOG_DEBUG(log, "Using {} cache policy", settings[FileCacheSetting::cache_policy].value);
+    LOG_DEBUG(log, "Using {} cache policy", enumToString(settings[FileCacheSetting::cache_policy].value));
 
     if (settings[FileCacheSetting::enable_filesystem_query_cache_limit])
         query_limit = std::make_unique<FileCacheQueryLimit>();
@@ -1492,7 +1492,7 @@ void FileCache::freeSpaceRatioKeepingThreadFunc()
     ProfileEvents::increment(ProfileEvents::FilesystemCacheFreeSpaceKeepingThreadWorkMilliseconds, watch.elapsedMilliseconds());
 
     LOG_TRACE(log, "Free space ratio keeping thread finished with status `{}` in {} ms",
-              desired_size_status, watch.elapsedMilliseconds());
+              static_cast<int>(desired_size_status), watch.elapsedMilliseconds());
 
     [[maybe_unused]] bool scheduled = false;
     switch (desired_size_status)

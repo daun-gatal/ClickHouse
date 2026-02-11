@@ -3,6 +3,9 @@
 #include <base/defines.h>
 #include <base/types.h>
 
+#include <string_view>
+#include <stdexcept>
+
 namespace DB
 {
 
@@ -12,6 +15,17 @@ enum class DataSourceType : uint8_t
     RAM,
     ObjectStorage,
 };
+
+inline std::string_view enumToString(DataSourceType type)
+{
+    switch (type)
+    {
+        case DataSourceType::Local: return "Local";
+        case DataSourceType::RAM: return "RAM";
+        case DataSourceType::ObjectStorage: return "ObjectStorage";
+    }
+    throw std::logic_error("Unknown DataSourceType");
+}
 
 enum class ObjectStorageType : uint8_t
 {
@@ -25,6 +39,21 @@ enum class ObjectStorageType : uint8_t
     Max = 6,
 };
 
+inline std::string_view enumToString(ObjectStorageType type)
+{
+    switch (type)
+    {
+        case ObjectStorageType::None: return "None";
+        case ObjectStorageType::S3: return "S3";
+        case ObjectStorageType::Azure: return "Azure";
+        case ObjectStorageType::HDFS: return "HDFS";
+        case ObjectStorageType::Web: return "Web";
+        case ObjectStorageType::Local: return "Local";
+        case ObjectStorageType::Max: return "Max";
+    }
+    throw std::logic_error("Unknown ObjectStorageType");
+}
+
 enum class MetadataStorageType : uint8_t
 {
     None,
@@ -35,6 +64,21 @@ enum class MetadataStorageType : uint8_t
     StaticWeb,
     Memory,
 };
+
+inline std::string_view enumToString(MetadataStorageType type)
+{
+    switch (type)
+    {
+        case MetadataStorageType::None: return "None";
+        case MetadataStorageType::Local: return "Local";
+        case MetadataStorageType::Keeper: return "Keeper";
+        case MetadataStorageType::Plain: return "Plain";
+        case MetadataStorageType::PlainRewritable: return "PlainRewritable";
+        case MetadataStorageType::StaticWeb: return "StaticWeb";
+        case MetadataStorageType::Memory: return "Memory";
+    }
+    throw std::logic_error("Unknown MetadataStorageType");
+}
 
 MetadataStorageType metadataTypeFromString(const String & type);
 

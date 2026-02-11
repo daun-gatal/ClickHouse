@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 namespace DB
 {
 
@@ -9,5 +11,15 @@ enum class WriteMode : uint8_t
     Rewrite,
     Append
 };
+
+constexpr std::string_view enumToString(WriteMode mode)
+{
+    switch (mode)
+    {
+        case WriteMode::Rewrite: return "Rewrite";
+        case WriteMode::Append: return "Append";
+    }
+    return "Unknown";
+}
 
 }

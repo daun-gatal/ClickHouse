@@ -36,6 +36,17 @@ public:
         SQL = 2,
     };
 
+    static constexpr std::string_view sourceIdToString(SourceId id)
+    {
+        switch (id)
+        {
+            case SourceId::NONE: return "NONE";
+            case SourceId::CONFIG: return "CONFIG";
+            case SourceId::SQL: return "SQL";
+        }
+        return "UNKNOWN";
+    }
+
     bool has(const Key & key) const;
 
     bool hasAny(const std::initializer_list<Key> & keys) const;

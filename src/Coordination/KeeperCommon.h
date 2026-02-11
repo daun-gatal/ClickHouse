@@ -3,6 +3,7 @@
 #include <Common/Logger.h>
 
 #include <functional>
+#include <string_view>
 
 namespace Coordination
 {
@@ -32,6 +33,19 @@ enum class KeeperDigestVersion : uint8_t
     V3 = 3, // fixed bug with casting, removed duplicate czxid usage
     V4 = 4  // 0 is not a valid digest value
 };
+
+inline std::string_view enumToString(KeeperDigestVersion value)
+{
+    switch (value)
+    {
+        case KeeperDigestVersion::NO_DIGEST: return "NO_DIGEST";
+        case KeeperDigestVersion::V1: return "V1";
+        case KeeperDigestVersion::V2: return "V2";
+        case KeeperDigestVersion::V3: return "V3";
+        case KeeperDigestVersion::V4: return "V4";
+    }
+    return "Unknown";
+}
 
 struct KeeperDigest
 {

@@ -1009,7 +1009,7 @@ Chunk ObjectStorageQueueSource::generateImpl()
                     log, "Reader was cancelled "
                     "(processed files: {}, last processed file state: {})",
                     processed_files.size(),
-                    processed_files.empty() ? "None" : magic_enum::enum_name(processed_files.back().state));
+                    processed_files.empty() ? "None" : enumToString(processed_files.back().state));
                 /// No unfinished files, just stop processing.
                 break;
             }
@@ -1036,7 +1036,7 @@ Chunk ObjectStorageQueueSource::generateImpl()
                     log, "Shutdown was called "
                     "(processed files: {}, last processed file state: {})",
                     processed_files.size(),
-                    processed_files.empty() ? "None" : magic_enum::enum_name(processed_files.back().state));
+                    processed_files.empty() ? "None" : enumToString(processed_files.back().state));
                 /// No unfinished files, just stop processing.
                 break;
             }
@@ -1062,7 +1062,7 @@ Chunk ObjectStorageQueueSource::generateImpl()
         FileMetadataPtr file_metadata;
         if (reader)
         {
-            chassert(processed_files.back().state == FileState::Processing, toString(processed_files.back().state));
+            chassert(processed_files.back().state == FileState::Processing, enumToString(processed_files.back().state));
             chassert(
                 processed_files.back().metadata->getPath() == reader.getObjectInfo()->getPath(),
                 fmt::format("Mismatch {} vs {}", processed_files.back().metadata->getPath(),
@@ -1078,7 +1078,7 @@ Chunk ObjectStorageQueueSource::generateImpl()
                     log, "Shutdown was called "
                     "(processed files: {}, last processed file state: {})",
                     processed_files.size(),
-                    processed_files.empty() ? "None" : magic_enum::enum_name(processed_files.back().state));
+                    processed_files.empty() ? "None" : enumToString(processed_files.back().state));
                 /// Stop processing.
                 break;
             }
@@ -1373,7 +1373,7 @@ void ObjectStorageQueueSource::prepareCommitRequests(
                     throw Exception(
                         ErrorCodes::LOGICAL_ERROR,
                         "Unexpected state {} of file {} while insert succeeded",
-                        file_state, file_metadata->getPath());
+                        enumToString(file_state), file_metadata->getPath());
                 }
 
                 if (file_state == FileState::Cancelled)
@@ -1458,7 +1458,7 @@ void ObjectStorageQueueSource::finalizeCommit(
                         throw Exception(
                             ErrorCodes::LOGICAL_ERROR,
                             "Unexpected state {} of file {} while insert succeeded",
-                            file_state, file_metadata->getPath());
+                            enumToString(file_state), file_metadata->getPath());
                     }
 
                     file_metadata->finalizeFailed(exception_message);

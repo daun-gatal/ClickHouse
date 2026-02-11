@@ -60,7 +60,7 @@ void StorageSystemObjectStorageQueueMetadataCache<type>::fillData(MutableColumns
             res_columns[i++]->insert(std::filesystem::path(file_path).filename().string());
 
             res_columns[i++]->insert(file_status->processed_rows.load());
-            res_columns[i++]->insert(magic_enum::enum_name(file_status->state.load()));
+            res_columns[i++]->insert(ObjectStorageQueueIFileMetadata::FileStatus::enumToString(file_status->state.load()));
 
             if (file_status->processing_start_time)
                 res_columns[i++]->insert(file_status->processing_start_time.load());

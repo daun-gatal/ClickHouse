@@ -215,7 +215,7 @@ bool objectExists(
     throw S3Exception(error.GetErrorType(),
         "Failed to check existence of key {} in bucket {}: {}. HTTP response code: {}, error type: {}.{}",
         key, bucket, error.GetMessage(), static_cast<size_t>(error.GetResponseCode()),
-        error.GetErrorType(), getAuthenticationErrorHint(error.GetErrorType()));
+        static_cast<int>(error.GetErrorType()), getAuthenticationErrorHint(error.GetErrorType()));
 }
 
 void checkObjectExists(

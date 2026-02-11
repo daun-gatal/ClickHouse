@@ -6,7 +6,6 @@
 #include <IO/ReadHelpers.h>
 #include <IO/WriteHelpers.h>
 #include <Core/Block.h>
-#include <base/EnumReflection.h>
 
 #include <Poco/JSON/JSON.h>
 #include <Poco/JSON/Object.h>
@@ -207,11 +206,11 @@ void SerializationInfo::deserializeFromKindsBinary(ReadBuffer & in)
 {
     UInt8 type;
     readBinary(type, in);
-    auto maybe_type = magic_enum::enum_cast<KindStackBinarySerializationType>(type);
-    if (!maybe_type)
+    if (type > static_cast<UInt8>(KindStackBinarySerializationType::COMBINATION))
         throw Exception(ErrorCodes::CORRUPTED_DATA, "Unknown serialization kind type {}", UInt32(type));
+    auto parsed_type = static_cast<KindStackBinarySerializationType>(type);
 
-    switch (*maybe_type)
+    switch (parsed_type)
     {
         case KindStackBinarySerializationType::DEFAULT:
             kind_stack = {ISerialization::Kind::DEFAULT};
@@ -236,10 +235,9 @@ void SerializationInfo::deserializeFromKindsBinary(ReadBuffer & in)
             {
                 UInt8 kind;
                 readBinary(kind, in);
-                auto maybe_kind = magic_enum::enum_cast<ISerialization::Kind>(kind);
-                if (!maybe_kind)
+                if (kind > static_cast<UInt8>(ISerialization::Kind::REPLICATED))
                     throw Exception(ErrorCodes::CORRUPTED_DATA, "Unknown serialization kind {}", UInt32(kind));
-                kind_stack.push_back(*maybe_kind);
+                kind_stack.push_back(static_cast<ISerialization::Kind>(kind));
             }
 
             break;
@@ -425,10 +423,9 @@ SerializationInfoByName SerializationInfoByName::readJSONFromString(const NamesA
     MergeTreeSerializationInfoVersion version = MergeTreeSerializationInfoVersion::BASIC;
     {
         auto version_value = static_cast<std::underlying_type_t<MergeTreeSerializationInfoVersion>>(object->getValue<size_t>(KEY_VERSION));
-        auto maybe_enum = magic_enum::enum_cast<MergeTreeSerializationInfoVersion>(version_value);
-        if (!maybe_enum)
+        if (version_value > static_cast<std::underlying_type_t<MergeTreeSerializationInfoVersion>>(MergeTreeSerializationInfoVersion::WITH_TYPES))
             throw Exception(ErrorCodes::CORRUPTED_DATA, "Unknown version of serialization infos ({})", version_value);
-        version = *maybe_enum;
+        version = static_cast<MergeTreeSerializationInfoVersion>(version_value);
     }
 
     Poco::JSON::Array::Ptr columns_array;
@@ -470,17 +467,15 @@ SerializationInfoByName SerializationInfoByName::readJSONFromString(const NamesA
             auto version_value = static_cast<std::underlying_type_t<MergeTreeStringSerializationVersion>>(value.convert<size_t>());
             if (type_name == KEY_STRING_SERIALIZATION_VERSION)
             {
-                auto maybe_enum = magic_enum::enum_cast<MergeTreeStringSerializationVersion>(version_value);
-                if (!maybe_enum.has_value())
+                if (version_value > static_cast<std::underlying_type_t<MergeTreeStringSerializationVersion>>(MergeTreeStringSerializationVersion::WITH_SIZE_STREAM))
                     throw Exception(ErrorCodes::CORRUPTED_DATA, "Invalid version {} for type '{}'", version_value, type_name);
-                string_serialization_version = *maybe_enum;
+                string_serialization_version = static_cast<MergeTreeStringSerializationVersion>(version_value);
             }
             else if (type_name == KEY_NULLABLE_SERIALIZATION_VERSION)
             {
-                auto maybe_enum = magic_enum::enum_cast<MergeTreeNullableSerializationVersion>(version_value);
-                if (!maybe_enum.has_value())
+                if (version_value > static_cast<std::underlying_type_t<MergeTreeNullableSerializationVersion>>(MergeTreeNullableSerializationVersion::ALLOW_SPARSE))
                     throw Exception(ErrorCodes::CORRUPTED_DATA, "Invalid version {} for type '{}'", version_value, type_name);
-                nullable_serialization_version = *maybe_enum;
+                nullable_serialization_version = static_cast<MergeTreeNullableSerializationVersion>(version_value);
             }
             else
             {

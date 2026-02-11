@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string_view>
 
 
 namespace Coordination
@@ -53,6 +54,46 @@ enum class OpNum : int32_t
 
     SessionID = 997, /// Special internal request
 };
+
+inline std::string_view enumToString(OpNum value)
+{
+    switch (value)
+    {
+        case OpNum::Close: return "Close";
+        case OpNum::Error: return "Error";
+        case OpNum::Create: return "Create";
+        case OpNum::Remove: return "Remove";
+        case OpNum::Exists: return "Exists";
+        case OpNum::Get: return "Get";
+        case OpNum::Set: return "Set";
+        case OpNum::GetACL: return "GetACL";
+        case OpNum::SetACL: return "SetACL";
+        case OpNum::SimpleList: return "SimpleList";
+        case OpNum::Sync: return "Sync";
+        case OpNum::Heartbeat: return "Heartbeat";
+        case OpNum::List: return "List";
+        case OpNum::Check: return "Check";
+        case OpNum::Multi: return "Multi";
+        case OpNum::Create2: return "Create2";
+        case OpNum::Reconfig: return "Reconfig";
+        case OpNum::CheckWatch: return "CheckWatch";
+        case OpNum::RemoveWatch: return "RemoveWatch";
+        case OpNum::MultiRead: return "MultiRead";
+        case OpNum::Auth: return "Auth";
+        case OpNum::SetWatch: return "SetWatch";
+        case OpNum::SetWatch2: return "SetWatch2";
+        case OpNum::AddWatch: return "AddWatch";
+        case OpNum::FilteredList: return "FilteredList";
+        case OpNum::CheckNotExists: return "CheckNotExists";
+        case OpNum::CreateIfNotExists: return "CreateIfNotExists";
+        case OpNum::RemoveRecursive: return "RemoveRecursive";
+        case OpNum::CheckStat: return "CheckStat";
+        case OpNum::TryRemove: return "TryRemove";
+        case OpNum::FilteredListWithStatsAndData: return "FilteredListWithStatsAndData";
+        case OpNum::SessionID: return "SessionID";
+    }
+    return "Unknown";
+}
 
 OpNum getOpNum(int32_t raw_op_num);
 

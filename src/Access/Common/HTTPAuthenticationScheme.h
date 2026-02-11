@@ -11,6 +11,6 @@ enum class HTTPAuthenticationScheme
 };
 
 
-String toString(HTTPAuthenticationScheme scheme);
+String enumToString(HTTPAuthenticationScheme scheme);
 HTTPAuthenticationScheme parseHTTPAuthenticationScheme(const String & scheme_str);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <string_view>
 #include <vector>
 
 #include <base/AlignedUnion.h>
@@ -713,8 +714,9 @@ template <> struct Field::EnumToType<Field::Types::AggregateFunctionState> { usi
 template <> struct Field::EnumToType<Field::Types::CustomType> { using Type = CustomType; };
 template <> struct Field::EnumToType<Field::Types::Bool> { using Type = UInt64; };
 
-/// Use it to prevent inclusion of magic_enum in headers, which is very expensive for the compiler
+/// Defined in Field.cpp to avoid expensive enum reflection in headers
 std::string_view fieldTypeToString(Field::Types::Which type);
+inline std::string_view enumToString(Field::Types::Which type) { return fieldTypeToString(type); }
 
 constexpr bool isInt64OrUInt64FieldType(Field::Types::Which t)
 {

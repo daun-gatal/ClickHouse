@@ -65,7 +65,6 @@ target_link_libraries (common
         ch_contrib::replxx
         ch_contrib::cctz
         ch_contrib::fmt
-        ch_contrib::magic_enum
 )
 
 if (ENABLE_TESTS)

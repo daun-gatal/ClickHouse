@@ -10,6 +10,9 @@
 #include <atomic>
 #include <cerrno>
 #include <exception>
+#include <functional>
+#include <memory>
+#include <optional>
 #include <vector>
 
 #include <fmt/format.h>

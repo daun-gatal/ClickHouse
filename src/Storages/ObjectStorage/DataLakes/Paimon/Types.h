@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <Core/ColumnWithTypeAndName.h>
 #include <DataTypes/DataTypeArray.h>
@@ -76,6 +77,34 @@ enum class RootDataType
 
     ROW,
 };
+
+constexpr std::string_view enumToString(RootDataType value)
+{
+    switch (value)
+    {
+        case RootDataType::CHAR: return "CHAR";
+        case RootDataType::VARCHAR: return "VARCHAR";
+        case RootDataType::BOOLEAN: return "BOOLEAN";
+        case RootDataType::BINARY: return "BINARY";
+        case RootDataType::VARBINARY: return "VARBINARY";
+        case RootDataType::DECIMAL: return "DECIMAL";
+        case RootDataType::TINYINT: return "TINYINT";
+        case RootDataType::SMALLINT: return "SMALLINT";
+        case RootDataType::INTEGER: return "INTEGER";
+        case RootDataType::BIGINT: return "BIGINT";
+        case RootDataType::FLOAT: return "FLOAT";
+        case RootDataType::DOUBLE: return "DOUBLE";
+        case RootDataType::DATE: return "DATE";
+        case RootDataType::TIME_WITHOUT_TIME_ZONE: return "TIME_WITHOUT_TIME_ZONE";
+        case RootDataType::TIMESTAMP_WITHOUT_TIME_ZONE: return "TIMESTAMP_WITHOUT_TIME_ZONE";
+        case RootDataType::TIMESTAMP_WITH_LOCAL_TIME_ZONE: return "TIMESTAMP_WITH_LOCAL_TIME_ZONE";
+        case RootDataType::VARIANT: return "VARIANT";
+        case RootDataType::ARRAY: return "ARRAY";
+        case RootDataType::MULTISET: return "MULTISET";
+        case RootDataType::MAP: return "MAP";
+        case RootDataType::ROW: return "ROW";
+    }
+}
 
 struct DataType
 {

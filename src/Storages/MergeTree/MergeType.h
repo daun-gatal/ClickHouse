@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/types.h>
+#include <string_view>
 
 namespace DB
 {
@@ -22,6 +23,18 @@ enum class MergeType : uint8_t
     /// Merge assigned to drop parts completely
     TTLDrop = 4,
 };
+
+inline std::string_view enumToString(MergeType merge_type)
+{
+    switch (merge_type)
+    {
+        case MergeType::Regular:       return "Regular";
+        case MergeType::TTLDelete:     return "TTLDelete";
+        case MergeType::TTLRecompress: return "TTLRecompress";
+        case MergeType::TTLDrop:       return "TTLDrop";
+    }
+    return "Unknown";
+}
 
 /// Check parsed merge_type from raw int and get enum value.
 MergeType checkAndGetMergeType(std::underlying_type_t<MergeType> merge_type);

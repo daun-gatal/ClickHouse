@@ -18,6 +18,16 @@ struct ICgroupsReader
         V2
     };
 
+    static std::string_view enumToString(CgroupsVersion value)
+    {
+        switch (value)
+        {
+            case CgroupsVersion::V1: return "V1";
+            case CgroupsVersion::V2: return "V2";
+        }
+        return "Unknown";
+    }
+
 #if defined(OS_LINUX)
     static std::shared_ptr<ICgroupsReader>
     createCgroupsReader(ICgroupsReader::CgroupsVersion version, const std::filesystem::path & cgroup_path);

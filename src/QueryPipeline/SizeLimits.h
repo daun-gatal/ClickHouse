@@ -2,6 +2,8 @@
 
 #include <base/types.h>
 
+#include <string_view>
+
 
 namespace DB
 {
@@ -17,6 +19,16 @@ enum class OverflowMode : uint8_t
       */
     ANY       = 2,
 };
+
+inline std::string_view enumToString(OverflowMode mode)
+{
+    switch (mode)
+    {
+        case OverflowMode::THROW: return "THROW";
+        case OverflowMode::BREAK: return "BREAK";
+        case OverflowMode::ANY:   return "ANY";
+    }
+}
 
 class WriteBuffer;
 class ReadBuffer;

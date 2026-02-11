@@ -38,6 +38,25 @@ public:
         END
     };
 
+    static constexpr std::string_view stateToString(State state)
+    {
+        switch (state)
+        {
+            case WAITING_KEY: return "WAITING_KEY";
+            case READING_KEY: return "READING_KEY";
+            case READING_QUOTED_KEY: return "READING_QUOTED_KEY";
+            case READING_KV_DELIMITER: return "READING_KV_DELIMITER";
+            case WAITING_VALUE: return "WAITING_VALUE";
+            case READING_VALUE: return "READING_VALUE";
+            case READING_QUOTED_VALUE: return "READING_QUOTED_VALUE";
+            case FLUSH_PAIR: return "FLUSH_PAIR";
+            case FLUSH_PAIR_AFTER_QUOTED_VALUE: return "FLUSH_PAIR_AFTER_QUOTED_VALUE";
+            case WAITING_PAIR_DELIMITER: return "WAITING_PAIR_DELIMITER";
+            case END: return "END";
+        }
+        return "UNKNOWN";
+    }
+
     struct NextState
     {
         std::size_t position_in_string;

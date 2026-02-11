@@ -30,6 +30,18 @@ public:
             None
         };
 
+        static inline std::string_view enumToString(State value)
+        {
+            switch (value)
+            {
+                case State::Processing: return "Processing";
+                case State::Processed: return "Processed";
+                case State::Failed: return "Failed";
+                case State::None: return "None";
+            }
+            return "Unknown";
+        }
+
         void setProcessingEndTime();
         /// Set how much time it took to list this object from s3.
         void setGetObjectTime(size_t elapsed_ms);

@@ -760,7 +760,7 @@ DataTypePtr QueryFuzzer::getRandomType()
         case TypeIndex::Dynamic:
             return std::make_shared<DataTypeDynamic>(fuzz_rand() % 20);
         default:
-            return DataTypeFactory::instance().get(String(magic_enum::enum_name(type_id)));
+            return DataTypeFactory::instance().get(String(enumToString(type_id)));
     }
 
 #undef DISPATCH

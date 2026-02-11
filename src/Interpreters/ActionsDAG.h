@@ -80,6 +80,34 @@ public:
         PLACEHOLDER,
     };
 
+    static std::string_view enumToString(ActionType value)
+    {
+        switch (value)
+        {
+            case ActionType::INPUT: return "INPUT";
+            case ActionType::COLUMN: return "COLUMN";
+            case ActionType::ALIAS: return "ALIAS";
+            case ActionType::ARRAY_JOIN: return "ARRAY_JOIN";
+            case ActionType::FUNCTION: return "FUNCTION";
+            case ActionType::PLACEHOLDER: return "PLACEHOLDER";
+        }
+        return "Unknown";
+    }
+
+    static constexpr std::string_view actionTypeToString(ActionType type)
+    {
+        switch (type)
+        {
+            case ActionType::INPUT: return "INPUT";
+            case ActionType::COLUMN: return "COLUMN";
+            case ActionType::ALIAS: return "ALIAS";
+            case ActionType::ARRAY_JOIN: return "ARRAY_JOIN";
+            case ActionType::FUNCTION: return "FUNCTION";
+            case ActionType::PLACEHOLDER: return "PLACEHOLDER";
+        }
+        return "UNKNOWN";
+    }
+
     struct Node;
     using NodeRawPtrs = std::vector<Node *>;
     using NodeRawConstPtrs = std::vector<const Node *>;

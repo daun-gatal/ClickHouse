@@ -44,7 +44,7 @@ std::string IFileCachePriority::Entry::toString(const std::string & prefix) cons
     return fmt::format(
         "{}{}:{}:{} (state: {})",
         prefix, key, offset, size.load(),
-        magic_enum::enum_name(state.load(std::memory_order_relaxed)));
+        enumToString(state.load(std::memory_order_relaxed)));
 }
 
 void IFileCachePriority::check(const CacheStateGuard::Lock & lock) const
@@ -64,7 +64,7 @@ std::unordered_map<std::string, IFileCachePriority::UsageStat> IFileCachePriorit
     throw Exception(
         ErrorCodes::NOT_IMPLEMENTED,
         "getUsageStatPerClient() is not implemented for {} policy",
-        magic_enum::enum_name(getType()));
+        IFileCachePriority::enumToString(getType()));
 }
 
 void IFileCachePriority::removeEntries(
@@ -82,7 +82,7 @@ void IFileCachePriority::removeEntries(
         /// so we use `entry` to check validity of the iterator.
         const auto entry_state = entry->getState();
         chassert(entry_state == Entry::State::Invalidated || entry_state == Entry::State::Removed,
-                 fmt::format("Unexpected state: {}", magic_enum::enum_name(entry_state)));
+                 fmt::format("Unexpected state: {}", Entry::enumToString(entry_state)));
         if (entry_state != Entry::State::Removed)
             it->remove(lock);
     }

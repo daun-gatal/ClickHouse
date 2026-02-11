@@ -16,6 +16,7 @@
 #include <Functions/FunctionHelpers.h>
 
 #include <memory>
+#include <optional>
 
 namespace DB
 {
@@ -105,6 +106,21 @@ enum class GeometryColumnType
     Null = 255
 };
 
+inline std::optional<GeometryColumnType> parseGeometryColumnType(uint8_t value)
+{
+    switch (value)
+    {
+        case 0: return GeometryColumnType::Linestring;
+        case 1: return GeometryColumnType::MultiLinestring;
+        case 2: return GeometryColumnType::MultiPolygon;
+        case 3: return GeometryColumnType::Point;
+        case 4: return GeometryColumnType::Polygon;
+        case 5: return GeometryColumnType::Ring;
+        case 255: return GeometryColumnType::Null;
+        default: return std::nullopt;
+    }
+}
+
 template <typename Point, typename FunctionToCalculate>
 class FunctionGeometry : public IFunction
 {
@@ -166,7 +182,7 @@ public:
         for (size_t i = 0; i < input_rows_count; ++i)
         {
             column_variant.get(i, field);
-            auto type = magic_enum::enum_cast<GeometryColumnType>(descriptors[i]);
+            auto type = parseGeometryColumnType(descriptors[i]);
             if (!type)
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unknown type of geometry {}", static_cast<Int32>(descriptors[i]));
             switch (*type)

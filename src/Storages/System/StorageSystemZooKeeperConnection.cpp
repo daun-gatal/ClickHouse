@@ -18,9 +18,9 @@ namespace DB
 ColumnsDescription StorageSystemZooKeeperConnection::getColumnsDescription()
 {
     DataTypeEnum16::Values feature_flags_enum_values;
-    feature_flags_enum_values.reserve(magic_enum::enum_count<KeeperFeatureFlag>());
-    for (const auto & [feature_flag, feature_flag_string] : magic_enum::enum_entries<KeeperFeatureFlag>())
-        feature_flags_enum_values.push_back(std::pair{std::string{feature_flag_string}, static_cast<Int16>(feature_flag)});
+    feature_flags_enum_values.reserve(KEEPER_FEATURE_FLAG_COUNT);
+    for (const auto & feature_flag : ALL_KEEPER_FEATURE_FLAGS)
+        feature_flags_enum_values.push_back(std::pair{std::string{enumToString(feature_flag)}, static_cast<Int16>(feature_flag)});
 
     auto feature_flags_enum = std::make_shared<DataTypeEnum16>(std::move(feature_flags_enum_values));
 

@@ -48,7 +48,8 @@ enum class QueryTreeNodeType : uint8_t
 };
 
 /// Convert query tree node type to string
-const char * toString(QueryTreeNodeType type);
+const char * enumToString(QueryTreeNodeType type);
+inline const char * toString(QueryTreeNodeType type) { return enumToString(type); }
 
 /** Query tree is a semantic representation of query.
   * Query tree node represent node in query tree.

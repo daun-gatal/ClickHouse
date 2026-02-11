@@ -846,7 +846,7 @@ std::string_view fieldTypeToString(Field::Types::Which type)
     }
 }
 
-/// Keep in mind, that "magic_enum" is very expensive for compiler, that's why we don't use it.
+/// We use a manual switch-based implementation instead of reflection to avoid expensive compile times.
 std::string_view Field::getTypeName() const
 {
     return fieldTypeToString(which);

@@ -1,8 +1,6 @@
 #include <Common/IntervalKind.h>
 #include <Common/Exception.h>
 
-#include <base/EnumReflection.h>
-
 
 namespace DB
 {
@@ -14,7 +12,20 @@ namespace ErrorCodes
 
 std::string_view IntervalKind::toString() const
 {
-    return magic_enum::enum_name(kind);
+    switch (kind)
+    {
+        case Kind::Nanosecond: return "Nanosecond";
+        case Kind::Microsecond: return "Microsecond";
+        case Kind::Millisecond: return "Millisecond";
+        case Kind::Second: return "Second";
+        case Kind::Minute: return "Minute";
+        case Kind::Hour: return "Hour";
+        case Kind::Day: return "Day";
+        case Kind::Week: return "Week";
+        case Kind::Month: return "Month";
+        case Kind::Quarter: return "Quarter";
+        case Kind::Year: return "Year";
+    }
 }
 
 Int64 IntervalKind::toAvgNanoseconds() const

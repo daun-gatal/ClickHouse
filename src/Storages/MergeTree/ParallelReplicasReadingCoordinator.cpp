@@ -914,7 +914,7 @@ public:
     size_t total_rows_to_read = 0;
     bool state_initialized{false};
 
-    LoggerPtr log = getLogger(fmt::format("{}{}", magic_enum::enum_name(mode), "Coordinator"));
+    LoggerPtr log = getLogger(fmt::format("{}Coordinator", enumToString(mode)));
 };
 
 void InOrderCoordinator::markReplicaAsUnavailable(size_t replica_number)
@@ -1116,8 +1116,8 @@ void ParallelReplicasReadingCoordinator::handleInitialAllRangesAnnouncement(Init
                 ErrorCodes::LOGICAL_ERROR,
                 "Replica {} decided to read in {} mode, not in {}. This is a bug",
                 announcement.replica_num,
-                magic_enum::enum_name(announcement.mode),
-                magic_enum::enum_name(pimpl->getCoordinationMode()));
+                enumToString(announcement.mode),
+                enumToString(pimpl->getCoordinationMode()));
         }
     });
 
@@ -1141,8 +1141,8 @@ void ParallelReplicasReadingCoordinator::handleInitialAllRangesAnnouncement(Init
             ErrorCodes::LOGICAL_ERROR,
             "Replica {} decided to read in {} mode, not in {}. This is a bug",
             announcement.replica_num,
-            magic_enum::enum_name(announcement.mode),
-            magic_enum::enum_name(pimpl->getCoordinationMode()));
+            enumToString(announcement.mode),
+            enumToString(pimpl->getCoordinationMode()));
 
     pimpl->handleInitialAllRangesAnnouncement(std::move(announcement));
 }
@@ -1177,8 +1177,8 @@ ParallelReadResponse ParallelReplicasReadingCoordinator::handleRequest(ParallelR
                 ErrorCodes::LOGICAL_ERROR,
                 "Replica {} decided to read in {} mode, not in {}. This is a bug",
                 request.replica_num,
-                magic_enum::enum_name(request.mode),
-                magic_enum::enum_name(pimpl->getCoordinationMode()));
+                enumToString(request.mode),
+                enumToString(pimpl->getCoordinationMode()));
 
         const auto replica_num = request.replica_num;
 

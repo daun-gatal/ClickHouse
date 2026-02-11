@@ -306,7 +306,13 @@ bool CachedOnDiskReadBufferFromFile::canStartFromCache(size_t current_offset, co
 
 String CachedOnDiskReadBufferFromFile::toString(ReadType type)
 {
-    return String(magic_enum::enum_name(type));
+    switch (type)
+    {
+        case ReadType::CACHED: return "CACHED";
+        case ReadType::REMOTE_FS_READ_BYPASS_CACHE: return "REMOTE_FS_READ_BYPASS_CACHE";
+        case ReadType::REMOTE_FS_READ_AND_PUT_IN_CACHE: return "REMOTE_FS_READ_AND_PUT_IN_CACHE";
+    }
+    return "Unknown";
 }
 
 CachedOnDiskReadBufferFromFile::ImplementationBufferPtr

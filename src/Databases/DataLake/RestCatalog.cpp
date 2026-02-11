@@ -488,7 +488,7 @@ RestCatalog::Namespaces RestCatalog::getNamespaces(const std::string & base_name
 
         message += fmt::format(
             "Code: {}, status: {}, message: {}",
-            e.code(), e.getHTTPStatus(), e.displayText());
+            e.code(), static_cast<int>(e.getHTTPStatus()), e.displayText());
 
         throw DB::Exception(DB::ErrorCodes::DATALAKE_DATABASE_ERROR, "{}", message);
     }

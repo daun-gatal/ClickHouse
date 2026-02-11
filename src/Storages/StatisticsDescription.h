@@ -6,6 +6,7 @@
 #include <base/types.h>
 
 #include <map>
+#include <string_view>
 
 namespace DB
 {
@@ -19,6 +20,19 @@ enum class StatisticsType : UInt8
 
     Max = 63,
 };
+
+inline std::string_view enumToString(StatisticsType value)
+{
+    switch (value)
+    {
+        case StatisticsType::TDigest: return "TDigest";
+        case StatisticsType::Uniq: return "Uniq";
+        case StatisticsType::CountMinSketch: return "CountMinSketch";
+        case StatisticsType::MinMax: return "MinMax";
+        case StatisticsType::Max: return "Max";
+    }
+    return "UNKNOWN";
+}
 
 struct SingleStatisticsDescription
 {

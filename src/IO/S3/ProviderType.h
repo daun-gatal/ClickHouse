@@ -22,7 +22,7 @@ enum class ProviderType : uint8_t
     UNKNOWN
 };
 
-std::string_view toString(ProviderType provider_type);
+std::string_view enumToString(ProviderType provider_type);
 
 /// Mode in which we can use the XML API
 /// This value can be same as the provider type but there can be a difference
@@ -37,7 +37,7 @@ enum class ApiMode : uint8_t
     GCS
 };
 
-std::string_view toString(ApiMode api_mode);
+std::string_view enumToString(ApiMode api_mode);
 
 }
 

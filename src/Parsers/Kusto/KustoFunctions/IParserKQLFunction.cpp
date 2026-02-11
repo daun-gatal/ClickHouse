@@ -3,7 +3,7 @@
 #include <Parsers/Kusto/Utilities.h>
 #include <Parsers/Kusto/ParserKQLDateTypeTimespan.h>
 #include <boost/lexical_cast.hpp>
-#include <base/EnumReflection.h>
+#include <Parsers/Lexer.h>
 #include <pcg_random.hpp>
 #include <Poco/String.h>
 
@@ -20,7 +20,7 @@ extern const int UNKNOWN_FUNCTION;
 
 namespace
 {
-constexpr DB::TokenType determineClosingPair(const DB::TokenType token_type)
+DB::TokenType determineClosingPair(const DB::TokenType token_type)
 {
     if (token_type == DB::TokenType::OpeningCurlyBrace)
         return DB::TokenType::ClosingCurlyBrace;
@@ -29,7 +29,7 @@ constexpr DB::TokenType determineClosingPair(const DB::TokenType token_type)
     if (token_type == DB::TokenType::OpeningSquareBracket)
         return DB::TokenType::ClosingSquareBracket;
 
-    throw DB::Exception(DB::ErrorCodes::NOT_IMPLEMENTED, "Unhandled token: {}", magic_enum::enum_name(token_type));
+    throw DB::Exception(DB::ErrorCodes::NOT_IMPLEMENTED, "Unhandled token: {}", DB::getTokenName(token_type));
 }
 
 constexpr bool isClosingBracket(const DB::TokenType token_type)
@@ -241,9 +241,8 @@ IParserKQLFunction::getOptionalArgument(const String & function_name, DB::IParse
     if (argument_state != ArgumentState::Raw)
         throw Exception(
             ErrorCodes::NOT_IMPLEMENTED,
-            "Argument extraction is not implemented for {}::{}",
-            magic_enum::enum_type_name<ArgumentState>(),
-            magic_enum::enum_name(argument_state));
+            "Argument extraction is not implemented for ArgumentState::{}",
+            argument_state == ArgumentState::Parsed ? "Parsed" : "Raw");
 
     const auto * begin = pos->begin;
     std::stack<DB::TokenType> scopes;
@@ -256,7 +255,7 @@ IParserKQLFunction::getOptionalArgument(const String & function_name, DB::IParse
         {
             if (scopes.empty() || determineClosingPair(scopes.top()) != token_type)
                 throw Exception(
-                    DB::ErrorCodes::SYNTAX_ERROR, "Unmatched token: {} when parsing {}", magic_enum::enum_name(token_type), function_name);
+                    DB::ErrorCodes::SYNTAX_ERROR, "Unmatched token: {} when parsing {}", getTokenName(token_type), function_name);
 
             scopes.pop();
         }

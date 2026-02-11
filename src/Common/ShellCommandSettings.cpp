@@ -1,4 +1,3 @@
-#include <base/EnumReflection.h>
 #include <Common/Exception.h>
 #include <Common/ShellCommandSettings.h>
 
@@ -14,14 +13,17 @@ namespace ErrorCodes
 
 ExternalCommandStderrReaction parseExternalCommandStderrReaction(const std::string & config)
 {
-    auto reaction = magic_enum::enum_cast<ExternalCommandStderrReaction>(Poco::toUpper(config));
-    if (!reaction)
-        throw Exception(
-            ErrorCodes::BAD_ARGUMENTS,
-            "Unknown stderr_reaction: {}. Possible values are 'none', 'log', 'log_first', 'log_last' and 'throw'",
-            config);
+    auto upper = Poco::toUpper(config);
+    if (upper == "NONE") return ExternalCommandStderrReaction::NONE;
+    if (upper == "LOG") return ExternalCommandStderrReaction::LOG;
+    if (upper == "LOG_FIRST") return ExternalCommandStderrReaction::LOG_FIRST;
+    if (upper == "LOG_LAST") return ExternalCommandStderrReaction::LOG_LAST;
+    if (upper == "THROW") return ExternalCommandStderrReaction::THROW;
 
-    return *reaction;
+    throw Exception(
+        ErrorCodes::BAD_ARGUMENTS,
+        "Unknown stderr_reaction: {}. Possible values are 'none', 'log', 'log_first', 'log_last' and 'throw'",
+        config);
 }
 
 }

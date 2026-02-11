@@ -547,14 +547,14 @@ std::string DeduplicationInfo::debug() const
         instance_id,
         is_async_insert ? "async" : "sync",
         disabled ? "disabled" : "enabled",
-        level,
+        static_cast<int>(level),
         getRows(), getCount(),
         block_str,
         getCount(), fmt::join(token_strs, ","),
         visited_views.size(), fmt::join(visited_views, ","),
         retried_view_id,
         original_block_view_id,
-        unification_stage);
+        static_cast<int>(unification_stage));
 }
 
 

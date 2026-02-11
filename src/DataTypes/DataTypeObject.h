@@ -16,6 +16,14 @@ public:
         JSON = 0,
     };
 
+    static constexpr std::string_view enumToString(SchemaFormat format)
+    {
+        switch (format)
+        {
+            case SchemaFormat::JSON: return "JSON";
+        }
+    }
+
     static constexpr size_t MAX_TYPED_PATHS = 1000;
     static constexpr size_t MAX_DYNAMIC_PATHS_LIMIT = 10000;
     /// Don't change this constant, it can break backward compatibility.

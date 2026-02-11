@@ -333,7 +333,7 @@ llvm::DWARFFormValue DWARFBlockInputFormat::parseAttribute(
     if (!val.extractValue(*extractor, offset, unit.dwarf_unit->getFormParams(), unit.dwarf_unit))
         throw Exception(ErrorCodes::CANNOT_PARSE_DWARF,
             "Failed to parse attribute {} of form {} at offset {}",
-                llvm::dwarf::AttributeString(attr.Attr).operator std::string_view(), attr.Form, *offset);
+                llvm::dwarf::AttributeString(attr.Attr).operator std::string_view(), static_cast<int>(attr.Form), *offset);
     return val;
 }
 
@@ -354,7 +354,7 @@ void DWARFBlockInputFormat::skipAttribute(
             attr.Form, *extractor, offset, unit.dwarf_unit->getFormParams()))
                 throw Exception(ErrorCodes::CANNOT_PARSE_DWARF,
                     "Failed to skip attribute {} of form {} at offset {}",
-                    llvm::dwarf::AttributeString(attr.Attr).operator std::string_view(), attr.Form, *offset);
+                    llvm::dwarf::AttributeString(attr.Attr).operator std::string_view(), static_cast<int>(attr.Form), *offset);
     }
 }
 

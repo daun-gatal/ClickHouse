@@ -51,7 +51,7 @@ protected:
             {
                 throw Exception(ErrorCodes::LOGICAL_ERROR,
                         "Attempt to move read pointer past end of available data, from state {} to new state: {}, new position: {}, available data: {}",
-                        magic_enum::enum_name(state), magic_enum::enum_name(next_state.state),
+                        StateHandler::stateToString(state), StateHandler::stateToString(next_state.state),
                         next_state.position_in_string, data.size());
             }
 

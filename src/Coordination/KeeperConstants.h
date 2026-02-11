@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/types.h>
+#include <string_view>
 
 namespace DB
 {
@@ -15,6 +16,19 @@ enum class KeeperApiVersion : uint8_t
     WITH_REMOVE_RECURSIVE,
     WITH_CHECK_STAT,
 };
+
+inline std::string_view enumToString(KeeperApiVersion value)
+{
+    switch (value)
+    {
+        case KeeperApiVersion::ZOOKEEPER_COMPATIBLE: return "ZOOKEEPER_COMPATIBLE";
+        case KeeperApiVersion::WITH_FILTERED_LIST: return "WITH_FILTERED_LIST";
+        case KeeperApiVersion::WITH_MULTI_READ: return "WITH_MULTI_READ";
+        case KeeperApiVersion::WITH_CHECK_NOT_EXISTS: return "WITH_CHECK_NOT_EXISTS";
+        case KeeperApiVersion::WITH_REMOVE_RECURSIVE: return "WITH_REMOVE_RECURSIVE";
+        case KeeperApiVersion::WITH_CHECK_STAT: return "WITH_CHECK_STAT";
+    }
+}
 
 const String keeper_system_path = "/keeper";
 const String keeper_api_version_path = keeper_system_path + "/api_version";

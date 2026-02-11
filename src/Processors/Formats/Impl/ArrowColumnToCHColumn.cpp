@@ -774,7 +774,7 @@ static std::shared_ptr<arrow::ChunkedArray> getNestedArrowColumn(const std::shar
         }
         else
         {
-            throw Exception(ErrorCodes::INCORRECT_DATA, "Failed to flatten chunk '{}' of column of type '{}' ", chunk_i, arrow_column->type()->id());
+            throw Exception(ErrorCodes::INCORRECT_DATA, "Failed to flatten chunk '{}' of column of type '{}' ", chunk_i, static_cast<int>(arrow_column->type()->id()));
         }
     }
     return std::make_shared<arrow::ChunkedArray>(array_vector);

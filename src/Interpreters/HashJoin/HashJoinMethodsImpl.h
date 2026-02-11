@@ -251,7 +251,7 @@ size_t HashJoinMethods<KIND, STRICTNESS, MapsTemplate>::switchJoinRightColumns(
                 return joinRightColumnsSwitchNullability<KeyGetter>(
                     std::move(key_getter_vector), a_map_type_vector, added_columns, selector, used_flags);
             }
-            throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys. Type: {}", type);
+            throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys. Type: {}", static_cast<int>(type));
         }
 #define M(TYPE) \
     case HashJoin::Type::TYPE: { \
@@ -272,7 +272,7 @@ size_t HashJoinMethods<KIND, STRICTNESS, MapsTemplate>::switchJoinRightColumns(
 #undef M
 
         default:
-            throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys (type: {})", type);
+            throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys (type: {})", static_cast<int>(type));
     }
 }
 

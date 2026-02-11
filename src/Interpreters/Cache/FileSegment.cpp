@@ -5,7 +5,6 @@
 #include <IO/WriteBufferFromString.h>
 #include <Interpreters/Cache/FileCache.h>
 #include <Interpreters/Cache/FileCacheUtils.h>
-#include <base/EnumReflection.h>
 #include <base/getThreadId.h>
 #include <base/hex.h>
 #include <Common/CurrentThread.h>
@@ -42,11 +41,6 @@ namespace DB
 namespace ErrorCodes
 {
     extern const int LOGICAL_ERROR;
-}
-
-String toString(FileSegmentKind kind)
-{
-    return String(magic_enum::enum_name(kind));
 }
 
 FileSegment::FileSegment(
@@ -909,7 +903,7 @@ String FileSegment::getInfoForLogUnlocked(const FileSegmentGuard::Lock &) const
     info << "downloader id: " << (downloader_id.empty() ? "None" : downloader_id) << ", ";
     info << "current write offset: " << getCurrentWriteOffset() << ", ";
     info << "caller id: " << getCallerId() << ", ";
-    info << "kind: " << toString(segment_kind) << ", ";
+    info << "kind: " << enumToString(segment_kind) << ", ";
     info << "unbound: " << is_unbound << ", ";
     info << "background download: " << background_download_enabled;
 

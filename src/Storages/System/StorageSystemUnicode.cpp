@@ -701,7 +701,7 @@ void StorageSystemUnicode::fillData(
                         if (script_name == nullptr)
                         {
                             throw Exception(
-                                ErrorCodes::UNICODE_ERROR, "Failed to get script name for code point {}: {}", code, scx_val_array[j]);
+                                ErrorCodes::UNICODE_ERROR, "Failed to get script name for code point {}: {}", code, static_cast<int>(scx_val_array[j]));
                         }
                         arr.emplace_back(std::string_view(script_name));
                     }
@@ -728,7 +728,7 @@ void StorageSystemUnicode::fillData(
                         if (type_name == nullptr)
                         {
                             throw Exception(
-                                ErrorCodes::UNICODE_ERROR, "Failed to get identifier type name for code point {}: {}", code, types[i]);
+                                ErrorCodes::UNICODE_ERROR, "Failed to get identifier type name for code point {}: {}", code, static_cast<int>(types[i]));
                         }
                         arr.emplace_back(std::string_view(type_name));
                     }

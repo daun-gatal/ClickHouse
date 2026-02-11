@@ -1,6 +1,5 @@
 #include <Access/Common/HTTPAuthenticationScheme.h>
 
-#include <base/EnumReflection.h>
 #include <base/types.h>
 #include <Poco/String.h>
 #include <Common/Exception.h>
@@ -13,17 +12,21 @@ namespace ErrorCodes
 }
 
 
-String toString(HTTPAuthenticationScheme scheme)
+String enumToString(HTTPAuthenticationScheme scheme)
 {
-    return String(magic_enum::enum_name(scheme));
+    switch (scheme)
+    {
+        case HTTPAuthenticationScheme::BASIC: return "BASIC";
+    }
+    return "Unknown HTTP authentication scheme";
 }
 
 HTTPAuthenticationScheme parseHTTPAuthenticationScheme(const String & scheme_str)
 {
-    auto scheme = magic_enum::enum_cast<HTTPAuthenticationScheme>(Poco::toUpper(scheme_str));
-    if (!scheme)
-        throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unknown HTTP authentication scheme: {}. Possible value is 'BASIC'", scheme_str);
-    return *scheme;
+    String upper = Poco::toUpper(scheme_str);
+    if (upper == "BASIC")
+        return HTTPAuthenticationScheme::BASIC;
+    throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unknown HTTP authentication scheme: {}. Possible value is 'BASIC'", scheme_str);
 }
 
 }

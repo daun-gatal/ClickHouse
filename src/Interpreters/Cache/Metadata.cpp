@@ -104,7 +104,7 @@ LockedKeyPtr KeyMetadata::lock()
 
     throw Exception(
         ErrorCodes::LOGICAL_ERROR,
-        "Cannot lock key {} (state: {})", key, magic_enum::enum_name(key_state));
+        "Cannot lock key {} (state: {})", key, KeyMetadata::enumToString(key_state));
 }
 
 LockedKeyPtr KeyMetadata::tryLock()
@@ -545,7 +545,7 @@ void CacheMetadata::removeKey(const Key & key, bool if_exists, bool if_releasabl
     {
         if (if_exists)
             return;
-        throw Exception(ErrorCodes::BAD_ARGUMENTS, "No such key: {} (state: {})", key, magic_enum::enum_name(state));
+        throw Exception(ErrorCodes::BAD_ARGUMENTS, "No such key: {} (state: {})", key, KeyMetadata::enumToString(state));
     }
 
     bool removed_all = locked_key->removeAllFileSegments(if_releasable);

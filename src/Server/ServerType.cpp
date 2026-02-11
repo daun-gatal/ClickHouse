@@ -3,8 +3,6 @@
 #include <vector>
 #include <algorithm>
 
-#include <base/EnumReflection.h>
-
 
 namespace DB
 {
@@ -13,12 +11,33 @@ namespace
 {
     std::vector<std::string> getTypeIndexToTypeName()
     {
-        constexpr std::size_t types_size = magic_enum::enum_count<ServerType::Type>();
+        constexpr std::size_t types_size = static_cast<std::size_t>(ServerType::Type::END) + 1;
 
         std::vector<std::string> type_index_to_type_name;
         type_index_to_type_name.resize(types_size);
 
-        auto entries = magic_enum::enum_entries<ServerType::Type>();
+        static constexpr std::pair<ServerType::Type, std::string_view> entries[] = {
+            {ServerType::Type::TCP_WITH_PROXY, "TCP_WITH_PROXY"},
+            {ServerType::Type::TCP_SECURE, "TCP_SECURE"},
+            {ServerType::Type::TCP_SSH, "TCP_SSH"},
+            {ServerType::Type::TCP, "TCP"},
+            {ServerType::Type::HTTP, "HTTP"},
+            {ServerType::Type::HTTPS, "HTTPS"},
+            {ServerType::Type::MYSQL, "MYSQL"},
+            {ServerType::Type::GRPC, "GRPC"},
+            {ServerType::Type::ARROW_FLIGHT, "ARROW_FLIGHT"},
+            {ServerType::Type::POSTGRESQL, "POSTGRESQL"},
+            {ServerType::Type::PROMETHEUS, "PROMETHEUS"},
+            {ServerType::Type::CUSTOM, "CUSTOM"},
+            {ServerType::Type::INTERSERVER_HTTP, "INTERSERVER_HTTP"},
+            {ServerType::Type::INTERSERVER_HTTPS, "INTERSERVER_HTTPS"},
+            {ServerType::Type::QUERIES_ALL, "QUERIES_ALL"},
+            {ServerType::Type::QUERIES_DEFAULT, "QUERIES_DEFAULT"},
+            {ServerType::Type::QUERIES_CUSTOM, "QUERIES_CUSTOM"},
+            {ServerType::Type::CLOUD, "CLOUD"},
+            {ServerType::Type::END, "END"},
+        };
+
         for (const auto & [entry, str] : entries)
         {
             auto str_copy = String(str);

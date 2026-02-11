@@ -3711,7 +3711,7 @@ void StorageReplicatedMergeTree::cloneReplica(const String & source_replica, Coo
             const String & entry_name = entry_info.parsed_entry->znode_name;
             const auto & entry_type = entry_info.parsed_entry->type;
 
-            if (should_ignore_log_entry(created_get_parts, part_name, fmt::format("Not copying {} {}", entry_name, entry_type)))
+            if (should_ignore_log_entry(created_get_parts, part_name, fmt::format("Not copying {} {}", entry_name, ReplicatedMergeTreeLogEntryData::typeToString(entry_type))))
                 continue;
 
             if (entry_info.parsed_entry->type == LogEntry::GET_PART)
@@ -4412,7 +4412,7 @@ void StorageReplicatedMergeTree::mergeSelectingTask()
         merge_selecting_task->schedule();
     else
     {
-        LOG_TRACE(log, "Scheduling next merge selecting task after {}ms, current attempt status: {}", merge_selecting_sleep_ms, result);
+        LOG_TRACE(log, "Scheduling next merge selecting task after {}ms, current attempt status: {}", merge_selecting_sleep_ms, static_cast<int>(result));
         merge_selecting_task->scheduleAfter(merge_selecting_sleep_ms);
     }
 }

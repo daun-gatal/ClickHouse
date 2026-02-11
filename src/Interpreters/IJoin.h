@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include <Core/Block.h>
 #include <Core/Block_fwd.h>
@@ -43,6 +44,16 @@ enum class JoinPipelineType : uint8_t
      */
     YShaped,
 };
+
+inline std::string_view enumToString(JoinPipelineType value)
+{
+    switch (value)
+    {
+        case JoinPipelineType::FillRightFirst: return "FillRightFirst";
+        case JoinPipelineType::FilledRight: return "FilledRight";
+        case JoinPipelineType::YShaped: return "YShaped";
+    }
+}
 
 class IJoinResult;
 using JoinResultPtr = std::unique_ptr<IJoinResult>;

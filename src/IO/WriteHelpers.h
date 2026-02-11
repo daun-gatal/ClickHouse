@@ -29,6 +29,8 @@
 
 #include <Formats/FormatSettings.h>
 
+#include <base/EnumReflection.h>
+
 namespace DB
 {
 
@@ -1175,7 +1177,7 @@ template <typename T>
 requires is_floating_point<T>
 inline void writeText(T x, WriteBuffer & buf) { writeFloatText(x, buf); }
 
-inline void writeText(is_enum auto x, WriteBuffer & buf) { writeText(magic_enum::enum_name(x), buf); }
+inline void writeText(has_enumToString auto x, WriteBuffer & buf) { writeText(enumToString(x), buf); }
 
 inline void writeText(std::string_view x, WriteBuffer & buf) { writeString(x, buf); }
 

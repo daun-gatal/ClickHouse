@@ -256,6 +256,36 @@ private:
     std::vector<std::unique_ptr<Node>> node_list;
 };
 
+inline std::string_view enumToString(PrometheusQueryTree::MatcherType value)
+{
+    switch (value)
+    {
+        case PrometheusQueryTree::MatcherType::EQ: return "=";
+        case PrometheusQueryTree::MatcherType::NE: return "!=";
+        case PrometheusQueryTree::MatcherType::RE: return "=~";
+        case PrometheusQueryTree::MatcherType::NRE: return "!~";
+    }
+    return "Unknown";
+}
+
+inline std::string_view enumToString(PrometheusQueryTree::NodeType value)
+{
+    switch (value)
+    {
+        case PrometheusQueryTree::NodeType::Scalar: return "Scalar";
+        case PrometheusQueryTree::NodeType::StringLiteral: return "StringLiteral";
+        case PrometheusQueryTree::NodeType::InstantSelector: return "InstantSelector";
+        case PrometheusQueryTree::NodeType::RangeSelector: return "RangeSelector";
+        case PrometheusQueryTree::NodeType::Subquery: return "Subquery";
+        case PrometheusQueryTree::NodeType::Offset: return "Offset";
+        case PrometheusQueryTree::NodeType::Function: return "Function";
+        case PrometheusQueryTree::NodeType::UnaryOperator: return "UnaryOperator";
+        case PrometheusQueryTree::NodeType::BinaryOperator: return "BinaryOperator";
+        case PrometheusQueryTree::NodeType::AggregationOperator: return "AggregationOperator";
+    }
+    return "Unknown";
+}
+
 }
 
 template <>

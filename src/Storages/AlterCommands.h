@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string_view>
 #include <Core/NamesAndTypes.h>
 #include <Storages/IStorage_fwd.h>
 #include <Storages/StorageInMemoryMetadata.h>
@@ -195,6 +196,42 @@ struct AlterCommand
     /// metadata changes.
     std::optional<MutationCommand> tryConvertToMutationCommand(StorageInMemoryMetadata & metadata, ContextPtr context) const;
 };
+
+inline std::string_view enumToString(AlterCommand::Type value)
+{
+    switch (value)
+    {
+        case AlterCommand::UNKNOWN: return "UNKNOWN";
+        case AlterCommand::ADD_COLUMN: return "ADD_COLUMN";
+        case AlterCommand::DROP_COLUMN: return "DROP_COLUMN";
+        case AlterCommand::MODIFY_COLUMN: return "MODIFY_COLUMN";
+        case AlterCommand::COMMENT_COLUMN: return "COMMENT_COLUMN";
+        case AlterCommand::MODIFY_ORDER_BY: return "MODIFY_ORDER_BY";
+        case AlterCommand::MODIFY_SAMPLE_BY: return "MODIFY_SAMPLE_BY";
+        case AlterCommand::ADD_INDEX: return "ADD_INDEX";
+        case AlterCommand::DROP_INDEX: return "DROP_INDEX";
+        case AlterCommand::ADD_CONSTRAINT: return "ADD_CONSTRAINT";
+        case AlterCommand::DROP_CONSTRAINT: return "DROP_CONSTRAINT";
+        case AlterCommand::ADD_PROJECTION: return "ADD_PROJECTION";
+        case AlterCommand::DROP_PROJECTION: return "DROP_PROJECTION";
+        case AlterCommand::ADD_STATISTICS: return "ADD_STATISTICS";
+        case AlterCommand::DROP_STATISTICS: return "DROP_STATISTICS";
+        case AlterCommand::MODIFY_STATISTICS: return "MODIFY_STATISTICS";
+        case AlterCommand::MODIFY_TTL: return "MODIFY_TTL";
+        case AlterCommand::MODIFY_SETTING: return "MODIFY_SETTING";
+        case AlterCommand::RESET_SETTING: return "RESET_SETTING";
+        case AlterCommand::MODIFY_QUERY: return "MODIFY_QUERY";
+        case AlterCommand::MODIFY_REFRESH: return "MODIFY_REFRESH";
+        case AlterCommand::RENAME_COLUMN: return "RENAME_COLUMN";
+        case AlterCommand::REMOVE_TTL: return "REMOVE_TTL";
+        case AlterCommand::MODIFY_DATABASE_SETTING: return "MODIFY_DATABASE_SETTING";
+        case AlterCommand::MODIFY_DATABASE_COMMENT: return "MODIFY_DATABASE_COMMENT";
+        case AlterCommand::COMMENT_TABLE: return "COMMENT_TABLE";
+        case AlterCommand::REMOVE_SAMPLE_BY: return "REMOVE_SAMPLE_BY";
+        case AlterCommand::MODIFY_SQL_SECURITY: return "MODIFY_SQL_SECURITY";
+    }
+    return "UNKNOWN";
+}
 
 class Context;
 

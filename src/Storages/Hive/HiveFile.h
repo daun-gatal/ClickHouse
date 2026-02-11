@@ -47,6 +47,21 @@ public:
         ORC,
     };
 
+    static std::string_view enumToString(FileFormat value)
+    {
+        switch (value)
+        {
+            case FileFormat::RC_FILE: return "RC_FILE";
+            case FileFormat::TEXT: return "TEXT";
+            case FileFormat::LZO_TEXT: return "LZO_TEXT";
+            case FileFormat::SEQUENCE_FILE: return "SEQUENCE_FILE";
+            case FileFormat::AVRO: return "AVRO";
+            case FileFormat::PARQUET: return "PARQUET";
+            case FileFormat::ORC: return "ORC";
+        }
+        return "Unknown";
+    }
+
     inline static const String RCFILE_INPUT_FORMAT = "org.apache.hadoop.hive.ql.io.RCFileInputFormat";
     inline static const String TEXT_INPUT_FORMAT = "org.apache.hadoop.mapred.TextInputFormat";
     inline static const String LZO_TEXT_INPUT_FORMAT = "com.hadoop.mapred.DeprecatedLzoTextInputFormat";
@@ -97,7 +112,7 @@ public:
     }
     virtual ~IHiveFile() = default;
 
-    String getFormatName() const { return String(magic_enum::enum_name(getFormat())); }
+    String getFormatName() const { return String(enumToString(getFormat())); }
     const String & getPath() const { return path; }
     UInt64 getLastModTs() const { return last_modify_time; }
     size_t getSize() const { return size; }

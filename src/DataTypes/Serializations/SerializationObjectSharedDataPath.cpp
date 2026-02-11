@@ -99,7 +99,7 @@ void SerializationObjectSharedDataPath::enumerateStreams(
     else
     {
         /// If we add new serialization version in future and forget to implement something, better to get an exception instead of doing nothing.
-        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", serialization_version.value);
+        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", static_cast<int>(serialization_version.value));
     }
 }
 
@@ -175,7 +175,7 @@ void SerializationObjectSharedDataPath::deserializeBinaryBulkStatePrefix(
     else
     {
         /// If we add new serialization version in future and forget to implement something, better to get an exception instead of doing nothing.
-        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", serialization_version.value);
+        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", static_cast<int>(serialization_version.value));
     }
 
     state = std::move(shared_data_path_state);
@@ -329,7 +329,7 @@ void SerializationObjectSharedDataPath::deserializeBinaryBulkWithMultipleStreams
     else
     {
         /// If we add new serialization version in future and forget to implement something, better to get an exception instead of doing nothing.
-        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", serialization_version.value);
+        throw Exception(ErrorCodes::NOT_IMPLEMENTED, "enumerateStreams is not implemented for shared data serialization version {}", static_cast<int>(serialization_version.value));
     }
 }
 

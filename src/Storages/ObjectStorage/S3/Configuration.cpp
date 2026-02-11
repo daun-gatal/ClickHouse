@@ -225,7 +225,7 @@ void S3StorageParsedArguments::fromNamedCollection(const NamedCollection & colle
     if (collection.has("partition_strategy"))
     {
         const auto partition_strategy_name = collection.get<std::string>("partition_strategy");
-        const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+        const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
         if (!partition_strategy_type_opt)
         {
@@ -536,7 +536,7 @@ void S3StorageParsedArguments::fromAST(ASTs & args, ContextPtr context, bool wit
         if (with_structure)
         {
             auto sixth_arg = checkAndGetLiteralArgument<String>(args[6], "compression_method/partition_strategy");
-            if (magic_enum::enum_contains<PartitionStrategyFactory::StrategyType>(sixth_arg))
+            if (PartitionStrategyFactory::isStrategyType(sixth_arg))
             {
                 engine_args_to_idx = {{"access_key_id", 1}, {"secret_access_key", 2}, {"session_token", 3}, {"format", 4}, {"structure", 5}, {"partition_strategy", 6}};
             }
@@ -561,7 +561,7 @@ void S3StorageParsedArguments::fromAST(ASTs & args, ContextPtr context, bool wit
         if (with_structure)
         {
             auto sixth_arg = checkAndGetLiteralArgument<String>(args[6], "compression_method/partition_strategy");
-            if (magic_enum::enum_contains<PartitionStrategyFactory::StrategyType>(sixth_arg))
+            if (PartitionStrategyFactory::isStrategyType(sixth_arg))
             {
                 engine_args_to_idx = {{"access_key_id", 1}, {"secret_access_key", 2}, {"session_token", 3}, {"format", 4}, {"structure", 5}, {"partition_strategy", 6}, {"partition_columns_in_data_file", 7}};
             }
@@ -633,7 +633,7 @@ void S3StorageParsedArguments::fromAST(ASTs & args, ContextPtr context, bool wit
         partition_strategy_value.has_value())
     {
         const auto & partition_strategy_name = partition_strategy_value.value();
-        const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+        const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
         if (!partition_strategy_type_opt.has_value())
         {

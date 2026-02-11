@@ -1,42 +1,20 @@
 #pragma once
 
-/// To cover ZooKeeperConstants -> See contrib/magic_enum/doc/limitations.md#enum-range
-#define MAGIC_ENUM_RANGE_MIN (-100)
-#define MAGIC_ENUM_RANGE_MAX 1000
-#include <magic_enum.hpp>
 #include <fmt/format.h>
-
+#include <type_traits>
+#include <string_view>
 
 template <typename T> concept is_enum = std::is_enum_v<T>;
 
-namespace detail
-{
-template <is_enum E, class F, size_t ...I>
-constexpr void static_for(F && f, std::index_sequence<I...>)
-{
-    (f(std::integral_constant<E, magic_enum::enum_value<E>(I)>()) , ...);
-}
-}
+template <typename T>
+concept has_enumToString = is_enum<T> && requires(T value) { { enumToString(value) } -> std::convertible_to<std::string_view>; };
 
-/**
- * Iterate over enum values in compile-time (compile-time switch/case, loop unrolling).
- *
- * @example static_for<E>([](auto enum_value) { return template_func<enum_value>(); }
- * ^ enum_value can be used as a template parameter
- */
-template <is_enum E, class F>
-constexpr void static_for(F && f)
-{
-    constexpr size_t count = magic_enum::enum_count<E>();
-    detail::static_for<E>(std::forward<F>(f), std::make_index_sequence<count>());
-}
-
-/// Enable printing enum values as strings via fmt + magic_enum
-template <is_enum T>
+/// Generic fmt formatter for enums - requires enumToString(EnumType) via ADL
+template <has_enumToString T>
 struct fmt::formatter<T> : fmt::formatter<std::string_view>
 {
-    constexpr auto format(T value, auto& format_context) const
+    constexpr auto format(T value, auto & format_context) const
     {
-        return formatter<string_view>::format(magic_enum::enum_name(value), format_context);
+        return formatter<string_view>::format(enumToString(value), format_context);
     }
 };

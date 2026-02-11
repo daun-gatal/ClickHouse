@@ -232,7 +232,7 @@ StorageID StorageTimeSeries::getTargetTableId(ViewTarget::Kind target_kind) cons
         if (target.kind == target_kind)
             return target.table_id;
     }
-    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected target kind {}", toString(target_kind));
+    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected target kind {}", enumToString(target_kind));
 }
 
 StoragePtr StorageTimeSeries::getTargetTable(ViewTarget::Kind target_kind, const ContextPtr & local_context) const

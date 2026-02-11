@@ -102,7 +102,7 @@ BlockIO InterpreterTransactionControlQuery::executeCommit(ContextMutablePtr sess
         if (txn->getState() == MergeTreeTransaction::ROLLED_BACK)
             throw Exception(ErrorCodes::INVALID_TRANSACTION, "Transaction {} was rolled back", txn->tid);
         if (txn->getState() != MergeTreeTransaction::COMMITTED)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Transaction {} has invalid state {}", txn->tid, txn->getState());
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Transaction {} has invalid state {}", txn->tid, static_cast<int>(txn->getState()));
 
         csn = txn->getCSN();
     }

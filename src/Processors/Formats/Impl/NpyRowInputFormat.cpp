@@ -64,7 +64,7 @@ DataTypePtr getDataTypeFromNumpyType(const std::shared_ptr<NumpyDataType> & nump
         case NumpyDataTypeIndex::Unicode:
             return std::make_shared<DataTypeString>();
     }
-    throw Exception(ErrorCodes::UNKNOWN_TYPE, "Numpy type {} is not supported", magic_enum::enum_name(numpy_type->getTypeIndex()));
+    throw Exception(ErrorCodes::UNKNOWN_TYPE, "Numpy type {} is not supported", enumToString(numpy_type->getTypeIndex()));
 }
 
 DataTypePtr createNestedArrayType(const DataTypePtr & nested_type, size_t depth)
@@ -313,7 +313,7 @@ void NpyRowInputFormat::readAndInsertInteger(IColumn * column, const DataTypePtr
         case NumpyDataTypeIndex::UInt64: readBinaryValueAndInsert<T, UInt64>(column->getPtr(), npy_type.getEndianness()); break;
         default:
             throw Exception(ErrorCodes::ILLEGAL_COLUMN, "Cannot insert Numpy value with type {} into column with type {}",
-                        magic_enum::enum_name(npy_type.getTypeIndex()), data_type->getName());
+                        enumToString(npy_type.getTypeIndex()), data_type->getName());
     }
 }
 
@@ -327,7 +327,7 @@ void NpyRowInputFormat::readAndInsertFloat(IColumn * column, const DataTypePtr &
         case NumpyDataTypeIndex::Float64: readBinaryValueAndInsert<T, Float64>(column->getPtr(), npy_type.getEndianness()); break;
         default:
             throw Exception(ErrorCodes::ILLEGAL_COLUMN, "Cannot insert Numpy value with type {} into column with type {}",
-                        magic_enum::enum_name(npy_type.getTypeIndex()), data_type->getName());
+                        enumToString(npy_type.getTypeIndex()), data_type->getName());
     }
 }
 
@@ -341,7 +341,7 @@ void NpyRowInputFormat::readAndInsertString(MutableColumnPtr column, const DataT
         size = assert_cast<const NumpyDataTypeUnicode &>(npy_type).getSize();
     else
         throw Exception(ErrorCodes::ILLEGAL_COLUMN, "Cannot insert Numpy value with type {} into column with type {}",
-                        magic_enum::enum_name(npy_type.getTypeIndex()), data_type->getName());
+                        enumToString(npy_type.getTypeIndex()), data_type->getName());
 
     if (is_fixed)
     {

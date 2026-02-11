@@ -261,6 +261,18 @@ private:
         Cancelled,
         Processed,
     };
+
+    static std::string_view enumToString(FileState value)
+    {
+        switch (value)
+        {
+            case FileState::Processing: return "Processing";
+            case FileState::ErrorOnRead: return "ErrorOnRead";
+            case FileState::Cancelled: return "Cancelled";
+            case FileState::Processed: return "Processed";
+        }
+        return "Unknown";
+    }
     struct ProcessedFile
     {
         explicit ProcessedFile(FileMetadataPtr metadata_)

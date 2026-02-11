@@ -23,7 +23,7 @@ ViewTarget & ViewTarget::operator=(const ViewTarget & other) = default;
 
 ViewTarget::ViewTarget(Kind kind_) : kind(kind_) {}
 
-std::string_view toString(ViewTarget::Kind kind)
+std::string_view enumToString(ViewTarget::Kind kind)
 {
     switch (kind)
     {
@@ -38,9 +38,12 @@ std::string_view toString(ViewTarget::Kind kind)
 
 void parseFromString(ViewTarget::Kind & out, std::string_view str)
 {
-    for (auto kind : magic_enum::enum_values<ViewTarget::Kind>())
+    static constexpr ViewTarget::Kind all_kinds[] = {
+        ViewTarget::To, ViewTarget::Inner, ViewTarget::Data, ViewTarget::Tags, ViewTarget::Metrics,
+    };
+    for (auto kind : all_kinds)
     {
-        if (toString(kind) == str)
+        if (enumToString(kind) == str)
         {
             out = kind;
             return;
@@ -233,7 +236,7 @@ void ASTViewTargets::formatTarget(const ViewTarget & target, WriteBuffer & ostr,
     {
         auto keyword = getKeywordForTableID(target.kind);
         if (!keyword)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "No keyword for table name of kind {}", toString(target.kind));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "No keyword for table name of kind {}", enumToString(target.kind));
         ostr <<  " " << toStringView(*keyword)
                << " "
                << (!target.table_id.database_name.empty() ? backQuoteIfNeed(target.table_id.database_name) + "." : "")
@@ -244,7 +247,7 @@ void ASTViewTargets::formatTarget(const ViewTarget & target, WriteBuffer & ostr,
     {
         auto keyword = getKeywordForInnerUUID(target.kind);
         if (!keyword)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "No prefix keyword for inner UUID of kind {}", toString(target.kind));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "No prefix keyword for inner UUID of kind {}", enumToString(target.kind));
         ostr << " " << toStringView(*keyword)
                << " " << quoteString(toString(target.inner_uuid));
     }
@@ -253,7 +256,7 @@ void ASTViewTargets::formatTarget(const ViewTarget & target, WriteBuffer & ostr,
     {
         auto keyword = getKeywordForInnerStorage(target.kind);
         if (!keyword)
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "No prefix keyword for table engine of kind {}", toString(target.kind));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "No prefix keyword for table engine of kind {}", enumToString(target.kind));
         ostr << " " << toStringView(*keyword);
         target.inner_engine->format(ostr, s, state, frame);
     }

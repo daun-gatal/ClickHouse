@@ -290,7 +290,7 @@ bool WriteBufferFromHTTPServerResponse::cancelWithException(HTTPServerRequest & 
                 " Proper HTTP error code and headers have been send to the client."
                 " HTTP code: {}, message: <{}>, error code: {}, message: <{}>,"
                 " use compression: {}, data has been send through buffers: {}, compression discarded data: {}, discarded data: {}",
-            response.getStatus(), response.getReason(), exception_code_, message,
+            static_cast<int>(response.getStatus()), response.getReason(), exception_code_, message,
             use_compression_buffer,
             data_sent, compression_discarded_data, discarded_data);
         }
@@ -390,7 +390,7 @@ bool WriteBufferFromHTTPServerResponse::cancelWithException(HTTPServerRequest & 
                 "Error has been sent at the end of the response. HTTP protocol has been broken by server."
                 " HTTP code: {}, message: <{}>, error code: {}, message: <{}>."
                 " use compression: {}, data has been send through buffers: {}, compression discarded data: {}, discarded data: {}",
-            response.getStatus(), response.getReason(), exception_code_, message,
+            static_cast<int>(response.getStatus()), response.getReason(), exception_code_, message,
             use_compression_buffer,
             data_sent, compression_discarded_data, discarded_data);
 

@@ -119,13 +119,13 @@ rd_kafka_resp_err_t KafkaInterceptors<TStorageKafka>::rdKafkaOnNew(
     status = rd_kafka_interceptor_add_on_thread_start(rk, "init-thread", rdKafkaOnThreadStart, ctx);
     if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
     {
-        LOG_ERROR(self->log, "Cannot set on thread start interceptor due to {} error", status);
+        LOG_ERROR(self->log, "Cannot set on thread start interceptor due to {} error", rd_kafka_err2str(status));
         return status;
     }
 
     status = rd_kafka_interceptor_add_on_thread_exit(rk, "exit-thread", rdKafkaOnThreadExit, ctx);
     if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
-        LOG_ERROR(self->log, "Cannot set on thread exit interceptor due to {} error", status);
+        LOG_ERROR(self->log, "Cannot set on thread exit interceptor due to {} error", rd_kafka_err2str(status));
 
     return status;
 }
@@ -141,13 +141,13 @@ rd_kafka_resp_err_t KafkaInterceptors<TStorageKafka>::rdKafkaOnConfDup(
     status = rd_kafka_conf_interceptor_add_on_conf_dup(new_conf, "init", rdKafkaOnConfDup, ctx);
     if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
     {
-        LOG_ERROR(self->log, "Cannot set on conf dup interceptor due to {} error", status);
+        LOG_ERROR(self->log, "Cannot set on conf dup interceptor due to {} error", rd_kafka_err2str(status));
         return status;
     }
 
     status = rd_kafka_conf_interceptor_add_on_new(new_conf, "init", rdKafkaOnNew, ctx);
     if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
-        LOG_ERROR(self->log, "Cannot set on conf new interceptor due to {} error", status);
+        LOG_ERROR(self->log, "Cannot set on conf new interceptor due to {} error", rd_kafka_err2str(status));
 
     return status;
 }
@@ -448,13 +448,13 @@ void updateConfigurationFromConfig(
         status
             = rd_kafka_conf_interceptor_add_on_new(kafka_config.get_handle(), "init", KafkaInterceptors<TKafkaStorage>::rdKafkaOnNew, self);
         if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
-            LOG_ERROR(params.log, "Cannot set new interceptor due to {} error", status);
+            LOG_ERROR(params.log, "Cannot set new interceptor due to {} error", rd_kafka_err2str(static_cast<rd_kafka_resp_err_t>(status)));
 
         // cppkafka always copy the configuration
         status = rd_kafka_conf_interceptor_add_on_conf_dup(
             kafka_config.get_handle(), "init", KafkaInterceptors<TKafkaStorage>::rdKafkaOnConfDup, self);
         if (status != RD_KAFKA_RESP_ERR_NO_ERROR)
-            LOG_ERROR(params.log, "Cannot set dup conf interceptor due to {} error", status);
+            LOG_ERROR(params.log, "Cannot set dup conf interceptor due to {} error", rd_kafka_err2str(static_cast<rd_kafka_resp_err_t>(status)));
     }
 }
 

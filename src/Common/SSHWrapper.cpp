@@ -1,6 +1,7 @@
 #include <Common/SSHWrapper.h>
 
 # if USE_SSH
+#    include <memory>
 #    include <stdexcept>
 
 #    pragma clang diagnostic push

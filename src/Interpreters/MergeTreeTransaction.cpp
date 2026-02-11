@@ -346,7 +346,7 @@ void MergeTreeTransaction::onException()
 
 String MergeTreeTransaction::dumpDescription() const
 {
-    String res = fmt::format("{} state: {}, snapshot: {}", tid, getState(), getSnapshot());
+    String res = fmt::format("{} state: {}, snapshot: {}", tid, static_cast<int>(getState()), getSnapshot());
 
     if (isReadOnly())
     {

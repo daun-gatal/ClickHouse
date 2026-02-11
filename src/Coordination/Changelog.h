@@ -50,6 +50,17 @@ enum class ChangelogVersion : uint8_t
     V2 = 2, /// with compression and duplicate records
 };
 
+inline std::string_view enumToString(ChangelogVersion value)
+{
+    switch (value)
+    {
+        case ChangelogVersion::V0: return "V0";
+        case ChangelogVersion::V1: return "V1";
+        case ChangelogVersion::V2: return "V2";
+    }
+    return "Unknown";
+}
+
 static constexpr auto CURRENT_CHANGELOG_VERSION = ChangelogVersion::V2;
 
 struct ChangelogRecordHeader

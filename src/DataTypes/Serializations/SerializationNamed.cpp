@@ -17,7 +17,7 @@ SerializationNamed::SerializationNamed(
     , substream_type(substream_type_)
 {
     if (!ISerialization::Substream::named_types.contains(substream_type))
-        throw Exception(ErrorCodes::LOGICAL_ERROR, "SerializationNamed doesn't support substream type {}", substream_type);
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "SerializationNamed doesn't support substream type {}", static_cast<int>(substream_type));
 }
 
 void SerializationNamed::enumerateStreams(

@@ -2513,7 +2513,7 @@ MarkRanges MergeTreeDataSelectExecutor::mergePartialResultsForDisjunctions(
                     rpn_stack.emplace_back(false);
                 }
                 else
-                    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected function type {} in mergePartialResultsForDisjunctions(), RPN = {}", element.function, rpn_template_for_eval_result_string);
+                    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected function type {} in mergePartialResultsForDisjunctions(), RPN = {}", static_cast<int>(element.function), rpn_template_for_eval_result_string);
 
                 position++;
             }

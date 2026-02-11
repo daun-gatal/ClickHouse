@@ -161,7 +161,7 @@ void CloudJWTProvider::exchangeIdPTokenForClickHouseJWT(bool show_messages)
     {
         std::string error_body;
         Poco::StreamCopier::copyToString(rs, error_body);
-        throw Exception(ErrorCodes::NETWORK_ERROR, "Error exchanging token: {} {}\nResponse: {}", response.getStatus(), response.getReason(), error_body);
+        throw Exception(ErrorCodes::NETWORK_ERROR, "Error exchanging token: {} {}\nResponse: {}", static_cast<int>(response.getStatus()), response.getReason(), error_body);
     }
 
     std::string response_body;

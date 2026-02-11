@@ -584,7 +584,7 @@ SchemaCache::Keys getKeysForSchemaCache(
     /// For example, for Protobuf format additional information is the path to the schema
     /// and message name.
     String additional_format_info = FormatFactory::instance().getAdditionalInfoForSchemaCache(format, context, format_settings);
-    String schema_inference_mode(magic_enum::enum_name(context->getSettingsRef()[Setting::schema_inference_mode].value));
+    String schema_inference_mode(enumToString(context->getSettingsRef()[Setting::schema_inference_mode].value));
     SchemaCache::Keys cache_keys;
     cache_keys.reserve(sources.size());
     std::transform(

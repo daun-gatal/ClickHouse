@@ -36,7 +36,7 @@ namespace
 {
 
 String typeToString(const DataTypePtr & type) { return type->getName(); }
-String typeToString(const TypeIndex & type) { return String(magic_enum::enum_name(type)); }
+String typeToString(const TypeIndex & type) { return String(enumToString(type)); }
 
 template <typename DataTypes>
 String getExceptionMessagePrefix(const DataTypes & types)

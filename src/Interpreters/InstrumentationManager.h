@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include <base/types.h>
+#include <string_view>
 
 namespace DB::Instrumentation
 {
@@ -12,6 +13,17 @@ enum class EntryType : UInt8
     EXIT,
     ENTRY_AND_EXIT
 };
+
+inline std::string_view enumToString(EntryType value)
+{
+    switch (value)
+    {
+        case EntryType::ENTRY: return "Entry";
+        case EntryType::EXIT: return "Exit";
+        case EntryType::ENTRY_AND_EXIT: return "EntryAndExit";
+    }
+    return "Unknown";
+}
 
 }
 

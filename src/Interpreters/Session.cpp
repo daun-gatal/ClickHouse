@@ -304,7 +304,7 @@ void Session::shutdownNamedSessions()
 Session::Session(const ContextPtr & global_context_, ClientInfo::Interface interface_, bool is_secure, const std::string & certificate)
     : auth_id(UUIDHelpers::generateV4()),
       global_context(global_context_),
-      log(getLogger(String{magic_enum::enum_name(interface_)} + "-Session-" + toString(auth_id)))
+      log(getLogger(enumToString(interface_) + "-Session-" + toString(auth_id)))
 {
     prepared_client_info.emplace();
     prepared_client_info->interface = interface_;

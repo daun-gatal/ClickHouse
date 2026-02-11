@@ -1,5 +1,6 @@
 #pragma once
 #include <Core/Types.h>
+#include <string_view>
 #include <set>
 
 namespace DB
@@ -25,6 +26,18 @@ struct CommittingBlock
 
     bool operator==(const CommittingBlock & other) const = default;
 };
+
+inline std::string_view enumToString(CommittingBlock::Op op)
+{
+    switch (op)
+    {
+        case CommittingBlock::Op::Unknown:  return "Unknown";
+        case CommittingBlock::Op::NewPart:  return "NewPart";
+        case CommittingBlock::Op::Update:   return "Update";
+        case CommittingBlock::Op::Mutation: return "Mutation";
+    }
+    return "Unknown";
+}
 
 struct LessCommittingBlock
 {

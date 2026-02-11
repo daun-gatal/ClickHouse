@@ -273,7 +273,7 @@ Client::Client(
     endpoint_provider->GetBuiltInParameters().GetParameter("Endpoint").GetString(initial_endpoint);
 
     provider_type = deduceProviderType(initial_endpoint);
-    LOG_TRACE(log, "Provider type: {}", toString(provider_type));
+    LOG_TRACE(log, "Provider type: {}", enumToString(provider_type));
     LOG_TRACE(log, "Client configured with s3_retry_attempts: {}", client_configuration.retry_strategy.max_retries);
     if (provider_type == ProviderType::GCS)
     {
@@ -882,7 +882,7 @@ void Client::updateNextTimeToRetryAfterRetryableError(Aws::Client::AWSError<Aws:
     {
         if (next_time_to_retry_after_retryable_error.compare_exchange_weak(stored_next_time, next_time_ms))
         {
-            LOG_TRACE(log, "Updated next retry time to {} ms forward after retryable error with code {}", sleep_ms, error.GetResponseCode());
+            LOG_TRACE(log, "Updated next retry time to {} ms forward after retryable error with code {}", sleep_ms, static_cast<int>(error.GetResponseCode()));
             break;
         }
     }

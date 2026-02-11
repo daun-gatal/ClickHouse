@@ -25,7 +25,8 @@ constexpr uint8_t JoinKindMax = static_cast<uint8_t>(JoinKind::Paste);
 void serializeJoinKind(JoinKind kind, WriteBuffer & out);
 JoinKind deserializeJoinKind(ReadBuffer & in);
 
-const char * toString(JoinKind kind);
+const char * enumToString(JoinKind kind);
+inline const char * toString(JoinKind kind) { return enumToString(kind); }
 
 constexpr bool isLeft(JoinKind kind)         { return kind == JoinKind::Left; }
 constexpr bool isRight(JoinKind kind)        { return kind == JoinKind::Right; }
@@ -58,7 +59,8 @@ constexpr uint8_t JoinStrictnessMax = static_cast<uint8_t>(JoinStrictness::Anti)
 void serializeJoinStrictness(JoinStrictness strictness, WriteBuffer & out);
 JoinStrictness deserializeJoinStrictness(ReadBuffer & in);
 
-const char * toString(JoinStrictness strictness);
+const char * enumToString(JoinStrictness strictness);
+inline const char * toString(JoinStrictness strictness) { return enumToString(strictness); }
 
 /// Algorithm for distributed query processing.
 enum class JoinLocality : uint8_t
@@ -73,7 +75,8 @@ constexpr uint8_t JoinLocalityMax = static_cast<uint8_t>(JoinLocality::Global);
 void serializeJoinLocality(JoinLocality locality, WriteBuffer & out);
 JoinLocality deserializeJoinLocality(ReadBuffer & in);
 
-const char * toString(JoinLocality locality);
+const char * enumToString(JoinLocality locality);
+inline const char * toString(JoinLocality locality) { return enumToString(locality); }
 
 /// ASOF JOIN inequality type
 enum class ASOFJoinInequality : uint8_t
@@ -85,7 +88,8 @@ enum class ASOFJoinInequality : uint8_t
     GreaterOrEquals,
 };
 
-const char * toString(ASOFJoinInequality asof_join_inequality);
+const char * enumToString(ASOFJoinInequality asof_join_inequality);
+inline const char * toString(ASOFJoinInequality asof_join_inequality) { return enumToString(asof_join_inequality); }
 
 constexpr ASOFJoinInequality getASOFJoinInequality(std::string_view func_name)
 {
@@ -130,7 +134,8 @@ enum class JoinAlgorithm : uint8_t
     FULL_SORTING_MERGE,
 };
 
-const char * toString(JoinAlgorithm join_algorithm);
+const char * enumToString(JoinAlgorithm join_algorithm);
+inline const char * toString(JoinAlgorithm join_algorithm) { return enumToString(join_algorithm); }
 
 enum class JoinTableSide : uint8_t
 {
@@ -138,7 +143,8 @@ enum class JoinTableSide : uint8_t
     Right
 };
 
-const char * toString(JoinTableSide join_table_side);
+const char * enumToString(JoinTableSide join_table_side);
+inline const char * toString(JoinTableSide join_table_side) { return enumToString(join_table_side); }
 
 enum class JoinOrderAlgorithm : uint8_t
 {
@@ -146,7 +152,8 @@ enum class JoinOrderAlgorithm : uint8_t
     DPSIZE,
 };
 
-const char * toString(JoinOrderAlgorithm join_order_algorithm);
+const char * enumToString(JoinOrderAlgorithm join_order_algorithm);
+inline const char * toString(JoinOrderAlgorithm join_order_algorithm) { return enumToString(join_order_algorithm); }
 
 
 }

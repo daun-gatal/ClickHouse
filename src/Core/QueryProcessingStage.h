@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/types.h>
+#include <string_view>
 
 
 namespace DB
@@ -55,6 +56,11 @@ namespace QueryProcessingStage
         return stage < MAX
             ? data[stage]
             : "Unknown stage";
+    }
+
+    inline const char * enumToString(Enum stage)
+    {
+        return toString(static_cast<UInt64>(stage));
     }
 
     /// This method is used for the program options,

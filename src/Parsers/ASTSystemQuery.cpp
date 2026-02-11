@@ -20,12 +20,130 @@ namespace
 {
     std::vector<std::string> getTypeIndexToTypeName()
     {
-        constexpr std::size_t types_size = magic_enum::enum_count<ASTSystemQuery::Type>();
+        constexpr std::size_t types_size = static_cast<std::size_t>(ASTSystemQuery::Type::END) + 1;
 
         std::vector<std::string> type_index_to_type_name;
         type_index_to_type_name.resize(types_size);
 
-        auto entries = magic_enum::enum_entries<ASTSystemQuery::Type>();
+        static constexpr std::pair<ASTSystemQuery::Type, std::string_view> entries[] = {
+            {ASTSystemQuery::Type::UNKNOWN, "UNKNOWN"},
+            {ASTSystemQuery::Type::SHUTDOWN, "SHUTDOWN"},
+            {ASTSystemQuery::Type::KILL, "KILL"},
+            {ASTSystemQuery::Type::SUSPEND, "SUSPEND"},
+            {ASTSystemQuery::Type::CLEAR_DNS_CACHE, "CLEAR_DNS_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_CONNECTIONS_CACHE, "CLEAR_CONNECTIONS_CACHE"},
+            {ASTSystemQuery::Type::PREWARM_MARK_CACHE, "PREWARM_MARK_CACHE"},
+            {ASTSystemQuery::Type::PREWARM_PRIMARY_INDEX_CACHE, "PREWARM_PRIMARY_INDEX_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_MARK_CACHE, "CLEAR_MARK_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_PRIMARY_INDEX_CACHE, "CLEAR_PRIMARY_INDEX_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_UNCOMPRESSED_CACHE, "CLEAR_UNCOMPRESSED_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_INDEX_MARK_CACHE, "CLEAR_INDEX_MARK_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_INDEX_UNCOMPRESSED_CACHE, "CLEAR_INDEX_UNCOMPRESSED_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_VECTOR_SIMILARITY_INDEX_CACHE, "CLEAR_VECTOR_SIMILARITY_INDEX_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_TEXT_INDEX_DICTIONARY_CACHE, "CLEAR_TEXT_INDEX_DICTIONARY_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_TEXT_INDEX_HEADER_CACHE, "CLEAR_TEXT_INDEX_HEADER_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_TEXT_INDEX_POSTINGS_CACHE, "CLEAR_TEXT_INDEX_POSTINGS_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_TEXT_INDEX_CACHES, "CLEAR_TEXT_INDEX_CACHES"},
+            {ASTSystemQuery::Type::CLEAR_MMAP_CACHE, "CLEAR_MMAP_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_QUERY_CONDITION_CACHE, "CLEAR_QUERY_CONDITION_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_QUERY_CACHE, "CLEAR_QUERY_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_COMPILED_EXPRESSION_CACHE, "CLEAR_COMPILED_EXPRESSION_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_ICEBERG_METADATA_CACHE, "CLEAR_ICEBERG_METADATA_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_PARQUET_METADATA_CACHE, "CLEAR_PARQUET_METADATA_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_FILESYSTEM_CACHE, "CLEAR_FILESYSTEM_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_DISTRIBUTED_CACHE, "CLEAR_DISTRIBUTED_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_DISK_METADATA_CACHE, "CLEAR_DISK_METADATA_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_PAGE_CACHE, "CLEAR_PAGE_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_SCHEMA_CACHE, "CLEAR_SCHEMA_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_FORMAT_SCHEMA_CACHE, "CLEAR_FORMAT_SCHEMA_CACHE"},
+            {ASTSystemQuery::Type::CLEAR_S3_CLIENT_CACHE, "CLEAR_S3_CLIENT_CACHE"},
+            {ASTSystemQuery::Type::STOP_LISTEN, "STOP_LISTEN"},
+            {ASTSystemQuery::Type::START_LISTEN, "START_LISTEN"},
+            {ASTSystemQuery::Type::RESTART_REPLICAS, "RESTART_REPLICAS"},
+            {ASTSystemQuery::Type::RESTART_REPLICA, "RESTART_REPLICA"},
+            {ASTSystemQuery::Type::RESTORE_REPLICA, "RESTORE_REPLICA"},
+            {ASTSystemQuery::Type::RESTORE_DATABASE_REPLICA, "RESTORE_DATABASE_REPLICA"},
+            {ASTSystemQuery::Type::WAIT_LOADING_PARTS, "WAIT_LOADING_PARTS"},
+            {ASTSystemQuery::Type::DROP_REPLICA, "DROP_REPLICA"},
+            {ASTSystemQuery::Type::DROP_DATABASE_REPLICA, "DROP_DATABASE_REPLICA"},
+            {ASTSystemQuery::Type::DROP_CATALOG_REPLICA, "DROP_CATALOG_REPLICA"},
+            {ASTSystemQuery::Type::JEMALLOC_PURGE, "JEMALLOC_PURGE"},
+            {ASTSystemQuery::Type::JEMALLOC_ENABLE_PROFILE, "JEMALLOC_ENABLE_PROFILE"},
+            {ASTSystemQuery::Type::JEMALLOC_DISABLE_PROFILE, "JEMALLOC_DISABLE_PROFILE"},
+            {ASTSystemQuery::Type::JEMALLOC_FLUSH_PROFILE, "JEMALLOC_FLUSH_PROFILE"},
+            {ASTSystemQuery::Type::SYNC_REPLICA, "SYNC_REPLICA"},
+            {ASTSystemQuery::Type::SYNC_DATABASE_REPLICA, "SYNC_DATABASE_REPLICA"},
+            {ASTSystemQuery::Type::SYNC_TRANSACTION_LOG, "SYNC_TRANSACTION_LOG"},
+            {ASTSystemQuery::Type::SYNC_FILE_CACHE, "SYNC_FILE_CACHE"},
+            {ASTSystemQuery::Type::REPLICA_READY, "REPLICA_READY"},
+            {ASTSystemQuery::Type::REPLICA_UNREADY, "REPLICA_UNREADY"},
+            {ASTSystemQuery::Type::RELOAD_DICTIONARY, "RELOAD_DICTIONARY"},
+            {ASTSystemQuery::Type::RELOAD_DICTIONARIES, "RELOAD_DICTIONARIES"},
+            {ASTSystemQuery::Type::RELOAD_MODEL, "RELOAD_MODEL"},
+            {ASTSystemQuery::Type::RELOAD_MODELS, "RELOAD_MODELS"},
+            {ASTSystemQuery::Type::RELOAD_FUNCTION, "RELOAD_FUNCTION"},
+            {ASTSystemQuery::Type::RELOAD_FUNCTIONS, "RELOAD_FUNCTIONS"},
+            {ASTSystemQuery::Type::RELOAD_EMBEDDED_DICTIONARIES, "RELOAD_EMBEDDED_DICTIONARIES"},
+            {ASTSystemQuery::Type::RELOAD_CONFIG, "RELOAD_CONFIG"},
+            {ASTSystemQuery::Type::RELOAD_USERS, "RELOAD_USERS"},
+            {ASTSystemQuery::Type::RELOAD_ASYNCHRONOUS_METRICS, "RELOAD_ASYNCHRONOUS_METRICS"},
+            {ASTSystemQuery::Type::RESTART_DISK, "RESTART_DISK"},
+            {ASTSystemQuery::Type::STOP_MERGES, "STOP_MERGES"},
+            {ASTSystemQuery::Type::START_MERGES, "START_MERGES"},
+            {ASTSystemQuery::Type::STOP_TTL_MERGES, "STOP_TTL_MERGES"},
+            {ASTSystemQuery::Type::START_TTL_MERGES, "START_TTL_MERGES"},
+            {ASTSystemQuery::Type::STOP_FETCHES, "STOP_FETCHES"},
+            {ASTSystemQuery::Type::START_FETCHES, "START_FETCHES"},
+            {ASTSystemQuery::Type::STOP_MOVES, "STOP_MOVES"},
+            {ASTSystemQuery::Type::START_MOVES, "START_MOVES"},
+            {ASTSystemQuery::Type::STOP_REPLICATED_SENDS, "STOP_REPLICATED_SENDS"},
+            {ASTSystemQuery::Type::START_REPLICATED_SENDS, "START_REPLICATED_SENDS"},
+            {ASTSystemQuery::Type::STOP_REPLICATION_QUEUES, "STOP_REPLICATION_QUEUES"},
+            {ASTSystemQuery::Type::START_REPLICATION_QUEUES, "START_REPLICATION_QUEUES"},
+            {ASTSystemQuery::Type::STOP_REPLICATED_DDL_QUERIES, "STOP_REPLICATED_DDL_QUERIES"},
+            {ASTSystemQuery::Type::START_REPLICATED_DDL_QUERIES, "START_REPLICATED_DDL_QUERIES"},
+            {ASTSystemQuery::Type::FLUSH_LOGS, "FLUSH_LOGS"},
+            {ASTSystemQuery::Type::FLUSH_DISTRIBUTED, "FLUSH_DISTRIBUTED"},
+            {ASTSystemQuery::Type::FLUSH_ASYNC_INSERT_QUEUE, "FLUSH_ASYNC_INSERT_QUEUE"},
+            {ASTSystemQuery::Type::STOP_DISTRIBUTED_SENDS, "STOP_DISTRIBUTED_SENDS"},
+            {ASTSystemQuery::Type::START_DISTRIBUTED_SENDS, "START_DISTRIBUTED_SENDS"},
+            {ASTSystemQuery::Type::START_THREAD_FUZZER, "START_THREAD_FUZZER"},
+            {ASTSystemQuery::Type::STOP_THREAD_FUZZER, "STOP_THREAD_FUZZER"},
+            {ASTSystemQuery::Type::UNFREEZE, "UNFREEZE"},
+            {ASTSystemQuery::Type::ENABLE_FAILPOINT, "ENABLE_FAILPOINT"},
+            {ASTSystemQuery::Type::DISABLE_FAILPOINT, "DISABLE_FAILPOINT"},
+            {ASTSystemQuery::Type::WAIT_FAILPOINT, "WAIT_FAILPOINT"},
+            {ASTSystemQuery::Type::NOTIFY_FAILPOINT, "NOTIFY_FAILPOINT"},
+            {ASTSystemQuery::Type::SYNC_FILESYSTEM_CACHE, "SYNC_FILESYSTEM_CACHE"},
+            {ASTSystemQuery::Type::STOP_PULLING_REPLICATION_LOG, "STOP_PULLING_REPLICATION_LOG"},
+            {ASTSystemQuery::Type::START_PULLING_REPLICATION_LOG, "START_PULLING_REPLICATION_LOG"},
+            {ASTSystemQuery::Type::STOP_CLEANUP, "STOP_CLEANUP"},
+            {ASTSystemQuery::Type::START_CLEANUP, "START_CLEANUP"},
+            {ASTSystemQuery::Type::RESET_COVERAGE, "RESET_COVERAGE"},
+            {ASTSystemQuery::Type::REFRESH_VIEW, "REFRESH_VIEW"},
+            {ASTSystemQuery::Type::WAIT_VIEW, "WAIT_VIEW"},
+            {ASTSystemQuery::Type::START_VIEW, "START_VIEW"},
+            {ASTSystemQuery::Type::START_VIEWS, "START_VIEWS"},
+            {ASTSystemQuery::Type::START_REPLICATED_VIEW, "START_REPLICATED_VIEW"},
+            {ASTSystemQuery::Type::STOP_VIEW, "STOP_VIEW"},
+            {ASTSystemQuery::Type::STOP_VIEWS, "STOP_VIEWS"},
+            {ASTSystemQuery::Type::STOP_REPLICATED_VIEW, "STOP_REPLICATED_VIEW"},
+            {ASTSystemQuery::Type::CANCEL_VIEW, "CANCEL_VIEW"},
+            {ASTSystemQuery::Type::TEST_VIEW, "TEST_VIEW"},
+            {ASTSystemQuery::Type::LOAD_PRIMARY_KEY, "LOAD_PRIMARY_KEY"},
+            {ASTSystemQuery::Type::UNLOAD_PRIMARY_KEY, "UNLOAD_PRIMARY_KEY"},
+            {ASTSystemQuery::Type::STOP_VIRTUAL_PARTS_UPDATE, "STOP_VIRTUAL_PARTS_UPDATE"},
+            {ASTSystemQuery::Type::START_VIRTUAL_PARTS_UPDATE, "START_VIRTUAL_PARTS_UPDATE"},
+            {ASTSystemQuery::Type::STOP_REDUCE_BLOCKING_PARTS, "STOP_REDUCE_BLOCKING_PARTS"},
+            {ASTSystemQuery::Type::START_REDUCE_BLOCKING_PARTS, "START_REDUCE_BLOCKING_PARTS"},
+            {ASTSystemQuery::Type::UNLOCK_SNAPSHOT, "UNLOCK_SNAPSHOT"},
+            {ASTSystemQuery::Type::RECONNECT_ZOOKEEPER, "RECONNECT_ZOOKEEPER"},
+            {ASTSystemQuery::Type::INSTRUMENT_ADD, "INSTRUMENT_ADD"},
+            {ASTSystemQuery::Type::INSTRUMENT_REMOVE, "INSTRUMENT_REMOVE"},
+            {ASTSystemQuery::Type::RESET_DDL_WORKER, "RESET_DDL_WORKER"},
+            {ASTSystemQuery::Type::END, "END"},
+        };
+
         for (const auto & [entry, str] : entries)
         {
             auto str_copy = String(str);
@@ -229,7 +347,7 @@ void ASTSystemQuery::formatImpl(WriteBuffer & ostr, const FormatSettings & setti
             if (sync_replica_mode != SyncReplicaMode::DEFAULT)
             {
                 ostr << ' ';
-                print_keyword(magic_enum::enum_name(sync_replica_mode));
+                print_keyword(enumToString(sync_replica_mode));
 
                 // If the mode is LIGHTWEIGHT and specific source replicas are specified
                 if (sync_replica_mode == SyncReplicaMode::LIGHTWEIGHT && !src_replicas.empty())
@@ -293,7 +411,7 @@ void ASTSystemQuery::formatImpl(WriteBuffer & ostr, const FormatSettings & setti
             if (sync_replica_mode != SyncReplicaMode::DEFAULT)
             {
                 ostr << ' ';
-                print_keyword(magic_enum::enum_name(sync_replica_mode));
+                print_keyword(enumToString(sync_replica_mode));
             }
             break;
         }

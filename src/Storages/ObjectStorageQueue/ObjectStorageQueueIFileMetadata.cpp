@@ -171,7 +171,7 @@ ObjectStorageQueueIFileMetadata::~ObjectStorageQueueIFileMetadata()
 
         LOG_TEST(log, "Removing processing node in destructor for file: {} "
                  "(state: {}, exception: {})",
-                 path, file_status->state.load(), current_exception);
+                 path, FileStatus::enumToString(file_status->state.load()), current_exception);
         try
         {
             Coordination::Error code;
@@ -298,7 +298,7 @@ bool ObjectStorageQueueIFileMetadata::trySetProcessing()
             && file_status->retries >= max_loading_retries))
     {
         LOG_TEST(log, "File {} has non-processable state `{}` (retries: {}/{})",
-                 path, state, file_status->retries.load(), max_loading_retries);
+                 path, FileStatus::enumToString(state), file_status->retries.load(), max_loading_retries);
         return false;
     }
 
@@ -312,7 +312,7 @@ bool ObjectStorageQueueIFileMetadata::trySetProcessing()
     auto [success, file_state] = setProcessingImpl();
     afterSetProcessing(success, file_state);
 
-    LOG_TEST(log, "File {} has state `{}`: will {}process", path, file_state, success ? "" : "not ");
+    LOG_TEST(log, "File {} has state `{}`: will {}process", path, FileStatus::enumToString(file_state), success ? "" : "not ");
     return success;
 }
 
@@ -337,7 +337,7 @@ ObjectStorageQueueIFileMetadata::prepareSetProcessingRequests(Coordination::Requ
             && file_status->retries >= max_loading_retries))
     {
         LOG_TEST(log, "File {} has non-processable state `{}` (retries: {}/{})",
-                path, state, file_status->retries.load(), max_loading_retries);
+                path, FileStatus::enumToString(state), file_status->retries.load(), max_loading_retries);
 
         /// This is possible in case on the same server
         /// there are more than one S3(Azure)Queue table processing the same keeper path.
@@ -367,7 +367,7 @@ void ObjectStorageQueueIFileMetadata::afterSetProcessing(bool success, std::opti
 
         if (file_state.has_value() && file_state.value() != FileStatus::State::None)
         {
-            LOG_TEST(log, "Updating state of {} from {} to {}", path, file_status->state.load(), file_state.value());
+            LOG_TEST(log, "Updating state of {} from {} to {}", path, FileStatus::enumToString(file_status->state.load()), FileStatus::enumToString(file_state.value()));
             file_status->updateState(file_state.value());
         }
     }
@@ -382,7 +382,7 @@ void ObjectStorageQueueIFileMetadata::resetProcessing()
 
     auto state = file_status->state.load();
     if (state != FileStatus::State::Processing)
-        throw Exception(ErrorCodes::LOGICAL_ERROR, "Cannot reset non-processing state: {}", state);
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Cannot reset non-processing state: {}", FileStatus::enumToString(state));
 
     SCOPE_EXIT({
         (*file_status).reset();

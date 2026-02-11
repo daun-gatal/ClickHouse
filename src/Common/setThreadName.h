@@ -179,5 +179,5 @@ enum class ThreadName : uint8_t
 void setThreadName(ThreadName name);
 ThreadName getThreadName();
 
-std::string_view toString(ThreadName name);
+std::string_view enumToString(ThreadName name);
 }

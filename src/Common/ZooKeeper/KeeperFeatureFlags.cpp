@@ -21,7 +21,7 @@ std::pair<size_t, size_t> getByteAndBitIndex(size_t num)
 KeeperFeatureFlags::KeeperFeatureFlags()
 {
     /// get byte idx of largest value
-    auto [byte_idx, _] = getByteAndBitIndex(magic_enum::enum_count<KeeperFeatureFlag>() - 1);
+    auto [byte_idx, _] = getByteAndBitIndex(KEEPER_FEATURE_FLAG_COUNT - 1);
     feature_flags = std::string(byte_idx + 1, 0);
 }
 
@@ -46,7 +46,7 @@ void KeeperFeatureFlags::fromApiVersion(KeeperApiVersion keeper_api_version)
 
 bool KeeperFeatureFlags::isEnabled(KeeperFeatureFlag feature_flag) const
 {
-    auto [byte_idx, bit_idx] = getByteAndBitIndex(magic_enum::enum_integer(feature_flag));
+    auto [byte_idx, bit_idx] = getByteAndBitIndex(static_cast<size_t>(feature_flag));
 
     if (byte_idx > feature_flags.size())
         return false;
@@ -61,7 +61,7 @@ void KeeperFeatureFlags::setFeatureFlags(std::string feature_flags_)
 
 void KeeperFeatureFlags::enableFeatureFlag(KeeperFeatureFlag feature_flag)
 {
-    auto [byte_idx, bit_idx] = getByteAndBitIndex(magic_enum::enum_integer(feature_flag));
+    auto [byte_idx, bit_idx] = getByteAndBitIndex(static_cast<size_t>(feature_flag));
     chassert(byte_idx < feature_flags.size());
 
     feature_flags[byte_idx] |= (1 << bit_idx);
@@ -69,7 +69,7 @@ void KeeperFeatureFlags::enableFeatureFlag(KeeperFeatureFlag feature_flag)
 
 void KeeperFeatureFlags::disableFeatureFlag(KeeperFeatureFlag feature_flag)
 {
-    auto [byte_idx, bit_idx] = getByteAndBitIndex(magic_enum::enum_integer(feature_flag));
+    auto [byte_idx, bit_idx] = getByteAndBitIndex(static_cast<size_t>(feature_flag));
     chassert(byte_idx < feature_flags.size());
 
     feature_flags[byte_idx] &= ~(1 << bit_idx);
@@ -93,10 +93,10 @@ void KeeperFeatureFlags::logFlags(LoggerPtr log, DB::LogsLevel log_level) const
     };
 
     auto poco_priority = logs_level_to_prio.at(log_level);
-    for (const auto & [feature_flag, feature_flag_name] : magic_enum::enum_entries<KeeperFeatureFlag>())
+    for (const auto & feature_flag : ALL_KEEPER_FEATURE_FLAGS)
     {
         auto is_enabled = isEnabled(feature_flag);
-        LOG_IMPL(log, log_level, poco_priority, "Keeper feature flag {}: {}", feature_flag_name, is_enabled ? "enabled" : "disabled");
+        LOG_IMPL(log, log_level, poco_priority, "Keeper feature flag {}: {}", enumToString(feature_flag), is_enabled ? "enabled" : "disabled");
     }
 }
 }

@@ -205,7 +205,7 @@ void QueryLogElement::appendToBlock(MutableColumns & columns) const
     typeid_cast<ColumnString &>(*columns[i++]).insertData(formatted_query.data(), formatted_query.size());
     typeid_cast<ColumnUInt64 &>(*columns[i++]).getData().push_back(normalized_query_hash);
 
-    const std::string_view query_kind_str = magic_enum::enum_name(query_kind);
+    const auto query_kind_str = enumToString(query_kind);
     typeid_cast<ColumnLowCardinality &>(*columns[i++]).insertData(query_kind_str.data(), query_kind_str.size());
 
     {

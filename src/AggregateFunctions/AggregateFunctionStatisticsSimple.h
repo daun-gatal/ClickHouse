@@ -45,6 +45,25 @@ enum class StatisticsFunctionKind : uint8_t
     corr
 };
 
+inline std::string_view enumToString(StatisticsFunctionKind value)
+{
+    switch (value)
+    {
+        case StatisticsFunctionKind::varPop: return "varPop";
+        case StatisticsFunctionKind::varSamp: return "varSamp";
+        case StatisticsFunctionKind::stddevPop: return "stddevPop";
+        case StatisticsFunctionKind::stddevSamp: return "stddevSamp";
+        case StatisticsFunctionKind::skewPop: return "skewPop";
+        case StatisticsFunctionKind::skewSamp: return "skewSamp";
+        case StatisticsFunctionKind::kurtPop: return "kurtPop";
+        case StatisticsFunctionKind::kurtSamp: return "kurtSamp";
+        case StatisticsFunctionKind::covarPop: return "covarPop";
+        case StatisticsFunctionKind::covarSamp: return "covarSamp";
+        case StatisticsFunctionKind::corr: return "corr";
+    }
+    return "Unknown";
+}
+
 
 template <typename T, size_t _level>
 struct StatFuncOneArg
@@ -92,7 +111,7 @@ public:
 
     String getName() const override
     {
-        return String(magic_enum::enum_name(kind));
+        return String(enumToString(kind));
     }
 
     bool allocatesMemoryInArena() const override { return false; }

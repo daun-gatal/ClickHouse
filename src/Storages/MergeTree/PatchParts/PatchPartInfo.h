@@ -1,6 +1,7 @@
 #pragma once
 #include <Core/Types.h>
 #include <Core/Names.h>
+#include <string_view>
 
 namespace DB
 {
@@ -72,6 +73,16 @@ enum class PatchMode
     /// Apply patch via joining by key columns (_block_number, _block_offset).
     Join,
 };
+
+inline std::string_view enumToString(PatchMode value)
+{
+    switch (value)
+    {
+        case PatchMode::Merge: return "Merge";
+        case PatchMode::Join: return "Join";
+    }
+    return "Unknown";
+}
 
 template <typename TDataPartPtr>
 struct PatchPartInfoBase

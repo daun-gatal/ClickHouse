@@ -414,7 +414,7 @@ String getAdditionalFormatInfoForAllRowBasedFormats(const FormatSettings & setti
         settings.max_rows_to_read_for_schema_inference,
         settings.max_bytes_to_read_for_schema_inference,
         settings.schema_inference_make_columns_nullable,
-        settings.date_time_input_format,
+        static_cast<int>(settings.date_time_input_format),
         settings.try_infer_variant);
 }
 

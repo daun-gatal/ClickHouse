@@ -13,8 +13,6 @@
 #include <IO/WriteBufferFromString.h>
 #include <Interpreters/InstrumentationManager.h>
 
-#include <base/EnumReflection.h>
-
 
 namespace DB
 {
@@ -226,8 +224,10 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
 
     bool found = false;
 
-    for (const auto & type : magic_enum::enum_values<Type>())
+    /// Iterate over all Type values from UNKNOWN to END.
+    for (auto i = static_cast<UInt64>(Type::UNKNOWN); i <= static_cast<UInt64>(Type::END); ++i)
     {
+        auto type = static_cast<Type>(i);
         if (ParserKeyword::createDeprecated(ASTSystemQuery::typeToString(type)).ignore(pos, expected))
         {
             res->type = type;
@@ -706,11 +706,13 @@ bool ParserSystemQuery::parseImpl(IParser::Pos & pos, ASTPtr & node, Expected & 
                 type = ServerType::Type::END;
                 custom_name = "";
 
-                for (const auto & cur_type : magic_enum::enum_values<ServerType::Type>())
+                /// Iterate over all ServerType::Type values from TCP_WITH_PROXY to END.
+                for (auto i = static_cast<int>(ServerType::Type::TCP_WITH_PROXY); i <= static_cast<int>(ServerType::Type::END); ++i)
                 {
-                    if (ParserKeyword::createDeprecated(ServerType::serverTypeToString(cur_type)).ignore(pos, expected))
+                    auto cur = static_cast<ServerType::Type>(i);
+                    if (ParserKeyword::createDeprecated(ServerType::serverTypeToString(cur)).ignore(pos, expected))
                     {
-                        type = cur_type;
+                        type = cur;
                         break;
                     }
                 }

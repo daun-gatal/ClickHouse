@@ -59,7 +59,7 @@ void FilesystemReadPrefetchesLogElement::appendToBlock(MutableColumns & columns)
         columns[i++]->insertDefault();
         columns[i++]->insertDefault();
     }
-    columns[i++]->insert(magic_enum::enum_name(state));
+    columns[i++]->insert(enumToString(state));
     columns[i++]->insert(thread_id);
     columns[i++]->insert(reader_id);
 }

@@ -246,7 +246,7 @@ public:
         {
             if (!command.isCommentAlter())
                 throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Alter of type '{}' is not supported by storage {}",
-                    command.type, getEngineName());
+                    static_cast<int>(command.type), getEngineName());
         }
     }
 

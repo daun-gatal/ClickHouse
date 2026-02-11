@@ -21,7 +21,6 @@
 #include <QueryPipeline/BlockIO.h>
 #include <QueryPipeline/Pipe.h>
 #include <Server/IServer.h>
-#include <base/EnumReflection.h>
 #include <Poco/FileStream.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/URI.h>
@@ -205,7 +204,7 @@ namespace
                 return cmd;
             }
             default:
-                return arrow::Status::TypeError("Flight descriptor has unknown type ", magic_enum::enum_name(descriptor.type));
+                return arrow::Status::TypeError("Flight descriptor has unknown type ", std::to_string(static_cast<int>(descriptor.type)));
         }
     }
 

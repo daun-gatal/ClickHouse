@@ -424,7 +424,7 @@ std::unique_ptr<ReadBuffer> ReadWriteBufferFromHTTP::initialize()
                 String explanation = fmt::format(
                     "Cannot read with range: [{}, {}] (response status: {}, reason: {}), will retry",
                     getOffset(), read_range.end ? toString(*read_range.end) : "-",
-                    toString(response.getStatus()), response.getReason());
+                    toString(static_cast<int>(response.getStatus())), response.getReason());
 
                 /// it is retriable error
                 throw HTTPException(
@@ -439,7 +439,7 @@ std::unique_ptr<ReadBuffer> ReadWriteBufferFromHTTP::initialize()
                 "Cannot read with range: [{}, {}] (response status: {}, reason: {})",
                 getOffset(),
                 read_range.end ? toString(*read_range.end) : "-",
-                toString(response.getStatus()),
+                toString(static_cast<int>(response.getStatus())),
                 response.getReason());
         }
         if (read_range.end)
@@ -551,7 +551,7 @@ size_t ReadWriteBufferFromHTTP::readBigAt(char * to, size_t n, size_t offset, co
                     "Cannot read with range: [{}, {}] (response status: {}, reason: {}), will retry",
                     initial_uri.toString(),
                     *range.begin, *range.end,
-                    toString(response.getStatus()), response.getReason());
+                    toString(static_cast<int>(response.getStatus())), response.getReason());
 
                 throw HTTPException(
                     ErrorCodes::HTTP_RANGE_NOT_SATISFIABLE,

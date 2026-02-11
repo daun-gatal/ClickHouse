@@ -1,19 +1,34 @@
 #include <Interpreters/Cache/FileSegmentKeyType.h>
-#include <base/EnumReflection.h>
 
 namespace DB
 {
+
+namespace
+{
+
+std::string_view fileSegmentKeyTypeToStringView(FileSegmentKeyType type)
+{
+    switch (type)
+    {
+        case FileSegmentKeyType::General: return "General";
+        case FileSegmentKeyType::System: return "System";
+        case FileSegmentKeyType::Data: return "Data";
+    }
+    return "Unknown";
+}
+
+}
 
 String getKeyTypePrefix(FileSegmentKeyType type)
 {
     if (type == FileSegmentKeyType::General)
         return "";
-    return String(magic_enum::enum_name(type));
+    return String(fileSegmentKeyTypeToStringView(type));
 }
 
-String toString(FileSegmentKeyType type)
+String enumToString(FileSegmentKeyType type)
 {
-    return String(magic_enum::enum_name(type));
+    return String(fileSegmentKeyTypeToStringView(type));
 }
 
 }

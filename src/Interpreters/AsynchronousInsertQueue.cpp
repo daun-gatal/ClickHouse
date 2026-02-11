@@ -1261,7 +1261,7 @@ Chunk AsynchronousInsertQueue::processEntriesWithParsing(
         const auto * bytes = entry->chunk.asString();
         if (!bytes)
             throw Exception(ErrorCodes::LOGICAL_ERROR,
-                "Expected entry with data kind Parsed. Got: {}", entry->chunk.getDataKind());
+                "Expected entry with data kind Parsed. Got: {}", enumToString(entry->chunk.getDataKind()));
 
         auto buffer = std::make_unique<ReadBufferFromString>(*bytes);
         executor.setQueryParameters(entry->query_parameters);
@@ -1305,7 +1305,7 @@ Chunk AsynchronousInsertQueue::processPreprocessedEntries(
         const auto * block = entry->chunk.asBlock();
         if (!block)
             throw Exception(ErrorCodes::LOGICAL_ERROR,
-                "Expected entry with data kind Preprocessed. Got: {}", entry->chunk.getDataKind());
+                "Expected entry with data kind Preprocessed. Got: {}", enumToString(entry->chunk.getDataKind()));
 
         Block block_to_insert = *block;
         if (block_to_insert.rows() == 0)

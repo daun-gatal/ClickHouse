@@ -302,7 +302,7 @@ void ClientInfo::fillOSUserHostNameAndVersionInfo()
     client_tcp_protocol_version = DBMS_TCP_PROTOCOL_VERSION;
 }
 
-String toString(ClientInfo::Interface interface)
+String enumToString(ClientInfo::Interface interface)
 {
     switch (interface)
     {
@@ -353,7 +353,7 @@ void ClientInfo::setFromHTTPRequest(const Poco::Net::HTTPRequest & request)
     }
 }
 
-String toString(ClientInfo::HTTPMethod method)
+String enumToString(ClientInfo::HTTPMethod method)
 {
     switch (method)
     {
@@ -366,6 +366,21 @@ String toString(ClientInfo::HTTPMethod method)
         case ClientInfo::HTTPMethod::OPTIONS:
             return "OPTIONS";
     }
+}
+
+String enumToString(ClientInfo::QueryKind query_kind)
+{
+    switch (query_kind)
+    {
+        case ClientInfo::QueryKind::NO_QUERY:
+            return "NO_QUERY";
+        case ClientInfo::QueryKind::INITIAL_QUERY:
+            return "INITIAL_QUERY";
+        case ClientInfo::QueryKind::SECONDARY_QUERY:
+            return "SECONDARY_QUERY";
+    }
+
+    return fmt::format("Unknown query kind ({}).", static_cast<int>(query_kind));
 }
 
 }

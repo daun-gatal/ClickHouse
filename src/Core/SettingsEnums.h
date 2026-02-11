@@ -24,9 +24,6 @@
 namespace DB
 {
 
-template <typename Type>
-constexpr auto getEnumValues();
-
 /// NOLINTNEXTLINE
 #define DECLARE_SETTING_ENUM(ENUM_TYPE) \
     DECLARE_SETTING_ENUM_WITH_RENAME(ENUM_TYPE, ENUM_TYPE)
@@ -46,10 +43,6 @@ constexpr auto getEnumValues();
 /// NOLINTNEXTLINE
 #define IMPLEMENT_SETTING_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, ...) \
     IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, EnumValuePairs, __VA_ARGS__)
-
-/// NOLINTNEXTLINE
-#define IMPLEMENT_SETTING_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME) \
-    IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, , getEnumValues<EnumType>())
 
 /// NOLINTNEXTLINE
 #define IMPLEMENT_SETTING_ENUM_IMPL(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME, PAIRS_TYPE, ...) \
@@ -119,12 +112,6 @@ constexpr auto getEnumValues();
         return std::initializer_list<std::pair<const char*, NEW_NAME>> __VA_ARGS__ .size();\
     }
 
-/// NOLINTNEXTLINE
-#define IMPLEMENT_SETTING_MULTI_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME) \
-    IMPLEMENT_SETTING_AUTO_ENUM(NEW_NAME, ERROR_CODE_FOR_UNEXPECTED_NAME)\
-    size_t SettingField##NEW_NAME##Traits::getEnumSize() {\
-        return getEnumValues<EnumType>().size();\
-    }
 
 DECLARE_SETTING_ENUM(LoadBalancing)
 
@@ -371,6 +358,16 @@ enum class ObjectStorageQueueMode : uint8_t
     UNORDERED,
 };
 
+inline std::string_view enumToString(ObjectStorageQueueMode mode)
+{
+    switch (mode)
+    {
+        case ObjectStorageQueueMode::ORDERED: return "ORDERED";
+        case ObjectStorageQueueMode::UNORDERED: return "UNORDERED";
+    }
+    return "UNKNOWN";
+}
+
 DECLARE_SETTING_ENUM(ObjectStorageQueueMode)
 
 enum class ObjectStorageQueueAction : uint8_t
@@ -381,6 +378,18 @@ enum class ObjectStorageQueueAction : uint8_t
     TAG,
 };
 
+inline std::string_view enumToString(ObjectStorageQueueAction action)
+{
+    switch (action)
+    {
+        case ObjectStorageQueueAction::KEEP: return "KEEP";
+        case ObjectStorageQueueAction::DELETE: return "DELETE";
+        case ObjectStorageQueueAction::MOVE: return "MOVE";
+        case ObjectStorageQueueAction::TAG: return "TAG";
+    }
+    return "UNKNOWN";
+}
+
 DECLARE_SETTING_ENUM(ObjectStorageQueueAction)
 
 enum class ObjectStorageQueuePartitioningMode : uint8_t
@@ -389,6 +398,17 @@ enum class ObjectStorageQueuePartitioningMode : uint8_t
     HIVE,   /// Extract partition from path structure (key=value pairs)
     REGEX,  /// Extract partition from filename using regex
 };
+
+inline std::string_view enumToString(ObjectStorageQueuePartitioningMode value)
+{
+    switch (value)
+    {
+        case ObjectStorageQueuePartitioningMode::NONE: return "NONE";
+        case ObjectStorageQueuePartitioningMode::HIVE: return "HIVE";
+        case ObjectStorageQueuePartitioningMode::REGEX: return "REGEX";
+    }
+    return "UNKNOWN";
+}
 
 DECLARE_SETTING_ENUM(ObjectStorageQueuePartitioningMode)
 
@@ -439,6 +459,16 @@ enum class FileCachePolicy : uint8_t
     SLRU,
 };
 
+inline std::string_view enumToString(FileCachePolicy value)
+{
+    switch (value)
+    {
+        case FileCachePolicy::LRU: return "LRU";
+        case FileCachePolicy::SLRU: return "SLRU";
+    }
+    return "Unknown";
+}
+
 DECLARE_SETTING_ENUM(FileCachePolicy)
 
 enum class VectorSearchFilterStrategy : uint8_t
@@ -472,6 +502,17 @@ enum class SearchOrphanedPartsDisks : uint8_t
     LOCAL,
     ANY
 };
+
+inline std::string_view enumToString(SearchOrphanedPartsDisks value)
+{
+    switch (value)
+    {
+        case SearchOrphanedPartsDisks::NONE: return "NONE";
+        case SearchOrphanedPartsDisks::LOCAL: return "LOCAL";
+        case SearchOrphanedPartsDisks::ANY: return "ANY";
+    }
+    return "UNKNOWN";
+}
 
 DECLARE_SETTING_ENUM(SearchOrphanedPartsDisks)
 
@@ -535,6 +576,17 @@ enum class InsertDeduplicationVersions : uint8_t
     COMPATIBLE_DOUBLE_HASHES,
     NEW_UNIFIED_HASHES,
 };
+
+inline std::string_view enumToString(InsertDeduplicationVersions value)
+{
+    switch (value)
+    {
+        case InsertDeduplicationVersions::OLD_SEPARATE_HASHES: return "OLD_SEPARATE_HASHES";
+        case InsertDeduplicationVersions::COMPATIBLE_DOUBLE_HASHES: return "COMPATIBLE_DOUBLE_HASHES";
+        case InsertDeduplicationVersions::NEW_UNIFIED_HASHES: return "NEW_UNIFIED_HASHES";
+    }
+    return "Unknown";
+}
 
 DECLARE_SETTING_ENUM(InsertDeduplicationVersions)
 }

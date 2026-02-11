@@ -132,7 +132,7 @@ namespace
                     "match",
                     makeASTLabelName(label_name, tags_table_id, column_name_by_tag_name),
                     make_intrusive<ASTLiteral>(label_value)));
-        throw Exception(ErrorCodes::BAD_REQUEST_PARAMETER, "Unexpected type of label matcher: {}", type);
+        throw Exception(ErrorCodes::BAD_REQUEST_PARAMETER, "Unexpected type of label matcher: {}", static_cast<int>(type));
     }
 
     /// Makes an AST checking that tags match a specified label matcher and that timestamp is in range [min_timestamp_ms, max_timestamp_ms].

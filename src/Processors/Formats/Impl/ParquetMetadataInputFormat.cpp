@@ -18,8 +18,10 @@
 #include <Core/NamesAndTypes.h>
 #include <arrow/api.h>
 #include <arrow/status.h>
+#include <arrow/util/compression.h>
 #include <parquet/file_reader.h>
 #include <parquet/statistics.h>
+#include <parquet/types.h>
 #include <Processors/Formats/Impl/ArrowBufferedStreams.h>
 #include <DataTypes/NestedUtils.h>
 
@@ -256,7 +258,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
         /// max_repetition_level
         assert_cast<ColumnUInt64 &>(tuple_column.getColumn(3)).insertValue(column_info->max_repetition_level());
         /// physical_type
-        std::string_view physical_type = magic_enum::enum_name(column_info->physical_type());
+        std::string physical_type = parquet::TypeToString(column_info->physical_type());
         assert_cast<ColumnString &>(tuple_column.getColumn(4)).insertData(physical_type.data(), physical_type.size());
         /// logical_type
         String logical_type = column_info->logical_type()->ToString();
@@ -266,7 +268,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
         {
             auto column_chunk_metadata = metadata->RowGroup(0)->ColumnChunk(column_i);
             /// compression
-            std::string_view compression = magic_enum::enum_name(column_chunk_metadata->compression());
+            const std::string & compression = arrow::util::Codec::GetCodecAsString(column_chunk_metadata->compression());
             assert_cast<ColumnString &>(tuple_column.getColumn(6)).insertData(compression.data(), compression.size());
 
             /// total_uncompressed_size/total_compressed_size
@@ -290,7 +292,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
             auto & encodings_nested_column = assert_cast<ColumnString &>(encodings_array_column.getData());
             for (auto codec : column_chunk_metadata->encodings())
             {
-                auto codec_name = magic_enum::enum_name(codec);
+                auto codec_name = parquet::EncodingToString(codec);
                 encodings_nested_column.insertData(codec_name.data(), codec_name.size());
             }
             encodings_array_column.getOffsets().push_back(encodings_nested_column.size());

@@ -530,7 +530,7 @@ void KeeperContext::initializeFeatureFlags(const Poco::Util::AbstractConfigurati
         for (const auto & key : keys)
         {
             auto feature_flag_string = boost::to_upper_copy(key);
-            auto feature_flag = magic_enum::enum_cast<KeeperFeatureFlag>(feature_flag_string);
+            auto feature_flag = keeperFeatureFlagFromString(feature_flag_string);
 
             if (!feature_flag.has_value())
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Invalid feature flag defined in config for Keeper: {}", key);

@@ -7142,14 +7142,14 @@ ReadSettings Context::getReadSettings() const
 
     std::string_view read_method_str = getSettingsRef()[Setting::local_filesystem_read_method].value;
 
-    if (auto opt_method = magic_enum::enum_cast<LocalFSReadMethod>(read_method_str))
+    if (auto opt_method = localFSReadMethodFromString(read_method_str))
         res.local_fs_method = *opt_method;
     else
         throw Exception(ErrorCodes::UNKNOWN_READ_METHOD, "Unknown read method '{}' for local filesystem", read_method_str);
 
     read_method_str = getSettingsRef()[Setting::remote_filesystem_read_method].value;
 
-    if (auto opt_method = magic_enum::enum_cast<RemoteFSReadMethod>(read_method_str))
+    if (auto opt_method = remoteFSReadMethodFromString(read_method_str))
         res.remote_fs_method = *opt_method;
     else
         throw Exception(ErrorCodes::UNKNOWN_READ_METHOD, "Unknown read method '{}' for remote filesystem", read_method_str);

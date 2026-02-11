@@ -415,7 +415,7 @@ void AsynchronousBoundedReadBuffer::resetPrefetch(FilesystemPrefetchState state)
             ProfileEvents::increment(ProfileEvents::RemoteFSCancelledPrefetches);
             break;
         default:
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state of prefetch: {}", magic_enum::enum_name(state));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state of prefetch: {}", enumToString(state));
     }
 }
 

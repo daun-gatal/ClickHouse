@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
 
 namespace DB
 {
@@ -49,10 +52,52 @@ enum class LocalFSReadMethod : uint8_t
     pread_fake_async
 };
 
+inline std::string_view enumToString(LocalFSReadMethod method)
+{
+    switch (method)
+    {
+        case LocalFSReadMethod::read: return "read";
+        case LocalFSReadMethod::pread: return "pread";
+        case LocalFSReadMethod::mmap: return "mmap";
+        case LocalFSReadMethod::io_uring: return "io_uring";
+        case LocalFSReadMethod::pread_threadpool: return "pread_threadpool";
+        case LocalFSReadMethod::pread_fake_async: return "pread_fake_async";
+    }
+    throw std::logic_error("Unknown LocalFSReadMethod");
+}
+
+inline std::optional<LocalFSReadMethod> localFSReadMethodFromString(std::string_view str)
+{
+    if (str == "read") return LocalFSReadMethod::read;
+    if (str == "pread") return LocalFSReadMethod::pread;
+    if (str == "mmap") return LocalFSReadMethod::mmap;
+    if (str == "io_uring") return LocalFSReadMethod::io_uring;
+    if (str == "pread_threadpool") return LocalFSReadMethod::pread_threadpool;
+    if (str == "pread_fake_async") return LocalFSReadMethod::pread_fake_async;
+    return std::nullopt;
+}
+
 enum class RemoteFSReadMethod : uint8_t
 {
     read,
     threadpool,
 };
+
+inline std::string_view enumToString(RemoteFSReadMethod method)
+{
+    switch (method)
+    {
+        case RemoteFSReadMethod::read: return "read";
+        case RemoteFSReadMethod::threadpool: return "threadpool";
+    }
+    throw std::logic_error("Unknown RemoteFSReadMethod");
+}
+
+inline std::optional<RemoteFSReadMethod> remoteFSReadMethodFromString(std::string_view str)
+{
+    if (str == "read") return RemoteFSReadMethod::read;
+    if (str == "threadpool") return RemoteFSReadMethod::threadpool;
+    return std::nullopt;
+}
 
 }

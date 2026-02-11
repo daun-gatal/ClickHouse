@@ -68,7 +68,7 @@ StorageType parseStorageTypeFromString(const std::string & type)
     else if (storage_type_str == "abfss") /// Azure Blob File System Secure
         storage_type_str = "Azure";
 
-    auto storage_type = magic_enum::enum_cast<StorageType>(capitalize_first_letter(storage_type_str));
+    auto storage_type = DB::databaseDataLakeStorageTypeFromString(capitalize_first_letter(storage_type_str));
 
     if (!storage_type)
     {

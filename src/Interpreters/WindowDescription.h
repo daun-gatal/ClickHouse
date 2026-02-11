@@ -77,6 +77,27 @@ struct WindowFrame
     }
 };
 
+inline std::string_view enumToString(WindowFrame::FrameType value)
+{
+    switch (value)
+    {
+        case WindowFrame::FrameType::ROWS: return "ROWS";
+        case WindowFrame::FrameType::GROUPS: return "GROUPS";
+        case WindowFrame::FrameType::RANGE: return "RANGE";
+    }
+}
+
+inline std::string_view enumToString(WindowFrame::BoundaryType value)
+{
+    switch (value)
+    {
+        case WindowFrame::BoundaryType::Unbounded: return "Unbounded";
+        case WindowFrame::BoundaryType::Current: return "Current";
+        case WindowFrame::BoundaryType::Offset: return "Offset";
+    }
+    return "Unknown";
+}
+
 struct WindowDescription
 {
     std::string window_name;

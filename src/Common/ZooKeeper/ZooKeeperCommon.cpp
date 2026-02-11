@@ -705,7 +705,7 @@ size_t ZooKeeperCheckWatchRequest::sizeImpl() const
 std::string ZooKeeperCheckWatchRequest::toStringImpl(bool /*short_format*/) const
 {
     String result = fmt::format("path: {}\n", path);
-    result += fmt::format("type: {}\n", String(magic_enum::enum_name(type)));
+    result += fmt::format("type: {}\n", static_cast<int32_t>(type));
     return result;
 }
 

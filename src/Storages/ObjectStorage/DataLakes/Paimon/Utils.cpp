@@ -164,7 +164,7 @@ DB::Row getPartitionFields(const String & partition_string, const PaimonTableSch
                 return DecimalField<DateTime64>(partition.getTimestamp(i, type->getScale()), 3);
             }
             default:
-                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unsupported type {} in partition", data_type.root_type);
+                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unsupported type {} in partition", enumToString(data_type.root_type));
         }
     };
 
@@ -246,7 +246,7 @@ String getPartitionString(Paimon::BinaryRow & partition, const PaimonTableSchema
                 return formatDateTime(partition.getTimestamp(i, type->getScale()), 3, type->getTimeZone());
             }
             default:
-                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unsupported type {} in partition", data_type.root_type);
+                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unsupported type {} in partition", enumToString(data_type.root_type));
         }
     };
     std::vector<std::pair<String, String>> partition_entries;
@@ -265,7 +265,7 @@ String getPartitionString(Paimon::BinaryRow & partition, const PaimonTableSchema
         }
         auto field = table_schema.fields[it->second];
         auto field_value = get_partition_value(static_cast<Int32>(i), field.type);
-        LOG_TEST(&Poco::Logger::get("getPartitionString"), "key: {} value: {} type: {}", field.name, field_value, field.type.root_type);
+        LOG_TEST(&Poco::Logger::get("getPartitionString"), "key: {} value: {} type: {}", field.name, field_value, enumToString(field.type.root_type));
         partition_entries.emplace_back(field.name, field_value);
     }
 

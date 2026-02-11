@@ -57,6 +57,19 @@ public:
             Removed,
         };
 
+        static std::string_view enumToString(State value)
+        {
+            switch (value)
+            {
+                case State::Active: return "Active";
+                case State::Evicting: return "Evicting";
+                case State::Moving: return "Moving";
+                case State::Invalidated: return "Invalidated";
+                case State::Removed: return "Removed";
+            }
+            return "Unknown";
+        }
+
         /// Be aware that by default this method has relaxed guarantees.
         /// See which locks are used in setter methods below if stronger guarantees are needed.
         State getState() const { return state.load(std::memory_order_relaxed); }
@@ -101,7 +114,7 @@ public:
             [[maybe_unused]] auto prev = state.exchange(to_state, std::memory_order_relaxed);
             chassert(
                 prev == from_state,
-                printUnexpectedState(prev, magic_enum::enum_name(from_state), fmt::format("{}", magic_enum::enum_name(to_state))));
+                printUnexpectedState(prev, enumToString(from_state), std::string(enumToString(to_state))));
         }
 
     private:
@@ -110,7 +123,7 @@ public:
         {
             return fmt::format(
                 "Previous state is {}, but expected state to be {} while setting {} flag for {}",
-                magic_enum::enum_name(prev_state), expected_state, type, toString());
+                enumToString(prev_state), expected_state, type, toString());
         }
 
         std::atomic<State> state = State::Active;
@@ -164,6 +177,19 @@ public:
         LRU_OVERCOMMIT,
         SLRU_OVERCOMMIT,
     };
+
+    static std::string_view enumToString(Type value)
+    {
+        switch (value)
+        {
+            case Type::LRU: return "LRU";
+            case Type::SLRU: return "SLRU";
+            case Type::LRU_OVERCOMMIT: return "LRU_OVERCOMMIT";
+            case Type::SLRU_OVERCOMMIT: return "SLRU_OVERCOMMIT";
+        }
+        return "Unknown";
+    }
+
     virtual Type getType() const = 0;
 
     size_t getSizeLimit(const CacheStateGuard::Lock &) const { return max_size; }

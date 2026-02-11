@@ -348,7 +348,7 @@ public:
                 throw DB::Exception(
                     DB::ErrorCodes::LOGICAL_ERROR,
                     "Not a constant column: {} (list id: {})",
-                    magic_enum::enum_name(node->type), list_id);
+                    DB::ActionsDAG::enumToString(node->type), list_id);
             }
 
             DB::Field value;
@@ -493,6 +493,25 @@ private:
         TO_JSON,
         COALESCE,
     };
+
+    static std::string_view enumToString(NotImplementedMethod value)
+    {
+        switch (value)
+        {
+            case LT: return "LT";
+            case GT: return "GT";
+            case EQ: return "EQ";
+            case DISTINCT: return "DISTINCT";
+            case IN: return "IN";
+            case ADD: return "ADD";
+            case MINUS: return "MINUS";
+            case MULTIPLY: return "MULTIPLY";
+            case DIVIDE: return "DIVIDE";
+            case TO_JSON: return "TO_JSON";
+            case COALESCE: return "COALESCE";
+        }
+        return "Unknown";
+    }
     static ffi::EngineExpressionVisitor createVisitor(ExpressionVisitorData & data)
     {
         return ffi::EngineExpressionVisitor{
@@ -576,7 +595,7 @@ private:
         {
             throw DB::Exception(
                 DB::ErrorCodes::NOT_IMPLEMENTED,
-                "Method {} not implemented", magic_enum::enum_name(method));
+                "Method {} not implemented", enumToString(method));
         });
     }
 
@@ -998,7 +1017,7 @@ std::vector<DB::Field> getConstValuesFromExpression(const DB::Names & columns, c
             throw DB::Exception(
                 DB::ErrorCodes::LOGICAL_ERROR,
                 "Not a constant column: {} (column type: {})",
-                magic_enum::enum_name(node->type), node->column->getDataType());
+                DB::ActionsDAG::enumToString(node->type), node->column->getDataType());
         }
 
         DB::Field value;

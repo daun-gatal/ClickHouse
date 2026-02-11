@@ -233,6 +233,18 @@ namespace
         MAX = COLUMN_LEVEL,
     };
 
+    std::string_view enumToString(Level level)
+    {
+        switch (level)
+        {
+            case GLOBAL_LEVEL: return "GLOBAL_LEVEL";
+            case DATABASE_LEVEL: return "DATABASE_LEVEL"; /// Same as GLOBAL_WITH_PARAMETER
+            case TABLE_LEVEL: return "TABLE_LEVEL";
+            case COLUMN_LEVEL: return "COLUMN_LEVEL";
+        }
+        return "UNKNOWN";
+    }
+
     AccessFlags getAllGrantableFlags(Level level)
     {
         switch (level)
@@ -643,7 +655,7 @@ public:
     void dumpTree(WriteBuffer & buffer, const String & title, size_t depth = 0) const
     {
         buffer << fmt::format("Tree({}): {} level={}, name={}, flags={}, min_flags={}, max_flags={}, wildcard_grant={}, num_children={}\n",
-            title, String(depth, '-'), level, !isLeaf() ? node_name : "NULL", flags.toString(),
+            title, String(depth, '-'), enumToString(level), !isLeaf() ? node_name : "NULL", flags.toString(),
             min_flags_with_children.toString(), max_flags_with_children.toString(), wildcard_grant,
             (children ? children->size() : 0));
 

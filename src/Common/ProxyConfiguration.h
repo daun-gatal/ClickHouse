@@ -63,4 +63,14 @@ struct ProxyConfiguration
     bool isEmpty() const { return host.empty(); }
 };
 
+inline std::string_view enumToString(ProxyConfiguration::Protocol value)
+{
+    switch (value)
+    {
+        case ProxyConfiguration::Protocol::HTTP: return "HTTP";
+        case ProxyConfiguration::Protocol::HTTPS: return "HTTPS";
+    }
+    return "Unknown";
+}
+
 }

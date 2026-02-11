@@ -13,6 +13,6 @@ enum class FileSegmentKeyType : uint8_t
 };
 
 String getKeyTypePrefix(FileSegmentKeyType type);
-String toString(FileSegmentKeyType type);
+String enumToString(FileSegmentKeyType type);
 
 }

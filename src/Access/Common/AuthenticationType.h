@@ -63,9 +63,14 @@ struct AuthenticationTypeInfo
     static const AuthenticationTypeInfo & get(AuthenticationType type_);
 };
 
-inline String toString(AuthenticationType type_)
+inline String enumToString(AuthenticationType type_)
 {
     return String(toStringView(AuthenticationTypeInfo::get(type_).keyword));
+}
+
+inline String toString(AuthenticationType type_)
+{
+    return enumToString(type_);
 }
 
 }

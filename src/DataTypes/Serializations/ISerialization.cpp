@@ -8,7 +8,6 @@
 #include <IO/Operators.h>
 #include <IO/ReadBufferFromString.h>
 #include <IO/WriteHelpers.h>
-#include <base/EnumReflection.h>
 #include <Storages/MergeTree/MergeTreeSettings.h>
 #include <Common/assert_cast.h>
 #include <Common/escapeForFileName.h>
@@ -139,7 +138,7 @@ const std::set<SubstreamType> ISerialization::Substream::named_types
 String ISerialization::Substream::toString() const
 {
     if (named_types.contains(type))
-        return fmt::format("{}({})", type, name_of_substream);
+        return fmt::format("{}({})", static_cast<int>(type), name_of_substream);
 
     if (type == VariantElement)
         return fmt::format("VariantElement({})", variant_element_name);
@@ -147,7 +146,57 @@ String ISerialization::Substream::toString() const
     if (type == VariantElementNullMap)
         return fmt::format("VariantElementNullMap({}.null)", variant_element_name);
 
-    return String(magic_enum::enum_name(type));
+    switch (type)
+    {
+        case Type::ArrayElements: return "ArrayElements";
+        case Type::ArraySizes: return "ArraySizes";
+        case Type::StringSizes: return "StringSizes";
+        case Type::InlinedStringSizes: return "InlinedStringSizes";
+        case Type::NullableElements: return "NullableElements";
+        case Type::NullMap: return "NullMap";
+        case Type::SparseNullMap: return "SparseNullMap";
+        case Type::TupleElement: return "TupleElement";
+        case Type::NamedOffsets: return "NamedOffsets";
+        case Type::NamedNullMap: return "NamedNullMap";
+        case Type::DictionaryKeys: return "DictionaryKeys";
+        case Type::DictionaryKeysPrefix: return "DictionaryKeysPrefix";
+        case Type::DictionaryIndexes: return "DictionaryIndexes";
+        case Type::SparseElements: return "SparseElements";
+        case Type::SparseOffsets: return "SparseOffsets";
+        case Type::ReplicatedElements: return "ReplicatedElements";
+        case Type::ReplicatedIndexes: return "ReplicatedIndexes";
+        case Type::DeprecatedObjectStructure: return "DeprecatedObjectStructure";
+        case Type::DeprecatedObjectData: return "DeprecatedObjectData";
+        case Type::VariantDiscriminators: return "VariantDiscriminators";
+        case Type::VariantDiscriminatorsPrefix: return "VariantDiscriminatorsPrefix";
+        case Type::NamedVariantDiscriminators: return "NamedVariantDiscriminators";
+        case Type::VariantOffsets: return "VariantOffsets";
+        case Type::VariantElements: return "VariantElements";
+        case Type::VariantElement: return "VariantElement";
+        case Type::VariantElementNullMap: return "VariantElementNullMap";
+        case Type::DynamicData: return "DynamicData";
+        case Type::DynamicStructure: return "DynamicStructure";
+        case Type::ObjectData: return "ObjectData";
+        case Type::ObjectTypedPath: return "ObjectTypedPath";
+        case Type::ObjectDynamicPath: return "ObjectDynamicPath";
+        case Type::ObjectSharedData: return "ObjectSharedData";
+        case Type::ObjectSharedDataBucket: return "ObjectSharedDataBucket";
+        case Type::ObjectSharedDataStructure: return "ObjectSharedDataStructure";
+        case Type::ObjectSharedDataStructurePrefix: return "ObjectSharedDataStructurePrefix";
+        case Type::ObjectSharedDataStructureSuffix: return "ObjectSharedDataStructureSuffix";
+        case Type::ObjectSharedDataData: return "ObjectSharedDataData";
+        case Type::ObjectSharedDataSubstreams: return "ObjectSharedDataSubstreams";
+        case Type::ObjectSharedDataPathsMarks: return "ObjectSharedDataPathsMarks";
+        case Type::ObjectSharedDataSubstreamsMarks: return "ObjectSharedDataSubstreamsMarks";
+        case Type::ObjectSharedDataPathsSubstreamsMetadata: return "ObjectSharedDataPathsSubstreamsMetadata";
+        case Type::ObjectSharedDataPathsInfos: return "ObjectSharedDataPathsInfos";
+        case Type::ObjectSharedDataCopy: return "ObjectSharedDataCopy";
+        case Type::ObjectSharedDataCopySizes: return "ObjectSharedDataCopySizes";
+        case Type::ObjectSharedDataCopyPathsIndexes: return "ObjectSharedDataCopyPathsIndexes";
+        case Type::ObjectSharedDataCopyValues: return "ObjectSharedDataCopyValues";
+        case Type::ObjectStructure: return "ObjectStructure";
+        case Type::Regular: return "Regular";
+    }
 }
 
 String ISerialization::SubstreamPath::toString() const

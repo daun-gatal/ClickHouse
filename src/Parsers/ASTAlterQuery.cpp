@@ -15,7 +15,7 @@ namespace ErrorCodes
 
 String ASTAlterCommand::getID(char delim) const
 {
-    return fmt::format("AlterCommand{}{}", delim, type);
+    return fmt::format("AlterCommand{}{}", delim, static_cast<int>(type));
 }
 
 ASTPtr ASTAlterCommand::clone() const

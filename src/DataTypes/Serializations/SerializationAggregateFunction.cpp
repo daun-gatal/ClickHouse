@@ -265,10 +265,10 @@ void SerializationAggregateFunction::deserializeBasedOnInput(IColumn & column, c
         throw Exception(
             ErrorCodes::BAD_ARGUMENTS,
             "Invalid value for aggregate_function_input_format: '{}'. Expected '{}', '{}', or '{}'",
-            settings.aggregate_function_input_format,
-            DB::FormatSettings::AggregateFunctionInputFormat::State,
-            DB::FormatSettings::AggregateFunctionInputFormat::Value,
-            DB::FormatSettings::AggregateFunctionInputFormat::Array);
+            static_cast<int>(settings.aggregate_function_input_format),
+            static_cast<int>(DB::FormatSettings::AggregateFunctionInputFormat::State),
+            static_cast<int>(DB::FormatSettings::AggregateFunctionInputFormat::Value),
+            static_cast<int>(DB::FormatSettings::AggregateFunctionInputFormat::Array));
     }
 }
 void SerializationAggregateFunction::deserializeTextEscaped(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const

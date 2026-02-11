@@ -174,7 +174,7 @@ HashJoin::HashJoin(
         "{}Keys: {}, datatype: {}, kind: {}, strictness: {}, right header: {}",
         instance_log_id,
         TableJoin::formatClauses(table_join->getClauses(), true),
-        data->type,
+        static_cast<int>(data->type),
         kind,
         strictness,
         right_sample_block.dumpStructure());
@@ -1484,7 +1484,7 @@ private:
             APPLY_FOR_JOIN_VARIANTS(M)
 #undef M
             default:
-                throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys (type: {})", parent.data->type);
+                throw Exception(ErrorCodes::UNSUPPORTED_JOIN_KEYS, "Unsupported JOIN keys (type: {})", static_cast<int>(parent.data->type));
         }
     }
 

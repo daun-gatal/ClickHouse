@@ -53,7 +53,38 @@ std::optional<AttributeUnderlyingType> tryGetAttributeUnderlyingType(TypeIndex i
         default: break;
     }
 
-    return magic_enum::enum_cast<AttributeUnderlyingType>(static_cast<TypeIndexUnderlying>(index));
+    /// AttributeUnderlyingType values are defined via map_item macro to match TypeIndex values.
+    /// Check if the TypeIndex corresponds to a valid AttributeUnderlyingType.
+    auto value = static_cast<TypeIndexUnderlying>(index);
+    switch (static_cast<AttributeUnderlyingType>(value))
+    {
+        case AttributeUnderlyingType::Int8:
+        case AttributeUnderlyingType::Int16:
+        case AttributeUnderlyingType::Int32:
+        case AttributeUnderlyingType::Int64:
+        case AttributeUnderlyingType::Int128:
+        case AttributeUnderlyingType::Int256:
+        case AttributeUnderlyingType::UInt8:
+        case AttributeUnderlyingType::UInt16:
+        case AttributeUnderlyingType::UInt32:
+        case AttributeUnderlyingType::UInt64:
+        case AttributeUnderlyingType::UInt128:
+        case AttributeUnderlyingType::UInt256:
+        case AttributeUnderlyingType::Float32:
+        case AttributeUnderlyingType::Float64:
+        case AttributeUnderlyingType::Decimal32:
+        case AttributeUnderlyingType::Decimal64:
+        case AttributeUnderlyingType::Decimal128:
+        case AttributeUnderlyingType::Decimal256:
+        case AttributeUnderlyingType::DateTime64:
+        case AttributeUnderlyingType::UUID:
+        case AttributeUnderlyingType::String:
+        case AttributeUnderlyingType::Array:
+        case AttributeUnderlyingType::IPv4:
+        case AttributeUnderlyingType::IPv6:
+            return static_cast<AttributeUnderlyingType>(value);
+    }
+    return std::nullopt;
 }
 
 }
@@ -108,7 +139,7 @@ DictionaryStructure::DictionaryStructure(const Poco::Util::AbstractConfiguration
             if (id && attribute.underlying_type != AttributeUnderlyingType::UInt64)
                 throw Exception(ErrorCodes::TYPE_MISMATCH,
                     "Hierarchical attribute type for dictionary with simple key must be UInt64. Actual {}",
-                    attribute.underlying_type);
+                    enumToString(static_cast<TypeIndex>(attribute.underlying_type)));
             if (key)
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Dictionary with complex key does not support hierarchy");
 

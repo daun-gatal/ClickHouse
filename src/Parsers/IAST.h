@@ -11,6 +11,7 @@
 #include <base/types.h>
 
 #include <atomic>
+#include <string_view>
 #include <set>
 
 class SipHash;
@@ -423,5 +424,45 @@ private:
     friend void intrusive_ptr_add_ref(const IAST * p) noexcept;
     friend void intrusive_ptr_release(const IAST * p) noexcept;
 };
+
+inline std::string_view enumToString(IAST::QueryKind query_kind)
+{
+    switch (query_kind)
+    {
+        case IAST::QueryKind::None: return "None";
+        case IAST::QueryKind::Select: return "Select";
+        case IAST::QueryKind::Insert: return "Insert";
+        case IAST::QueryKind::Delete: return "Delete";
+        case IAST::QueryKind::Update: return "Update";
+        case IAST::QueryKind::Create: return "Create";
+        case IAST::QueryKind::Drop: return "Drop";
+        case IAST::QueryKind::Undrop: return "Undrop";
+        case IAST::QueryKind::Rename: return "Rename";
+        case IAST::QueryKind::Optimize: return "Optimize";
+        case IAST::QueryKind::Check: return "Check";
+        case IAST::QueryKind::Alter: return "Alter";
+        case IAST::QueryKind::Grant: return "Grant";
+        case IAST::QueryKind::Revoke: return "Revoke";
+        case IAST::QueryKind::Move: return "Move";
+        case IAST::QueryKind::System: return "System";
+        case IAST::QueryKind::Set: return "Set";
+        case IAST::QueryKind::Use: return "Use";
+        case IAST::QueryKind::Show: return "Show";
+        case IAST::QueryKind::Exists: return "Exists";
+        case IAST::QueryKind::Describe: return "Describe";
+        case IAST::QueryKind::Explain: return "Explain";
+        case IAST::QueryKind::Backup: return "Backup";
+        case IAST::QueryKind::Restore: return "Restore";
+        case IAST::QueryKind::KillQuery: return "KillQuery";
+        case IAST::QueryKind::ExternalDDL: return "ExternalDDL";
+        case IAST::QueryKind::Begin: return "Begin";
+        case IAST::QueryKind::Commit: return "Commit";
+        case IAST::QueryKind::Rollback: return "Rollback";
+        case IAST::QueryKind::SetTransactionSnapshot: return "SetTransactionSnapshot";
+        case IAST::QueryKind::AsyncInsertFlush: return "AsyncInsertFlush";
+        case IAST::QueryKind::ParallelWithQuery: return "ParallelWithQuery";
+        case IAST::QueryKind::Copy: return "Copy";
+    }
+}
 
 }

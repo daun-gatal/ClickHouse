@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace DB
 {
@@ -23,5 +25,17 @@ enum class LoadBalancing : uint8_t
     // round robin across replicas with the same number of errors.
     ROUND_ROBIN,
 };
+
+/// Case-sensitive parse of LoadBalancing from string (expects uppercase names).
+inline std::optional<LoadBalancing> loadBalancingFromString(std::string_view str)
+{
+    if (str == "RANDOM") return LoadBalancing::RANDOM;
+    if (str == "NEAREST_HOSTNAME") return LoadBalancing::NEAREST_HOSTNAME;
+    if (str == "HOSTNAME_LEVENSHTEIN_DISTANCE") return LoadBalancing::HOSTNAME_LEVENSHTEIN_DISTANCE;
+    if (str == "IN_ORDER") return LoadBalancing::IN_ORDER;
+    if (str == "FIRST_OR_RANDOM") return LoadBalancing::FIRST_OR_RANDOM;
+    if (str == "ROUND_ROBIN") return LoadBalancing::ROUND_ROBIN;
+    return std::nullopt;
+}
 
 }

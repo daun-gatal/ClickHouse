@@ -6,6 +6,7 @@
 #include <memory>
 #include <map>
 #include <mutex>
+#include <string_view>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
@@ -53,6 +54,17 @@ enum class LoadStatus : uint8_t
     FAILED,   // Load job executed and failed.
     CANCELED  // Load job is not going to be executed due to removal or dependency failure.
 };
+
+inline std::string_view enumToString(LoadStatus status)
+{
+    switch (status)
+    {
+        case LoadStatus::PENDING: return "PENDING";
+        case LoadStatus::OK: return "OK";
+        case LoadStatus::FAILED: return "FAILED";
+        case LoadStatus::CANCELED: return "CANCELED";
+    }
+}
 
 // Smallest indivisible part of a loading process. Load job can have multiple dependencies, thus jobs constitute a direct acyclic graph (DAG).
 // Job encapsulates a function to be executed by `AsyncLoader` as soon as job functions of all dependencies are successfully executed.

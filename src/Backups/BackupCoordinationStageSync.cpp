@@ -437,7 +437,7 @@ void BackupCoordinationStageSync::readInitiatorVersion()
         String initiator_start_node;
         if (!zookeeper->tryGet(initiator_start_node_path, initiator_start_node))
         {
-            LOG_TRACE(log, "Couldn't read the initiator's version, assuming {}", kInitialVersion);
+            LOG_TRACE(log, "Couldn't read the initiator's version, assuming {}", static_cast<int>(kInitialVersion));
         }
         std::lock_guard lock{mutex};
         state.hosts.at(String{kInitiator}).version = parseStartNode(initiator_start_node, String{kInitiator});

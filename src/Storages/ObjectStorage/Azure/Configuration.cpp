@@ -240,7 +240,7 @@ void AzureStorageParsedArguments::fromNamedCollection(const NamedCollection & co
     if (collection.has("partition_strategy"))
     {
         const auto partition_strategy_name = collection.get<std::string>("partition_strategy");
-        const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+        const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
         if (!partition_strategy_type_opt)
         {
@@ -449,10 +449,10 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
             compression_method = checkAndGetLiteralArgument<String>(engine_args[4], "compression");
 
             auto sixth_arg = checkAndGetLiteralArgument<String>(engine_args[5], "partition_strategy/structure");
-            if (magic_enum::enum_contains<PartitionStrategyFactory::StrategyType>(sixth_arg, magic_enum::case_insensitive))
+            if (PartitionStrategyFactory::isStrategyType(sixth_arg))
             {
                 partition_strategy_type
-                    = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(sixth_arg, magic_enum::case_insensitive).value();
+                    = PartitionStrategyFactory::strategyTypeFromString(sixth_arg).value();
             }
             else
             {
@@ -491,7 +491,7 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
             format = fourth_arg;
             compression_method = checkAndGetLiteralArgument<String>(engine_args[4], "compression");
             const auto partition_strategy_name = checkAndGetLiteralArgument<String>(engine_args[5], "partition_strategy");
-            const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+            const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
             if (!partition_strategy_type_opt)
             {
@@ -548,7 +548,7 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
             format = fourth_arg;
             compression_method = checkAndGetLiteralArgument<String>(engine_args[4], "compression");
             const auto partition_strategy_name = checkAndGetLiteralArgument<String>(engine_args[5], "partition_strategy");
-            const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+            const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
             if (!partition_strategy_type_opt)
             {
@@ -570,10 +570,10 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
             compression_method = checkAndGetLiteralArgument<String>(engine_args[6], "compression");
 
             auto eighth_arg = checkAndGetLiteralArgument<String>(engine_args[7], "partition_strategy/structure");
-            if (magic_enum::enum_contains<PartitionStrategyFactory::StrategyType>(eighth_arg, magic_enum::case_insensitive))
+            if (PartitionStrategyFactory::isStrategyType(eighth_arg))
             {
                 partition_strategy_type
-                    = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(eighth_arg, magic_enum::case_insensitive).value();
+                    = PartitionStrategyFactory::strategyTypeFromString(eighth_arg).value();
             }
             else
             {
@@ -598,7 +598,7 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
         compression_method = checkAndGetLiteralArgument<String>(engine_args[6], "compression");
 
         const auto partition_strategy_name = checkAndGetLiteralArgument<String>(engine_args[7], "partition_strategy");
-        const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+        const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
         if (!partition_strategy_type_opt)
         {
@@ -634,7 +634,7 @@ void AzureStorageParsedArguments::fromAST(ASTs & engine_args, ContextPtr context
         compression_method = checkAndGetLiteralArgument<String>(engine_args[6], "compression");
 
         const auto partition_strategy_name = checkAndGetLiteralArgument<String>(engine_args[7], "partition_strategy");
-        const auto partition_strategy_type_opt = magic_enum::enum_cast<PartitionStrategyFactory::StrategyType>(partition_strategy_name, magic_enum::case_insensitive);
+        const auto partition_strategy_type_opt = PartitionStrategyFactory::strategyTypeFromString(partition_strategy_name);
 
         if (!partition_strategy_type_opt)
         {

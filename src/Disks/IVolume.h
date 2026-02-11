@@ -5,6 +5,9 @@
 
 #include <Poco/Util/AbstractConfiguration.h>
 
+#include <string_view>
+#include <stdexcept>
+
 namespace DB
 {
 
@@ -15,11 +18,32 @@ enum class VolumeType : uint8_t
     UNKNOWN
 };
 
+inline std::string_view enumToString(VolumeType type)
+{
+    switch (type)
+    {
+        case VolumeType::JBOD: return "JBOD";
+        case VolumeType::SINGLE_DISK: return "SINGLE_DISK";
+        case VolumeType::UNKNOWN: return "UNKNOWN";
+    }
+    throw std::logic_error("Unknown VolumeType");
+}
+
 enum class VolumeLoadBalancing : uint8_t
 {
     ROUND_ROBIN,
     LEAST_USED,
 };
+
+inline std::string_view enumToString(VolumeLoadBalancing type)
+{
+    switch (type)
+    {
+        case VolumeLoadBalancing::ROUND_ROBIN: return "ROUND_ROBIN";
+        case VolumeLoadBalancing::LEAST_USED: return "LEAST_USED";
+    }
+    throw std::logic_error("Unknown VolumeLoadBalancing");
+}
 
 VolumeLoadBalancing parseVolumeLoadBalancing(const String & config);
 

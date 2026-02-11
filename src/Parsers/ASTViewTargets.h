@@ -62,7 +62,7 @@ struct ViewTarget
 };
 
 /// Converts ViewTarget::Kind to a string.
-std::string_view toString(ViewTarget::Kind kind);
+std::string_view enumToString(ViewTarget::Kind kind);
 void parseFromString(ViewTarget::Kind & out, std::string_view str);
 
 

@@ -282,7 +282,7 @@ Aws::String AWSEC2MetadataClient::getDefaultCredentialsSecurely() const
             logger,
             "Calling EC2MetadataService to get token failed, "
             "falling back to a less secure way. HTTP response code: {}",
-            response_code);
+            static_cast<int>(response_code));
         return getDefaultCredentials();
     }
 
@@ -397,7 +397,7 @@ String AWSEC2MetadataClient::getAvailabilityZoneOrException()
 
     std::istream & rs = session.receiveResponse(response);
     if (response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK)
-        throw DB::Exception(ErrorCodes::AWS_ERROR, "Failed to get AWS availability zone. HTTP response code: {}", response.getStatus());
+        throw DB::Exception(ErrorCodes::AWS_ERROR, "Failed to get AWS availability zone. HTTP response code: {}", static_cast<int>(response.getStatus()));
     String response_data;
     Poco::StreamCopier::copyToString(rs, response_data);
     return response_data;
@@ -416,7 +416,7 @@ String getGCPAvailabilityZoneOrException()
     session.sendRequest(request);
     std::istream & rs = session.receiveResponse(response);
     if (response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK)
-        throw DB::Exception(ErrorCodes::GCP_ERROR, "Failed to get GCP availability zone. HTTP response code: {}", response.getStatus());
+        throw DB::Exception(ErrorCodes::GCP_ERROR, "Failed to get GCP availability zone. HTTP response code: {}", static_cast<int>(response.getStatus()));
     String response_data;
     Poco::StreamCopier::copyToString(rs, response_data);
     Strings zone_info;

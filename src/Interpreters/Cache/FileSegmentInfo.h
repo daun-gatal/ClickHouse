@@ -1,5 +1,6 @@
 #pragma once
 #include <cctype>
+#include <string_view>
 #include <Interpreters/Cache/FileCache_fwd.h>
 #include <Interpreters/Cache/FileCacheKey.h>
 #include <Interpreters/Cache/FileCacheOriginInfo.h>
@@ -40,6 +41,20 @@ namespace DB
         DETACHED,
     };
 
+    inline std::string_view enumToString(FileSegmentState value)
+    {
+        switch (value)
+        {
+            case FileSegmentState::DOWNLOADED: return "DOWNLOADED";
+            case FileSegmentState::EMPTY: return "EMPTY";
+            case FileSegmentState::DOWNLOADING: return "DOWNLOADING";
+            case FileSegmentState::PARTIALLY_DOWNLOADED_NO_CONTINUATION: return "PARTIALLY_DOWNLOADED_NO_CONTINUATION";
+            case FileSegmentState::PARTIALLY_DOWNLOADED: return "PARTIALLY_DOWNLOADED";
+            case FileSegmentState::DETACHED: return "DETACHED";
+        }
+        return "Unknown";
+    }
+
     enum class FileSegmentKind : uint8_t
     {
         /**
@@ -57,6 +72,16 @@ namespace DB
         Ephemeral,
     };
 
+    inline std::string_view enumToString(FileSegmentKind value)
+    {
+        switch (value)
+        {
+            case FileSegmentKind::Regular: return "Regular";
+            case FileSegmentKind::Ephemeral: return "Ephemeral";
+        }
+        return "Unknown";
+    }
+
     enum class FileCacheQueueEntryType : uint8_t
     {
         None,
@@ -67,7 +92,19 @@ namespace DB
         SplitCache_System,
     };
 
-    std::string toString(FileSegmentKind kind);
+    inline std::string_view enumToString(FileCacheQueueEntryType value)
+    {
+        switch (value)
+        {
+            case FileCacheQueueEntryType::None: return "None";
+            case FileCacheQueueEntryType::LRU: return "LRU";
+            case FileCacheQueueEntryType::SLRU_Protected: return "SLRU_Protected";
+            case FileCacheQueueEntryType::SLRU_Probationary: return "SLRU_Probationary";
+            case FileCacheQueueEntryType::SplitCache_Data: return "SplitCache_Data";
+            case FileCacheQueueEntryType::SplitCache_System: return "SplitCache_System";
+        }
+        return "Unknown";
+    }
 
     struct FileSegmentInfo
     {

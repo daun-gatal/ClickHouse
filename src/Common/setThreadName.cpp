@@ -48,7 +48,7 @@ const static std::unordered_map<std::string_view, ThreadName> str_to_thread_name
     return result;
 }();
 
-std::string_view toString(ThreadName name)
+std::string_view enumToString(ThreadName name)
 {
     switch (name)
     {
@@ -75,7 +75,7 @@ void setThreadName(ThreadName name)
 {
     thread_name = name;
 
-    auto thread_name_view = toString(name);
+    auto thread_name_view = enumToString(name);
     if (thread_name_view.size() > THREAD_NAME_SIZE)
         throw DB::Exception(DB::ErrorCodes::LOGICAL_ERROR, "Thread name cannot be longer than 15 bytes");
     if (thread_name_view.empty())

@@ -44,4 +44,15 @@ struct ShuffleHost
 
 using ShuffleHosts = std::vector<ShuffleHost>;
 
+inline std::string_view enumToString(ShuffleHost::AvailabilityZoneInfo value)
+{
+    switch (value)
+    {
+        case ShuffleHost::SAME: return "SAME";
+        case ShuffleHost::UNKNOWN: return "UNKNOWN";
+        case ShuffleHost::OTHER: return "OTHER";
+    }
+    return "Unknown";
+}
+
 }

@@ -715,7 +715,7 @@ UInt32 DDLTaskBase::getLogEntryNumber(const String & log_entry_name)
 void ZooKeeperMetadataTransaction::commit()
 {
     if (state != CREATED)
-        throw Exception(ErrorCodes::LOGICAL_ERROR, "Incorrect state ({}), it's a bug", state);
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Incorrect state ({}), it's a bug", static_cast<int>(state));
     state = FAILED;
     current_zookeeper->multi(ops, /* check_session_valid */ true);
     state = COMMITTED;

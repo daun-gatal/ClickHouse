@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <string_view>
 
 #include <Core/Names.h>
 #include <DataTypes/IDataType.h>
@@ -91,6 +92,32 @@ struct MutationCommand
     bool isDropOrRename() const;
     bool affectsAllColumns() const;
 };
+
+inline std::string_view enumToString(MutationCommand::Type type)
+{
+    switch (type)
+    {
+        case MutationCommand::EMPTY:                  return "EMPTY";
+        case MutationCommand::DELETE:                  return "DELETE";
+        case MutationCommand::UPDATE:                  return "UPDATE";
+        case MutationCommand::MATERIALIZE_INDEX:       return "MATERIALIZE_INDEX";
+        case MutationCommand::MATERIALIZE_PROJECTION:  return "MATERIALIZE_PROJECTION";
+        case MutationCommand::MATERIALIZE_STATISTICS:  return "MATERIALIZE_STATISTICS";
+        case MutationCommand::READ_COLUMN:             return "READ_COLUMN";
+        case MutationCommand::DROP_COLUMN:             return "DROP_COLUMN";
+        case MutationCommand::DROP_INDEX:              return "DROP_INDEX";
+        case MutationCommand::DROP_PROJECTION:         return "DROP_PROJECTION";
+        case MutationCommand::DROP_STATISTICS:         return "DROP_STATISTICS";
+        case MutationCommand::MATERIALIZE_TTL:         return "MATERIALIZE_TTL";
+        case MutationCommand::REWRITE_PARTS:           return "REWRITE_PARTS";
+        case MutationCommand::RENAME_COLUMN:           return "RENAME_COLUMN";
+        case MutationCommand::MATERIALIZE_COLUMN:      return "MATERIALIZE_COLUMN";
+        case MutationCommand::APPLY_DELETED_MASK:      return "APPLY_DELETED_MASK";
+        case MutationCommand::APPLY_PATCHES:           return "APPLY_PATCHES";
+        case MutationCommand::ALTER_WITHOUT_MUTATION:  return "ALTER_WITHOUT_MUTATION";
+    }
+    return "Unknown";
+}
 
 /// Multiple mutation commands, possibly from different ALTER queries
 class MutationCommands : public std::vector<MutationCommand>

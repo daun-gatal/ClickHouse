@@ -46,7 +46,7 @@ void ASTTTLElement::formatImpl(WriteBuffer & ostr, const FormatSettings & settin
         else
             throw Exception(ErrorCodes::LOGICAL_ERROR,
                 "Unsupported destination type {} for TTL MOVE",
-                    magic_enum::enum_name(destination_type));
+                    enumToString(destination_type));
 
         if (if_exists)
             ostr << "IF EXISTS ";

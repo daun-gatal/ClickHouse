@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string_view>
 #include <Storages/MergeTree/MergeTreeIndices.h>
 #include <Storages/MergeTree/RPNBuilder.h>
 
@@ -23,6 +24,16 @@ enum class TextSearchMode : uint8_t
     Any,
     All,
 };
+
+inline std::string_view enumToString(TextSearchMode value)
+{
+    switch (value)
+    {
+        case TextSearchMode::Any: return "Any";
+        case TextSearchMode::All: return "All";
+    }
+    return "UNKNOWN";
+}
 
 enum class TextIndexDirectReadMode : uint8_t
 {

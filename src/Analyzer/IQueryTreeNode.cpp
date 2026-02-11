@@ -20,7 +20,7 @@ namespace ErrorCodes
     extern const int UNSUPPORTED_METHOD;
 }
 
-const char * toString(QueryTreeNodeType type)
+const char * enumToString(QueryTreeNodeType type)
 {
     switch (type)
     {

@@ -59,6 +59,17 @@ enum class HTTPConnectionGroupType : uint8_t
     HTTP,
 };
 
+inline std::string_view enumToString(HTTPConnectionGroupType value)
+{
+    switch (value)
+    {
+        case HTTPConnectionGroupType::DISK: return "DISK";
+        case HTTPConnectionGroupType::STORAGE: return "STORAGE";
+        case HTTPConnectionGroupType::HTTP: return "HTTP";
+    }
+    return "Unknown";
+}
+
 class HTTPConnectionPools
 {
 public:

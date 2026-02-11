@@ -9,7 +9,6 @@
 #include <DataTypes/DataTypeEnum.h>
 #include <DataTypes/DataTypeDateTime64.h>
 #include <Interpreters/Context.h>
-#include <base/EnumReflection.h>
 #include <Common/AsyncLoader.h>
 
 
@@ -23,12 +22,17 @@ static constexpr auto TIME_SCALE = 6;
 
 namespace
 {
-    template <typename Type>
-    DataTypeEnum8::Values getTypeEnumValues()
+    DataTypeEnum8::Values getLoadStatusEnumValues()
     {
         DataTypeEnum8::Values enum_values;
-        for (auto value : magic_enum::enum_values<Type>())
-            enum_values.emplace_back(magic_enum::enum_name(value), magic_enum::enum_integer(value));
+        static constexpr LoadStatus statuses[] = {
+            LoadStatus::PENDING,
+            LoadStatus::OK,
+            LoadStatus::FAILED,
+            LoadStatus::CANCELED,
+        };
+        for (auto status : statuses)
+            enum_values.emplace_back(std::string{enumToString(status)}, static_cast<Int8>(status));
         return enum_values;
     }
 
@@ -55,7 +59,7 @@ ColumnsDescription StorageSystemAsyncLoader::getColumnsDescription()
         {"job_id", std::make_shared<DataTypeUInt64>(), "Unique ID of the job."},
         {"dependencies", std::make_shared<DataTypeArray>(std::make_shared<DataTypeUInt64>()), "List of IDs of jobs that should be done before this job."},
         {"dependencies_left", std::make_shared<DataTypeUInt64>(), "Current number of dependencies left to be done."},
-        {"status", std::make_shared<DataTypeEnum8>(getTypeEnumValues<LoadStatus>()), "Current load status of a job: PENDING: Load job is not started yet. OK: Load job executed and was successful. FAILED: Load job executed and failed. CANCELED: Load job is not going to be executed due to removal or dependency failure."},
+        {"status", std::make_shared<DataTypeEnum8>(getLoadStatusEnumValues()), "Current load status of a job: PENDING: Load job is not started yet. OK: Load job executed and was successful. FAILED: Load job executed and failed. CANCELED: Load job is not going to be executed due to removal or dependency failure."},
         {"is_executing", std::make_shared<DataTypeUInt8>(), "The job is currently being executed by a worker."},
         {"is_blocked", std::make_shared<DataTypeUInt8>(), "The job waits for its dependencies to be done."},
         {"is_ready", std::make_shared<DataTypeUInt8>(), "The job is ready to be executed and waits for a worker."},

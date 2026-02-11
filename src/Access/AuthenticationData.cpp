@@ -431,7 +431,7 @@ boost::intrusive_ptr<ASTAuthenticationData> AuthenticationData::toAST() const
             const auto &subjects = getSSLCertificateSubjects();
             X509Certificate::Subjects::Type cert_subject_type = !subjects.at(SAN).empty() ? SAN : CN;
 
-            node->ssl_cert_subject_type = toString(cert_subject_type);
+            node->ssl_cert_subject_type = (cert_subject_type == SAN) ? "SAN" : "CN";
             for (const auto & name : getSSLCertificateSubjects().at(cert_subject_type))
                 node->children.push_back(make_intrusive<ASTLiteral>(name));
 
@@ -454,7 +454,7 @@ boost::intrusive_ptr<ASTAuthenticationData> AuthenticationData::toAST() const
         case AuthenticationType::HTTP:
         {
             node->children.push_back(make_intrusive<ASTLiteral>(getHTTPAuthenticationServerName()));
-            node->children.push_back(make_intrusive<ASTLiteral>(toString(getHTTPAuthenticationScheme())));
+            node->children.push_back(make_intrusive<ASTLiteral>(enumToString(getHTTPAuthenticationScheme())));
             break;
         }
 

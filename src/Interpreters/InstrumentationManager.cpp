@@ -58,7 +58,7 @@ EntryType fromXRayEntryType(XRayEntryType entry_type)
     {
         case XRayEntryType::ENTRY: return EntryType::ENTRY;
         case XRayEntryType::EXIT: return EntryType::EXIT;
-        default: throw Exception(ErrorCodes::LOGICAL_ERROR, "Wrong XRay entry_type to convert: {}", entry_type);
+        default: throw Exception(ErrorCodes::LOGICAL_ERROR, "Wrong XRay entry_type to convert: {}", static_cast<int>(entry_type));
     }
 }
 
@@ -70,7 +70,7 @@ String entryTypeToString(EntryType entry_type)
         case EntryType::EXIT: return "Exit";
         case EntryType::ENTRY_AND_EXIT: return "EntryAndExit";
     }
-    throw Exception(ErrorCodes::LOGICAL_ERROR, "Wrong entry_type to convert to String: {}", entry_type);
+    throw Exception(ErrorCodes::LOGICAL_ERROR, "Wrong entry_type to convert to String: {}", enumToString(entry_type));
 }
 
 }

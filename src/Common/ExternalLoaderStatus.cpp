@@ -1,17 +1,25 @@
 #include <Common/ExternalLoaderStatus.h>
 
-#include <base/EnumReflection.h>
-
 namespace DB
 {
 
 std::vector<std::pair<String, Int8>> getExternalLoaderStatusEnumAllPossibleValues()
 {
     std::vector<std::pair<String, Int8>> out;
-    out.reserve(magic_enum::enum_count<ExternalLoaderStatus>());
+    out.reserve(ExternalLoaderStatusCount);
 
-    for (const auto & [value, str] : magic_enum::enum_entries<ExternalLoaderStatus>())
-        out.emplace_back(std::string{str}, static_cast<Int8>(value));
+    static constexpr ExternalLoaderStatus statuses[] = {
+        ExternalLoaderStatus::NOT_LOADED,
+        ExternalLoaderStatus::LOADED,
+        ExternalLoaderStatus::FAILED,
+        ExternalLoaderStatus::LOADING,
+        ExternalLoaderStatus::FAILED_AND_RELOADING,
+        ExternalLoaderStatus::LOADED_AND_RELOADING,
+        ExternalLoaderStatus::NOT_EXIST,
+    };
+
+    for (auto status : statuses)
+        out.emplace_back(std::string{enumToString(status)}, static_cast<Int8>(status));
 
     return out;
 }

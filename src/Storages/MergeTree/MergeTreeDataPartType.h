@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/types.h>
+#include <string_view>
 
 namespace DB
 {
@@ -38,6 +39,17 @@ private:
     Value value;
 };
 
+inline std::string_view enumToString(MergeTreeDataPartType::Value value)
+{
+    switch (value)
+    {
+        case MergeTreeDataPartType::Wide:    return "Wide";
+        case MergeTreeDataPartType::Compact: return "Compact";
+        case MergeTreeDataPartType::Unknown: return "Unknown";
+    }
+    return "Unknown";
+}
+
 /// Types of data part storage format.
 class MergeTreeDataPartStorageType
 {
@@ -61,6 +73,17 @@ public:
 private:
     Value value;
 };
+
+inline std::string_view enumToString(MergeTreeDataPartStorageType::Value value)
+{
+    switch (value)
+    {
+        case MergeTreeDataPartStorageType::Full:    return "Full";
+        case MergeTreeDataPartStorageType::Packed:  return "Packed";
+        case MergeTreeDataPartStorageType::Unknown: return "Unknown";
+    }
+    return "Unknown";
+}
 
 #pragma clang diagnostic pop
 

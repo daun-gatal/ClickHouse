@@ -634,9 +634,9 @@ String FeatureFlagsCommand::run()
         writeText('\n', ret);
     };
 
-    for (const auto & [feature_flag, name] : magic_enum::enum_entries<KeeperFeatureFlag>())
+    for (const auto & feature_flag : ALL_KEEPER_FEATURE_FLAGS)
     {
-        std::string feature_flag_string(name);
+        std::string feature_flag_string(enumToString(feature_flag));
         boost::to_lower(feature_flag_string);
         append(feature_flag_string, feature_flags.isEnabled(feature_flag));
     }

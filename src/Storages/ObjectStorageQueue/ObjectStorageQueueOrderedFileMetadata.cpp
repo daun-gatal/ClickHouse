@@ -266,7 +266,7 @@ ObjectStorageQueueOrderedFileMetadata::ObjectStorageQueueOrderedFileMetadata(
     LOG_TEST(log, "Path: {}, node_name: {}, max_loading_retries: {}, "
              "processed_path: {}, processing_path: {}, failed_path: {}, partitioning_mode: {}",
              path, node_name, max_loading_retries,
-             processed_node_path, processing_node_path, failed_node_path, magic_enum::enum_name(partitioning_mode));
+             processed_node_path, processing_node_path, failed_node_path, enumToString(partitioning_mode));
 }
 
 bool ObjectStorageQueueOrderedFileMetadata::useBucketsForProcessing() const

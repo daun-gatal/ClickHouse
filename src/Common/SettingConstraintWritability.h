@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <string_view>
 
 namespace DB
 {
@@ -19,5 +21,17 @@ enum class SettingConstraintWritability : uint8_t
 
     MAX
 };
+
+inline std::string_view enumToString(SettingConstraintWritability value)
+{
+    switch (value)
+    {
+        case SettingConstraintWritability::WRITABLE: return "WRITABLE";
+        case SettingConstraintWritability::CONST: return "CONST";
+        case SettingConstraintWritability::CHANGEABLE_IN_READONLY: return "CHANGEABLE_IN_READONLY";
+        case SettingConstraintWritability::MAX: return "MAX";
+    }
+    return "Unknown";
+}
 
 }

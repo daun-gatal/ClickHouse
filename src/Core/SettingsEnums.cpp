@@ -1,6 +1,5 @@
 #include <Access/Common/SQLSecurityDefs.h>
 #include <Core/SettingsEnums.h>
-#include <base/EnumReflection.h>
 #include <Common/Exception.h>
 #include <Formats/FormatSettings.h>
 
@@ -20,16 +19,6 @@ namespace ErrorCodes
     extern const int BAD_ARGUMENTS;
     extern const int UNKNOWN_MYSQL_DATATYPES_SUPPORT_LEVEL;
     extern const int UNKNOWN_UNION;
-}
-
-template <typename Type>
-constexpr auto getEnumValues()
-{
-    std::array<std::pair<std::string_view, Type>, magic_enum::enum_count<Type>()> enum_values{};
-    size_t index = 0;
-    for (auto value : magic_enum::enum_values<Type>())
-        enum_values[index++] = std::pair{magic_enum::enum_name(value), value};
-    return enum_values;
 }
 
 IMPLEMENT_SETTING_ENUM(LoadBalancing, ErrorCodes::UNKNOWN_LOAD_BALANCING,
@@ -127,15 +116,41 @@ IMPLEMENT_SETTING_ENUM(AggregateFunctionInputFormat, ErrorCodes::BAD_ARGUMENTS,
     {"value", FormatSettings::AggregateFunctionInputFormat::Value},
     {"array", FormatSettings::AggregateFunctionInputFormat::Array}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(LogsLevel, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(LogsLevel, ErrorCodes::BAD_ARGUMENTS,
+    {{"none",        LogsLevel::none},
+     {"fatal",       LogsLevel::fatal},
+     {"error",       LogsLevel::error},
+     {"warning",     LogsLevel::warning},
+     {"information", LogsLevel::information},
+     {"debug",       LogsLevel::debug},
+     {"trace",       LogsLevel::trace},
+     {"test",        LogsLevel::test}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(LogQueriesType, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(LogQueriesType, ErrorCodes::BAD_ARGUMENTS,
+    {{"QUERY_START",                QueryLogElementType::QUERY_START},
+     {"QUERY_FINISH",              QueryLogElementType::QUERY_FINISH},
+     {"EXCEPTION_BEFORE_START",    QueryLogElementType::EXCEPTION_BEFORE_START},
+     {"EXCEPTION_WHILE_PROCESSING", QueryLogElementType::EXCEPTION_WHILE_PROCESSING}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(DefaultDatabaseEngine, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(DefaultDatabaseEngine, ErrorCodes::BAD_ARGUMENTS,
+    {{"Ordinary", DefaultDatabaseEngine::Ordinary},
+     {"Atomic",   DefaultDatabaseEngine::Atomic}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(DefaultTableEngine, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(DefaultTableEngine, ErrorCodes::BAD_ARGUMENTS,
+    {{"None",                          DefaultTableEngine::None},
+     {"Log",                           DefaultTableEngine::Log},
+     {"StripeLog",                     DefaultTableEngine::StripeLog},
+     {"MergeTree",                     DefaultTableEngine::MergeTree},
+     {"ReplacingMergeTree",            DefaultTableEngine::ReplacingMergeTree},
+     {"ReplicatedMergeTree",           DefaultTableEngine::ReplicatedMergeTree},
+     {"ReplicatedReplacingMergeTree",  DefaultTableEngine::ReplicatedReplacingMergeTree},
+     {"SharedMergeTree",               DefaultTableEngine::SharedMergeTree},
+     {"SharedReplacingMergeTree",      DefaultTableEngine::SharedReplacingMergeTree},
+     {"Memory",                        DefaultTableEngine::Memory}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(CleanDeletedRows, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(CleanDeletedRows, ErrorCodes::BAD_ARGUMENTS,
+    {{"Never",  CleanDeletedRows::Never},
+     {"Always", CleanDeletedRows::Always}})
 
 IMPLEMENT_SETTING_MULTI_ENUM(MySQLDataTypesSupport, ErrorCodes::UNKNOWN_MYSQL_DATATYPES_SUPPORT_LEVEL,
     {{"decimal",    MySQLDataTypesSupport::DECIMAL},
@@ -177,7 +192,14 @@ IMPLEMENT_SETTING_ENUM(CapnProtoEnumComparingMode, ErrorCodes::BAD_ARGUMENTS,
      {"by_values",  FormatSettings::CapnProtoEnumComparingMode::BY_VALUES},
      {"by_names_case_insensitive", FormatSettings::CapnProtoEnumComparingMode::BY_NAMES_CASE_INSENSITIVE}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(EscapingRule, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(EscapingRule, ErrorCodes::BAD_ARGUMENTS,
+    {{"None",    FormatSettings::EscapingRule::None},
+     {"Escaped", FormatSettings::EscapingRule::Escaped},
+     {"Quoted",  FormatSettings::EscapingRule::Quoted},
+     {"CSV",     FormatSettings::EscapingRule::CSV},
+     {"JSON",    FormatSettings::EscapingRule::JSON},
+     {"XML",     FormatSettings::EscapingRule::XML},
+     {"Raw",     FormatSettings::EscapingRule::Raw}})
 
 IMPLEMENT_SETTING_ENUM(MsgPackUUIDRepresentation, ErrorCodes::BAD_ARGUMENTS,
                        {{"bin", FormatSettings::MsgPackUUIDRepresentation::BIN},
@@ -233,7 +255,13 @@ IMPLEMENT_SETTING_ENUM(ParallelReplicasMode, ErrorCodes::BAD_ARGUMENTS,
      {"custom_key_range", ParallelReplicasMode::CUSTOM_KEY_RANGE},
      {"sampling_key", ParallelReplicasMode::SAMPLING_KEY}})
 
-IMPLEMENT_SETTING_AUTO_ENUM(LocalFSReadMethod, ErrorCodes::BAD_ARGUMENTS)
+IMPLEMENT_SETTING_ENUM(LocalFSReadMethod, ErrorCodes::BAD_ARGUMENTS,
+    {{"read",             LocalFSReadMethod::read},
+     {"pread",            LocalFSReadMethod::pread},
+     {"mmap",             LocalFSReadMethod::mmap},
+     {"io_uring",         LocalFSReadMethod::io_uring},
+     {"pread_threadpool", LocalFSReadMethod::pread_threadpool},
+     {"pread_fake_async", LocalFSReadMethod::pread_fake_async}})
 
 IMPLEMENT_SETTING_ENUM(ParquetVersion, ErrorCodes::BAD_ARGUMENTS,
     {{"1.0",       FormatSettings::ParquetVersion::V1_0},

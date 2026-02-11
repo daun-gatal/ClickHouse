@@ -115,7 +115,7 @@ void JWTProvider::deviceCodeLogin()
     {
         std::string error_body;
         Poco::StreamCopier::copyToString(device_code_rs, error_body);
-        throw Exception(ErrorCodes::NETWORK_ERROR, "Error requesting device code: {} {}\nResponse: {}", device_code_response.getStatus(), device_code_response.getReason(), error_body);
+        throw Exception(ErrorCodes::NETWORK_ERROR, "Error requesting device code: {} {}\nResponse: {}", static_cast<int>(device_code_response.getStatus()), device_code_response.getReason(), error_body);
     }
 
     Poco::JSON::Object::Ptr device_code_object = Poco::JSON::Parser().parse(device_code_rs).extract<Poco::JSON::Object::Ptr>();
@@ -186,7 +186,7 @@ void JWTProvider::refreshIdPAccessToken()
         std::string error_body;
         Poco::StreamCopier::copyToString(rs, error_body);
         idp_refresh_token.clear();
-        throw Exception(ErrorCodes::NETWORK_ERROR, "Error refreshing token: {} {}\nResponse: {}", response.getStatus(), response.getReason(), error_body);
+        throw Exception(ErrorCodes::NETWORK_ERROR, "Error refreshing token: {} {}\nResponse: {}", static_cast<int>(response.getStatus()), response.getReason(), error_body);
     }
 
     Poco::JSON::Object::Ptr object = Poco::JSON::Parser().parse(rs).extract<Poco::JSON::Object::Ptr>();

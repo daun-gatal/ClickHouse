@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <optional>
+#include <string_view>
 
 #include <base/types.h>
 
@@ -26,6 +27,17 @@ enum class CoordinationMode : uint8_t
 
     MAX = ReverseOrder,
 };
+
+inline std::string_view enumToString(CoordinationMode mode)
+{
+    switch (mode)
+    {
+        case CoordinationMode::Default:      return "Default";
+        case CoordinationMode::WithOrder:    return "WithOrder";
+        case CoordinationMode::ReverseOrder: return "ReverseOrder";
+    }
+    return "Unknown";
+}
 
 /// Represents a segment [left; right]
 struct PartBlockRange

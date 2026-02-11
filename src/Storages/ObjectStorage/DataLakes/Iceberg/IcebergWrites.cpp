@@ -420,7 +420,7 @@ void generateManifestFile(
                     throw Exception(
                         ErrorCodes::BAD_ARGUMENTS,
                         "Unsupported type to write into avro file {}",
-                        partition_values[i].getType()
+                        fieldTypeToString(partition_values[i].getType())
                     );
             }
         }

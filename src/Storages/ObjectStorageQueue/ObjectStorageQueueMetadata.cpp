@@ -1234,7 +1234,7 @@ void ObjectStorageQueueMetadata::cleanupTrackedNodes(
             LOG_TEST(log, "Path {} does not exist", nodes_path);
         }
         else
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected error: {}", magic_enum::enum_name(code));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected error: {}", Coordination::errorMessage(code));
     }
 
     if (nodes.empty())
@@ -1462,7 +1462,7 @@ void ObjectStorageQueueMetadata::cleanupPersistentProcessingNodes()
             return;
         }
         else
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected error: {}", magic_enum::enum_name(code));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected error: {}", Coordination::errorMessage(code));
     }
 
     Strings bucket_lock_paths;

@@ -85,6 +85,18 @@ enum class GroupByKind : uint8_t
     GROUPING_SETS,
 };
 
+inline std::string_view enumToString(GroupByKind kind)
+{
+    switch (kind)
+    {
+        case GroupByKind::NONE: return "NONE";
+        case GroupByKind::ORDINARY: return "ORDINARY";
+        case GroupByKind::ROLLUP: return "ROLLUP";
+        case GroupByKind::CUBE: return "CUBE";
+        case GroupByKind::GROUPING_SETS: return "GROUPING_SETS";
+    }
+}
+
 /*
  * This class stores information about aggregation keys used in GROUP BY clause.
  * It's used for providing information about aggregation to GROUPING function

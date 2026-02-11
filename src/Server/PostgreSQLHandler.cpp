@@ -522,7 +522,7 @@ bool PostgreSQLHandler::processCopyQuery(const String & query)
             else
             {
                 executor->cancel();
-                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Received incorrect message type - expected {} or {}, got {}", PostgreSQLProtocol::Messaging::FrontMessageType::COPY_DATA, PostgreSQLProtocol::Messaging::FrontMessageType::COPY_COMPLETION, message_type);
+                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Received incorrect message type - expected {} or {}, got {}", static_cast<int>(PostgreSQLProtocol::Messaging::FrontMessageType::COPY_DATA), static_cast<int>(PostgreSQLProtocol::Messaging::FrontMessageType::COPY_COMPLETION), static_cast<int>(message_type));
             }
         }
 

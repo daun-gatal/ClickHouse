@@ -163,6 +163,7 @@ private:
     void fillOSUserHostNameAndVersionInfo();
 };
 
-String toString(ClientInfo::Interface interface);
-String toString(ClientInfo::HTTPMethod method);
+String enumToString(ClientInfo::Interface interface);
+String enumToString(ClientInfo::HTTPMethod method);
+String enumToString(ClientInfo::QueryKind query_kind);
 }

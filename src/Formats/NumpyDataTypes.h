@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string_view>
 #include <Storages/NamedCollectionsHelpers.h>
 #include <IO/WriteBufferFromString.h>
 #include <IO/WriteHelpers.h>
@@ -31,6 +32,27 @@ enum class NumpyDataTypeIndex : uint8_t
     String,
     Unicode,
 };
+
+inline std::string_view enumToString(NumpyDataTypeIndex index)
+{
+    switch (index)
+    {
+        case NumpyDataTypeIndex::Int8: return "Int8";
+        case NumpyDataTypeIndex::Int16: return "Int16";
+        case NumpyDataTypeIndex::Int32: return "Int32";
+        case NumpyDataTypeIndex::Int64: return "Int64";
+        case NumpyDataTypeIndex::UInt8: return "UInt8";
+        case NumpyDataTypeIndex::UInt16: return "UInt16";
+        case NumpyDataTypeIndex::UInt32: return "UInt32";
+        case NumpyDataTypeIndex::UInt64: return "UInt64";
+        case NumpyDataTypeIndex::Float16: return "Float16";
+        case NumpyDataTypeIndex::Float32: return "Float32";
+        case NumpyDataTypeIndex::Float64: return "Float64";
+        case NumpyDataTypeIndex::String: return "String";
+        case NumpyDataTypeIndex::Unicode: return "Unicode";
+    }
+    return "Unknown";
+}
 
 class NumpyDataType
 {

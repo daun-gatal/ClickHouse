@@ -35,6 +35,15 @@ enum class Representation : uint8_t
     LittleEndian
 };
 
+constexpr const char * enumToString(Representation r)
+{
+    switch (r)
+    {
+        case Representation::BigEndian: return "BigEndian";
+        case Representation::LittleEndian: return "LittleEndian";
+    }
+}
+
 std::pair<int, int> determineBinaryStartIndexWithIncrement(ptrdiff_t num_bytes, Representation representation)
 {
     if (representation == Representation::BigEndian)
@@ -42,7 +51,7 @@ std::pair<int, int> determineBinaryStartIndexWithIncrement(ptrdiff_t num_bytes, 
     if (representation == Representation::LittleEndian)
         return {num_bytes - 1, -1};
 
-    throw DB::Exception(DB::ErrorCodes::LOGICAL_ERROR, "{} is not handled yet", magic_enum::enum_name(representation));
+    throw DB::Exception(DB::ErrorCodes::LOGICAL_ERROR, "{} is not handled yet", enumToString(representation));
 }
 
 void formatHex(const std::span<const UInt8> src, UInt8 * dst, Representation representation)
@@ -71,11 +80,20 @@ public:
         Microsoft = 2
     };
 
+    static constexpr const char * enumToString(Variant v)
+    {
+        switch (v)
+        {
+            case Variant::Default: return "Default";
+            case Variant::Microsoft: return "Microsoft";
+        }
+    }
+
     explicit UUIDSerializer(const Variant variant)
         : first_half_binary_representation(variant == Variant::Microsoft ? Representation::LittleEndian : Representation::BigEndian)
     {
         if (variant != Variant::Default && variant != Variant::Microsoft)
-            throw DB::Exception(DB::ErrorCodes::LOGICAL_ERROR, "{} is not handled yet", magic_enum::enum_name(variant));
+            throw DB::Exception(DB::ErrorCodes::LOGICAL_ERROR, "{} is not handled yet", enumToString(variant));
     }
 
     void serialize(const UInt8 * src16, UInt8 * dst36) const
@@ -131,13 +149,12 @@ UUIDSerializer::Variant parseVariant(const DB::ColumnsWithTypeAndName & argument
     if (arguments.size() < 2)
         return UUIDSerializer::Variant::Default;
 
-    const auto representation = static_cast<magic_enum::underlying_type_t<UUIDSerializer::Variant>>(arguments[1].column->getInt(0));
-    const auto as_enum = magic_enum::enum_cast<UUIDSerializer::Variant>(representation);
-
-    if (!as_enum)
+    const auto representation = static_cast<uint8_t>(arguments[1].column->getInt(0));
+    if (representation != static_cast<uint8_t>(UUIDSerializer::Variant::Default)
+        && representation != static_cast<uint8_t>(UUIDSerializer::Variant::Microsoft))
         throw DB::Exception(DB::ErrorCodes::ARGUMENT_OUT_OF_BOUND, "Expected UUID variant, got {}", representation);
 
-    return *as_enum;
+    return static_cast<UUIDSerializer::Variant>(representation);
 }
 }
 

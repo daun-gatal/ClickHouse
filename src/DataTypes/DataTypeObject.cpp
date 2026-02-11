@@ -160,13 +160,13 @@ SerializationPtr DataTypeObject::doGetDefaultSerialization() const
 
 String DataTypeObject::getSchemaFormatString() const
 {
-    return String{magic_enum::enum_name(schema_format)};
+    return String{DataTypeObject::enumToString(schema_format)};
 }
 
 String DataTypeObject::doGetName() const
 {
     WriteBufferFromOwnString out;
-    out << magic_enum::enum_name(schema_format);
+    out << DataTypeObject::enumToString(schema_format);
     bool first = true;
     auto write_separator = [&]()
     {
@@ -503,20 +503,20 @@ static DataTypePtr createObject(const ASTPtr & arguments, const DataTypeObject::
             const auto * function = object_type_argument->parameter->as<ASTFunction>();
 
             if (!function || function->name != "equals")
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected parameter in {} type arguments: {}", magic_enum::enum_name(schema_format), function->formatForErrorMessage());
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected parameter in {} type arguments: {}", DataTypeObject::enumToString(schema_format), function->formatForErrorMessage());
 
             const auto * identifier = function->arguments->children[0]->as<ASTIdentifier>();
             if (!identifier)
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected {} type argument: {}. Expected expression 'max_dynamic_types=N' or 'max_dynamic_paths=N'", magic_enum::enum_name(schema_format), function->formatForErrorMessage());
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected {} type argument: {}. Expected expression 'max_dynamic_types=N' or 'max_dynamic_paths=N'", DataTypeObject::enumToString(schema_format), function->formatForErrorMessage());
 
             auto identifier_name = identifier->name();
             if (identifier_name != "max_dynamic_types" && identifier_name != "max_dynamic_paths")
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected parameter in {} type arguments: {}. Expected 'max_dynamic_types' or `max_dynamic_paths`", magic_enum::enum_name(schema_format), identifier_name);
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected parameter in {} type arguments: {}. Expected 'max_dynamic_types' or `max_dynamic_paths`", DataTypeObject::enumToString(schema_format), identifier_name);
 
             auto * literal = function->arguments->children[1]->as<ASTLiteral>();
             size_t max_value = identifier_name == "max_dynamic_types" ? ColumnDynamic::MAX_DYNAMIC_TYPES_LIMIT : DataTypeObject::MAX_DYNAMIC_PATHS_LIMIT;
             if (!literal || literal->value.getType() != Field::Types::UInt64 || literal->value.safeGet<UInt64>() > max_value)
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "'{}' parameter for {} type should be a positive integer between 0 and {}. Got {}", identifier_name, magic_enum::enum_name(schema_format), max_value, function->arguments->children[1]->formatForErrorMessage());
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "'{}' parameter for {} type should be a positive integer between 0 and {}. Got {}", identifier_name, DataTypeObject::enumToString(schema_format), max_value, function->arguments->children[1]->formatForErrorMessage());
 
             if (identifier_name == "max_dynamic_types")
                 max_dynamic_types = literal->value.safeGet<UInt64>();
@@ -538,7 +538,7 @@ static DataTypePtr createObject(const ASTPtr & arguments, const DataTypeObject::
         {
             const auto * identifier = object_type_argument->skip_path->as<ASTIdentifier>();
             if (!identifier)
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected AST in SKIP section of {} type arguments: {}. Expected identifier with path name", magic_enum::enum_name(schema_format), object_type_argument->skip_path->formatForErrorMessage());
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected AST in SKIP section of {} type arguments: {}. Expected identifier with path name", DataTypeObject::enumToString(schema_format), object_type_argument->skip_path->formatForErrorMessage());
 
             paths_to_skip.insert(identifier->name());
         }
@@ -546,7 +546,7 @@ static DataTypePtr createObject(const ASTPtr & arguments, const DataTypeObject::
         {
             const auto * literal = object_type_argument->skip_path_regexp->as<ASTLiteral>();
             if (!literal || literal->value.getType() != Field::Types::String)
-                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected AST in SKIP section of {} type arguments: {}. Expected identifier with path name", magic_enum::enum_name(schema_format), object_type_argument->skip_path->formatForErrorMessage());
+                throw Exception(ErrorCodes::UNEXPECTED_AST_STRUCTURE, "Unexpected AST in SKIP section of {} type arguments: {}. Expected identifier with path name", DataTypeObject::enumToString(schema_format), object_type_argument->skip_path->formatForErrorMessage());
 
             path_regexps_to_skip.push_back(literal->value.safeGet<String>());
         }

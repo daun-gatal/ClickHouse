@@ -33,7 +33,7 @@ namespace
 {
     DataTypePtr getSimpleDataTypeFromTypeIndex(TypeIndex type_index)
     {
-        std::string_view name = magic_enum::enum_name(type_index);
+        std::string_view name = enumToString(type_index);
         return DB::DataTypeFactory::instance().get(std::string(name), nullptr);
     }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include <Storages/MaterializedView/RefreshSet.h>
 #include <Storages/MaterializedView/RefreshSchedule.h>
 #include <Storages/MaterializedView/RefreshSettings.h>
@@ -34,6 +35,20 @@ enum class RefreshState
     Running,
     RunningOnAnotherReplica,
 };
+
+inline std::string_view enumToString(RefreshState value)
+{
+    switch (value)
+    {
+        case RefreshState::Disabled: return "Disabled";
+        case RefreshState::Scheduling: return "Scheduling";
+        case RefreshState::Scheduled: return "Scheduled";
+        case RefreshState::WaitingForDependencies: return "WaitingForDependencies";
+        case RefreshState::Running: return "Running";
+        case RefreshState::RunningOnAnotherReplica: return "RunningOnAnotherReplica";
+    }
+    return "Unknown";
+}
 
 class RefreshTask : public std::enable_shared_from_this<RefreshTask>
 {

@@ -80,7 +80,14 @@ private:
 
     static String pruneLevelToString(PruneLevel level)
     {
-        return String(magic_enum::enum_name(level));
+        switch (level)
+        {
+            case PruneLevel::None: return "None";
+            case PruneLevel::Partition: return "Partition";
+            case PruneLevel::File: return "File";
+            case PruneLevel::Split: return "Split";
+        }
+        return "Unknown";
     }
 
     static ASTPtr extractKeyExpressionList(const ASTPtr & node);

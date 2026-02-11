@@ -5,6 +5,10 @@
 #include <Storages/KeyDescription.h>
 #include <Processors/Chunk.h>
 
+#include <optional>
+#include <string_view>
+#include <stdexcept>
+
 namespace DB
 {
 
@@ -72,6 +76,24 @@ struct PartitionStrategyFactory
         HIVE
     };
 
+    /// Case-insensitive conversion from string to StrategyType.
+    static std::optional<StrategyType> strategyTypeFromString(const std::string & name)
+    {
+        if (name == "NONE" || name == "none" || name == "None")
+            return StrategyType::NONE;
+        if (name == "WILDCARD" || name == "wildcard" || name == "Wildcard")
+            return StrategyType::WILDCARD;
+        if (name == "HIVE" || name == "hive" || name == "Hive")
+            return StrategyType::HIVE;
+        return std::nullopt;
+    }
+
+    /// Returns true if the string is a valid StrategyType name (case-insensitive).
+    static bool isStrategyType(const std::string & name)
+    {
+        return strategyTypeFromString(name).has_value();
+    }
+
     static std::shared_ptr<IPartitionStrategy> get(
         StrategyType strategy,
         ASTPtr partition_by,
@@ -82,6 +104,17 @@ struct PartitionStrategyFactory
         bool contains_partition_wildcard,
         bool partition_columns_in_data_file);
 };
+
+inline std::string_view enumToString(PartitionStrategyFactory::StrategyType type)
+{
+    switch (type)
+    {
+        case PartitionStrategyFactory::StrategyType::NONE: return "NONE";
+        case PartitionStrategyFactory::StrategyType::WILDCARD: return "WILDCARD";
+        case PartitionStrategyFactory::StrategyType::HIVE: return "HIVE";
+    }
+    throw std::logic_error("Unknown PartitionStrategyFactory::StrategyType");
+}
 
 /*
  * Simply wraps the partition expression with a `toString` function call.

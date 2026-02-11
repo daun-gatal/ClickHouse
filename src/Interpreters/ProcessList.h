@@ -54,6 +54,17 @@ enum CancelReason
     CANCELLED_BY_ERROR,
 };
 
+inline std::string_view enumToString(CancelReason reason)
+{
+    switch (reason)
+    {
+        case UNDEFINED: return "UNDEFINED";
+        case TIMEOUT: return "TIMEOUT";
+        case CANCELLED_BY_USER: return "CANCELLED_BY_USER";
+        case CANCELLED_BY_ERROR: return "CANCELLED_BY_ERROR";
+    }
+}
+
 /** Information of process list element.
   * To output in SHOW PROCESSLIST query. Does not contain any complex objects, that do something on copy or destructor.
   */

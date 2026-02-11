@@ -24,24 +24,34 @@ PlainCommittingBlockHolder::~PlainCommittingBlockHolder()
 template <class Enum>
 int64_t toIntChecked(Enum value)
 {
-    int64_t underlying = magic_enum::enum_integer(value);
-    auto checked = magic_enum::enum_cast<Enum>(underlying);
+    int64_t underlying = static_cast<std::underlying_type_t<Enum>>(value);
 
-    if (!checked.has_value())
-        throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown {} value {}", magic_enum::enum_type_name<Enum>(), underlying);
+    /// Validate the value is a known enum member
+    switch (value)
+    {
+        case Enum::Unknown:
+        case Enum::NewPart:
+        case Enum::Update:
+        case Enum::Mutation:
+            return underlying;
+    }
 
-    return underlying;
+    throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown CommittingBlock::Op value {}", underlying);
 }
 
 template <class Enum>
 Enum fromIntChecked(int64_t underlying)
 {
-    auto checked = magic_enum::enum_cast<Enum>(underlying);
+    switch (static_cast<Enum>(underlying))
+    {
+        case Enum::Unknown:
+        case Enum::NewPart:
+        case Enum::Update:
+        case Enum::Mutation:
+            return static_cast<Enum>(underlying);
+    }
 
-    if (!checked.has_value())
-        throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown {} value {}", magic_enum::enum_type_name<Enum>(), underlying);
-
-    return checked.value();
+    throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown CommittingBlock::Op value {}", underlying);
 }
 
 static void serializeCommittingBlockOpToBuffer(CommittingBlock::Op op, WriteBuffer & out)

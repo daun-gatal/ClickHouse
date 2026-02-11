@@ -3,6 +3,7 @@
 #include <Common/ThreadPool.h>
 #include <Common/scope_guard_safe.h>
 #include <Common/CurrentThread.h>
+#include <Common/setThreadName.h>
 #include <exception>
 #include <future>
 
@@ -13,8 +14,6 @@ namespace ErrorCodes
 {
 extern const int LOGICAL_ERROR;
 }
-
-enum class ThreadName : uint8_t;
 
 /// High-order function to run callbacks (functions with 'void()' signature) somewhere asynchronously.
 template <typename Result, typename Callback = std::function<Result()>>
@@ -208,14 +207,14 @@ public:
             {
                 if (expected == CANCELLED)
                     return;
-                throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state {} when running a task in {}", expected, thread_name);
+                throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state {} when running a task in {}", static_cast<int>(expected), enumToString(thread_name));
             }
 
             SCOPE_EXIT_SAFE(
             {
                 expected = RUNNING;
                 if (!task->state.compare_exchange_strong(expected, FINISHED))
-                    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state {} when finishing a task in {}", expected, thread_name);
+                    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state {} when finishing a task in {}", static_cast<int>(expected), enumToString(thread_name));
             });
 
             executeCallback(*promise, std::move(my_callback), std::move(thread_group), thread_name);

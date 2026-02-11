@@ -3,7 +3,6 @@
 #include <limits>
 #include <optional>
 
-#include <base/EnumReflection.h>
 #include <base/defines.h>
 #include <base/scope_guard.h>
 #include <fmt/format.h>
@@ -631,7 +630,7 @@ void AsyncLoader::finish(const LoadJobPtr & job, LoadStatus status, std::excepti
     {
         NOEXCEPT_SCOPE({
             ALLOW_ALLOCATIONS_IN_SCOPE;
-            LOG_DEBUG(log, "Finish load job '{}' with status {}", job->name, magic_enum::enum_name(status));
+            LOG_DEBUG(log, "Finish load job '{}' with status {}", job->name, enumToString(status));
         });
     }
 
