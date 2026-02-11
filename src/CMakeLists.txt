@@ -345,6 +345,12 @@ set_property(SOURCE
     Interpreters/Aggregator.cpp                # destroy_aggregate_states
     Common/IntervalTree.cpp                    # range_hashed_dictionary
     PROPERTY COMPILE_FLAGS "-U_LIBCPP_HARDENING_MODE -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_NONE")
+set_source_files_properties(
+    Columns/IColumn.cpp
+    Processors/Transforms/WindowTransform.cpp
+    Interpreters/Aggregator.cpp
+    Common/IntervalTree.cpp
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 if (USE_PARQUET)
     add_object_library(clickhouse_processors_formats_impl_parquet Processors/Formats/Impl/Parquet)
@@ -355,6 +361,23 @@ if (TARGET ch_contrib::nuraft)
 endif()
 
 add_library (dbms STATIC ${dbms_headers} ${dbms_sources})
+
+target_precompile_headers(dbms PRIVATE
+    <string>
+    <vector>
+    <memory>
+    <algorithm>
+    <optional>
+    <unordered_map>
+    <atomic>
+    <mutex>
+    <functional>
+    <Common/Exception.h>
+    <Common/logger_useful.h>
+    <base/types.h>
+    <fmt/format.h>
+)
+
 target_link_libraries (dbms PRIVATE ch_contrib::libdivide daemon)
 if (TARGET ch_contrib::jemalloc)
     target_link_libraries (dbms PRIVATE ch_contrib::jemalloc)
