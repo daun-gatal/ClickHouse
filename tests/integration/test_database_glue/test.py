@@ -304,10 +304,6 @@ def test_list_tables(started_cluster):
 
     create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
 
-    node.query(
-        f"CHECK DATABASE {namespace_1}"
-    )
-
     tables_list = ""
     for table in namespace_1_tables:
         create_table(catalog, namespace_1, table)
@@ -763,7 +759,7 @@ def test_check_database(started_cluster):
         create_table(catalog, namespace, table)
 
     node.query(
-        f"CHECK DATABASE {namespace}"
+        f"CHECK DATABASE {CATALOG_NAME}"
     )
 
 def test_sts_smoke(started_cluster):

@@ -415,7 +415,7 @@ def test_check_database(started_cluster):
 
     create_query_1 = f"CREATE TABLE {schema_name}.{table_name} (id INT) using Delta location '/var/lib/clickhouse/user_files/tmp/{schema_name}/{table_name}'"
 
-    node1.query(create_query_1)
+    execute_spark_query(node1, create_query_1)
 
     node1.query(
         f"""
