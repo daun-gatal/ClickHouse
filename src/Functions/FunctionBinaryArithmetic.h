@@ -2584,6 +2584,57 @@ ColumnPtr executeStringInteger(const ColumnsWithTypeAndName & arguments, const A
         return executeImpl2(arguments, result_type, input_rows_count);
     }
 
+    /// Dispatch right types for a fixed left type. This function is the inner loop of the N×N type
+    /// dispatch in executeImpl2. It is a separate member function template (rather than inline in a
+    /// lambda) so that it can be explicitly instantiated in separate translation units via
+    /// ARITHMETIC_EXTERN_TEMPLATES / ARITHMETIC_INSTANTIATE_HALF macros, splitting the LLVM backend
+    /// work across parallel compilations — analogous to COMPARISON_EXTERN_NUMERIC_TEMPLATES for
+    /// comparison operators.
+    template <typename LeftDataType>
+    bool executeForLeftType(
+        const ColumnsWithTypeAndName & arguments,
+        const IDataType * left_generic,
+        const IDataType * right_generic,
+        const NullMap * right_nullmap,
+        ColumnPtr & res) const
+    {
+        const auto & left = static_cast<const LeftDataType &>(*left_generic);
+        return castType(right_generic, [&](const auto & right)
+        {
+            using RightDataType = std::decay_t<decltype(right)>;
+
+            if constexpr ((std::is_same_v<DataTypeFixedString, LeftDataType> || std::is_same_v<DataTypeString, LeftDataType>) ||
+                          (std::is_same_v<DataTypeFixedString, RightDataType> || std::is_same_v<DataTypeString, RightDataType>))
+            {
+                if constexpr (std::is_same_v<DataTypeFixedString, LeftDataType> &&
+                              std::is_same_v<DataTypeFixedString, RightDataType>)
+                {
+                    if constexpr (!Op<DataTypeFixedString, DataTypeFixedString>::allow_fixed_string)
+                        return false;
+                    else
+                        return (res = executeFixedString(arguments)) != nullptr;
+                }
+
+                if constexpr (
+                    is_bit_hamming_distance
+                    && std::is_same_v<DataTypeString, LeftDataType> && std::is_same_v<DataTypeString, RightDataType>)
+                    return (res = executeString(arguments)) != nullptr;
+                else if constexpr (!Op<LeftDataType, RightDataType>::allow_string_integer)
+                    return false;
+                else if constexpr (!IsIntegral<RightDataType>)
+                    return false;
+                else if constexpr (std::is_same_v<DataTypeFixedString, LeftDataType>)
+                {
+                    return (res = executeStringInteger<ColumnFixedString>(arguments, left, right)) != nullptr;
+                }
+                else if constexpr (std::is_same_v<DataTypeString, LeftDataType>)
+                    return (res = executeStringInteger<ColumnString>(arguments, left, right)) != nullptr;
+            }
+            else
+                return (res = executeNumeric(arguments, left, right, right_nullmap)) != nullptr;
+        });
+    }
+
     ColumnPtr executeImpl2(const ColumnsWithTypeAndName & arguments, const DataTypePtr & result_type, size_t input_rows_count, const NullMap * right_nullmap = nullptr) const
     {
         const auto & left_argument = arguments[0];
@@ -2666,40 +2717,10 @@ ColumnPtr executeStringInteger(const ColumnsWithTypeAndName & arguments, const A
         const auto * const right_generic = right_argument.type.get();
         ColumnPtr res;
 
-        const bool valid = castBothTypes(left_generic, right_generic, [&](const auto & left, const auto & right)
+        const bool valid = castType(left_generic, [&](const auto & left)
         {
             using LeftDataType = std::decay_t<decltype(left)>;
-            using RightDataType = std::decay_t<decltype(right)>;
-
-            if constexpr ((std::is_same_v<DataTypeFixedString, LeftDataType> || std::is_same_v<DataTypeString, LeftDataType>) ||
-                          (std::is_same_v<DataTypeFixedString, RightDataType> || std::is_same_v<DataTypeString, RightDataType>))
-            {
-                if constexpr (std::is_same_v<DataTypeFixedString, LeftDataType> &&
-                              std::is_same_v<DataTypeFixedString, RightDataType>)
-                {
-                    if constexpr (!Op<DataTypeFixedString, DataTypeFixedString>::allow_fixed_string)
-                        return false;
-                    else
-                        return (res = executeFixedString(arguments)) != nullptr;
-                }
-
-                if constexpr (
-                    is_bit_hamming_distance
-                    && std::is_same_v<DataTypeString, LeftDataType> && std::is_same_v<DataTypeString, RightDataType>)
-                    return (res = executeString(arguments)) != nullptr;
-                else if constexpr (!Op<LeftDataType, RightDataType>::allow_string_integer)
-                    return false;
-                else if constexpr (!IsIntegral<RightDataType>)
-                    return false;
-                else if constexpr (std::is_same_v<DataTypeFixedString, LeftDataType>)
-                {
-                    return (res = executeStringInteger<ColumnFixedString>(arguments, left, right)) != nullptr;
-                }
-                else if constexpr (std::is_same_v<DataTypeString, LeftDataType>)
-                    return (res = executeStringInteger<ColumnString>(arguments, left, right)) != nullptr;
-            }
-            else
-                return (res = executeNumeric(arguments, left, right, right_nullmap)) != nullptr;
+            return executeForLeftType<LeftDataType>(arguments, left_generic, right_generic, right_nullmap, res);
         });
 
         if (isArray(result_type))
@@ -3058,4 +3079,87 @@ public:
 private:
     ContextPtr context;
 };
+
+/// Macros for splitting the N×N type dispatch in FunctionBinaryArithmetic across translation units.
+/// Similar to COMPARISON_EXTERN_NUMERIC_TEMPLATES for comparison operators.
+///
+/// The Func parameter is the full FunctionBinaryArithmetic<...> class, allowing
+/// operations with non-default template parameters (e.g., modulo with valid_on_default_arguments=false).
+///
+/// Usage in the main operator .cpp (e.g., plus.cpp):
+///   ARITHMETIC_EXTERN_TEMPLATES(FunctionBinaryArithmetic<PlusImpl, NamePlus>)
+///
+/// Usage in half .cpp files (e.g., plusHalf1.cpp / plusHalf2.cpp):
+///   ARITHMETIC_INSTANTIATE_HALF1(FunctionBinaryArithmetic<PlusImpl, NamePlus>)
+///   ARITHMETIC_INSTANTIATE_HALF2(FunctionBinaryArithmetic<PlusImpl, NamePlus>)
+
+#define ARITHMETIC_EXTERN_TEMPLATES(Func) \
+    extern template bool Func::executeForLeftType<DataTypeUInt8>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeUInt16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeUInt32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeUInt64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeUInt128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeUInt256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt8>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeInt256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDecimal32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDecimal64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDecimal128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDecimal256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDate>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeDateTime>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeTime>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeFloat32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeFloat64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeBFloat16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+/// Also extern-template FixedString/String/Interval for operations that include them in castType.
+#define ARITHMETIC_EXTERN_TEMPLATES_STRING(Func) \
+    extern template bool Func::executeForLeftType<DataTypeFixedString>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    extern template bool Func::executeForLeftType<DataTypeString>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+#define ARITHMETIC_EXTERN_TEMPLATES_INTERVAL(Func) \
+    extern template bool Func::executeForLeftType<DataTypeInterval>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+/// First half: UInt8..UInt256, Int8..Int64, Decimal32..Decimal256 (14 types)
+#define ARITHMETIC_INSTANTIATE_HALF1(Func) \
+    template bool Func::executeForLeftType<DataTypeUInt8>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeUInt16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeUInt32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeUInt64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeUInt128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeUInt256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeInt8>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeInt16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeInt32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeInt64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDecimal32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDecimal64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDecimal128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDecimal256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+/// Second half: Int128, Int256, Date, DateTime, Time, Float32, Float64, BFloat16 (8 types)
+#define ARITHMETIC_INSTANTIATE_HALF2(Func) \
+    template bool Func::executeForLeftType<DataTypeInt128>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeInt256>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDate>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeDateTime>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeTime>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeFloat32>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeFloat64>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeBFloat16>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+/// Instantiate Interval type (for plus/minus only)
+#define ARITHMETIC_INSTANTIATE_INTERVAL(Func) \
+    template bool Func::executeForLeftType<DataTypeInterval>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
+/// Instantiate String/FixedString types (for bitwise ops and bitHammingDistance)
+#define ARITHMETIC_INSTANTIATE_STRING(Func) \
+    template bool Func::executeForLeftType<DataTypeFixedString>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const; \
+    template bool Func::executeForLeftType<DataTypeString>(const ColumnsWithTypeAndName &, const IDataType *, const IDataType *, const NullMap *, ColumnPtr &) const;
+
 }
