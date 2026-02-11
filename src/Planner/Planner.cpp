@@ -1511,44 +1511,49 @@ void addBuildSubqueriesForSetsStepIfNeeded(
 void addBuildSubqueriesForMaterializedCTEsIfNeeded(
     QueryPlan & query_plan,
     const SelectQueryOptions & select_query_options,
-    const TableHolderToCTEMap & materialized_ctes
+    const OrderedMaterializedCTEs & materialized_ctes
 )
 {
     if (materialized_ctes.empty())
         return;
 
-    SharedHeaders headers;
-    std::vector<std::unique_ptr<QueryPlan>> plans;
+    auto plan_header = query_plan.getCurrentHeader();
 
-    headers.reserve(materialized_ctes.size() + 1);
-    plans.reserve(materialized_ctes.size() + 1);
-    headers.emplace_back(query_plan.getCurrentHeader());
-    plans.emplace_back(std::make_unique<QueryPlan>(std::move(query_plan)));
-
-    query_plan = QueryPlan();
-
-    for (const auto & cte_node : materialized_ctes)
+    for (const auto & cte_level : materialized_ctes)
     {
-        auto * cte_table_node = cte_node.second->as<TableNode>();
-        auto cte_options = select_query_options.subquery();
-        Planner cte_planner(
-            cte_table_node->getMaterializedCTESubquery(),
-            cte_options,
-            std::make_shared<GlobalPlannerContext>(nullptr, nullptr, FiltersForTableExpressionMap{}));
-        cte_planner.buildQueryPlanIfNeeded();
+        SharedHeaders headers;
+        std::vector<std::unique_ptr<QueryPlan>> plans;
 
-        auto cte_plan = std::move(cte_planner).extractQueryPlan();
+        headers.reserve(cte_level.size() + 1);
+        plans.reserve(cte_level.size() + 1);
+        headers.emplace_back(plan_header);
+        plans.emplace_back(std::make_unique<QueryPlan>(std::move(query_plan)));
 
-        auto step = std::make_unique<MaterializingCTEStep>(
-            cte_plan.getCurrentHeader(),
-            cte_table_node->getTemporaryTableHolder());
-        step->setStepDescription("Materializing CTE: " + cte_table_node->getTemporaryTableName(), 100);
-        cte_plan.addStep(std::move(step));
+        query_plan = QueryPlan();
 
-        headers.emplace_back(cte_plan.getCurrentHeader());
-        plans.emplace_back(std::make_unique<QueryPlan>(std::move(cte_plan)));
+        for (const auto & cte_node : cte_level)
+        {
+            auto * cte_table_node = cte_node->as<TableNode>();
+            auto cte_options = select_query_options.subquery();
+            Planner cte_planner(
+                cte_table_node->getMaterializedCTESubquery(),
+                cte_options,
+                std::make_shared<GlobalPlannerContext>(nullptr, nullptr, FiltersForTableExpressionMap{}));
+            cte_planner.buildQueryPlanIfNeeded();
+
+            auto cte_plan = std::move(cte_planner).extractQueryPlan();
+
+            auto step = std::make_unique<MaterializingCTEStep>(
+                cte_plan.getCurrentHeader(),
+                cte_table_node->getTemporaryTableHolder());
+            step->setStepDescription("Materializing CTE: " + cte_table_node->getTemporaryTableName(), 100);
+            cte_plan.addStep(std::move(step));
+
+            headers.emplace_back(cte_plan.getCurrentHeader());
+            plans.emplace_back(std::make_unique<QueryPlan>(std::move(cte_plan)));
+        }
+        query_plan.unitePlans(std::make_unique<MaterializingCTEsStep>(std::move(headers)), std::move(plans));
     }
-    query_plan.unitePlans(std::make_unique<MaterializingCTEsStep>(std::move(headers)), std::move(plans));
 }
 
 /// Support for `additional_result_filter` setting
