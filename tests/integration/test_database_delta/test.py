@@ -405,6 +405,30 @@ settings warehouse = 'unity', catalog_type='unity', vended_credentials=True
     print(node1.query(f"SHOW TABLES FROM {schema_name}"))
 
 
+def test_check_database(started_cluster):
+    node1 = started_cluster.instances["node1"]
+    node1.query("drop database if exists schema_check_database")
+
+    schema_name = f"schema_check_database"
+    execute_spark_query(node1, f"CREATE SCHEMA {schema_name}")
+    table_name_1 = f"table_check_database"
+
+    create_query_1 = f"CREATE TABLE {schema_name}.{table_name_1} (id INT) using Delta location '/var/lib/clickhouse/user_files/tmp/{schema_name}/{table_name_1}'"
+
+    execute_multiple_spark_queries(node1, [create_query_2, create_query_1])
+
+    node1.query(
+        f"""
+drop database if exists {schema_name};
+create database {schema_name}
+engine DataLakeCatalog('http://localhost:8080/api/2.1/unity-catalog')
+settings warehouse = 'unity', catalog_type='unity', vended_credentials=True
+        """,
+        settings={"allow_database_unity_catalog": "1"},
+    )
+
+    node1.query(f"CHECK DATABASE {schema_name}")
+
 @pytest.mark.parametrize("use_delta_kernel", ["1", "0"])
 def test_view_with_void(started_cluster, use_delta_kernel):
     # 25/08/20 16:45:23 WARN ObjectStore: Version information not found in metastore. hive.metastore.schema.verification is not enabled so recording the schema version 2.3.0
