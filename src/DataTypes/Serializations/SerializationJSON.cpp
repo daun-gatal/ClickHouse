@@ -375,7 +375,23 @@ void SerializationJSON<Parser>::deserializeTextJSON(IColumn & column, ReadBuffer
 template <typename Parser>
 String SerializationJSON<Parser>::getName() const
 {
-    return "JSON";
+    std::vector<String> paths;
+    paths.reserve(typed_paths_types.size());
+    for (const auto & [path, type] : typed_paths_types)
+        paths.push_back(path + " " + type->getName());
+    std::sort(paths.begin(), paths.end());
+
+    String name = "JSON(";
+    for (size_t i = 0; i < paths.size(); ++i)
+    {
+        if (i > 0)
+            name += ",";
+        name += paths[i];
+    }
+    if (dynamic_type)
+        name += ";dyn=" + dynamic_type->getName();
+    name += ")";
+    return name;
 }
 
 template <typename Parser>
