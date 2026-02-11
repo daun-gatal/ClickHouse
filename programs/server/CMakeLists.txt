@@ -1,6 +1,7 @@
 set(CLICKHOUSE_SERVER_SOURCES
     MetricsTransmitter.cpp
     Server.cpp
+    ServerProtocols.cpp
 )
 
 set (CLICKHOUSE_SERVER_LINK
