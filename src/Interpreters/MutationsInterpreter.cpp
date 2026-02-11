@@ -1964,6 +1964,10 @@ QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::v
     /// header (which doesn't have these columns), no DAG input consumes them, and
     /// ExpressionStep/FilterStep's updateHeader passes them through as "remaining".
     /// We must trim the pipeline to only include the expected output columns.
+    /// However, when return_all_columns is true (e.g. Iceberg mutations, on-the-fly
+    /// mutations), the caller expects all columns including virtual columns like _path,
+    /// _file, _row_number, etc. These are not in output_columns, so we skip trimming.
+    if (!settings.return_all_columns)
     {
         const auto & last_stage = prepared_stages.back();
         NameSet expected_columns = last_stage.output_columns;
