@@ -74,6 +74,7 @@
 #include <sstream>
 #include <string>
 #include <cstdlib>
+#include <filesystem>
 #include <unistd.h>
 #include <atomic>
 
@@ -302,6 +303,16 @@ try
         {
             std::cerr << "Error: --symbolize-batch requires at least one .heap file\n";
             return 1;
+        }
+
+        /// Validate all input files exist before starting the expensive symbolization
+        for (const auto & file : batch_files)
+        {
+            if (!std::filesystem::exists(file))
+            {
+                std::cerr << "Error: heap file not found: " << file << "\n";
+                return 1;
+            }
         }
 
         std::vector<std::pair<std::string, std::string>> input_output_pairs;
