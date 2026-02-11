@@ -46,7 +46,7 @@ AND event_type = 'NewPart'
 AND database = currentDatabase()
 AND event_time > (now() - 120);
 
--- We expect to see 4 parts inserted
+-- We expect to see 3 parts inserted
 SELECT count()
 FROM system.part_log 
 WHERE table = 'test_min_insert_bytes_less_than_rows_squashing' 

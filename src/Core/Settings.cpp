@@ -143,7 +143,7 @@ A block is emitted when:
 When disabled, a block is emitted when:
 - Min thresholds (OR):  min_insert_block_size_rows OR min_insert_block_size_bytes is reached.
 
-**Note**: If min settings are smaller than max settings, the max limits take precedence and blocks will be emitted before min thresholds are reached.
+**Note**: If max settings are smaller than min settings, the max limits take precedence and blocks will be emitted before min thresholds are reached.
 
 Disabled by default.
 )", 0) \

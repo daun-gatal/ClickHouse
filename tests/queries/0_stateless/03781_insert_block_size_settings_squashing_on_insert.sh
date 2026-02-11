@@ -24,7 +24,7 @@ $CLICKHOUSE_CLIENT \
 
 $CLICKHOUSE_CLIENT -q "SYSTEM FLUSH LOGS part_log;"
 
-# Test 1: Expect  parts (ceil(100 / 17) = 6)
+# Test 1: Expect  parts (ceil(100 / 23) = 5)
 $CLICKHOUSE_CLIENT -q "
 SELECT count()
 FROM system.part_log

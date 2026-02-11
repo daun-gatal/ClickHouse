@@ -130,7 +130,7 @@ bool Squashing::canGenerate()
 
     if (squash_with_strict_limits)
     {
-        return  allMinReached(total_rows, total_bytes) || oneMaxReached(total_rows, total_bytes);
+        return allMinReached(total_rows, total_bytes) || oneMaxReached(total_rows, total_bytes);
     }
     return oneMinReached(total_rows, total_bytes);
 }
@@ -262,7 +262,6 @@ static Chunk sliceChunk(const Chunk & chunk, size_t offset, size_t length)
     }
 
     Chunk result(std::move(sliced_columns), length);
-    result.setChunkInfos((chunk.getChunkInfos().clone()));
 
     return result;
 }
