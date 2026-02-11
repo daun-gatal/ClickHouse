@@ -448,6 +448,19 @@ DB::Names PaimonRestCatalog::getTables() const
     return tables;
 }
 
+void PaimonRestCatalog::checkDatabase(std::string database_name) const
+{
+    LOG_TEST(log, "Checking database '{}'", database_name);
+    DB::Names tables;
+    auto list_database_stop_condition = [this, &tables](const String & name)
+    {
+        /// stop when get any table
+        forEachTables(name, tables, [](const String &) { return true; });
+        return !tables.empty();
+    };
+    list_database_stop_condition(database_name);
+}
+
 bool PaimonRestCatalog::existsTable(const String & database_name, const String & table_name) const
 {
     try

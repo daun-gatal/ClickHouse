@@ -822,7 +822,7 @@ ASTPtr DatabaseDataLake::getCreateDatabaseQueryImpl() const
 void DatabaseDataLake::checkDatabase() const
 {
     auto catalog = getCatalog();
-    catalog->checkDatabase(database_name);
+    catalog->checkDatabase(getDatabaseName());
 }
 
 ASTPtr DatabaseDataLake::getCreateTableQueryImpl(
