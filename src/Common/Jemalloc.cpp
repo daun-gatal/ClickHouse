@@ -215,12 +215,13 @@ std::unordered_map<UInt64, std::string> symbolizeAddresses(const std::unordered_
 
         /// Reverse, since forEachFrame() adds inline frames first
         std::string combined;
-        std::string_view separator = "";
+        bool first_symbol = true;
         for (const auto & symbol : std::ranges::reverse_view(symbols))
         {
-            combined += separator;
+            if (!first_symbol)
+                combined += "--";
             combined += symbol;
-            separator = "--";
+            first_symbol = false;
         }
         result[address] = std::move(combined);
     }
