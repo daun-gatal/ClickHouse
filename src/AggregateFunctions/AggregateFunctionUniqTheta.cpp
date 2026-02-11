@@ -18,9 +18,10 @@ namespace ErrorCodes
     extern const int NUMBER_OF_ARGUMENTS_DOESNT_MATCH;
 }
 
-
 namespace
 {
+
+#if USE_DATASKETCHES
 
 template <typename Data, template <bool, bool> typename DataForVariadic>
 AggregateFunctionPtr
@@ -71,85 +72,70 @@ createAggregateFunctionUniq(const std::string & name, const DataTypes & argument
     return std::make_shared<AggregateFunctionUniqVariadic<DataForVariadic<false, false>>>(argument_types);
 }
 
+#endif
+
 }
 
-void registerAggregateFunctionsUniq(AggregateFunctionFactory & factory)
+void registerAggregateFunctionUniqTheta(AggregateFunctionFactory & factory)
 {
+#if USE_DATASKETCHES
     AggregateFunctionProperties properties = { .returns_default_when_only_null = true, .is_order_dependent = false };
 
     FunctionDocumentation::Description description = R"(
-Calculates the approximate number of different values of the argument.
-
-The function uses an adaptive sampling algorithm. For the calculation state, the function uses a sample of element hash values up to 65536. This algorithm is very accurate and very efficient on the CPU. When the query contains several of these functions, using uniq is almost as fast as using other aggregate functions.
+Calculates the approximate number of different argument values, using the [Theta Sketch Framework](https://datasketches.apache.org/docs/Theta/ThetaSketches.html#theta-sketch-framework).
 
 <details>
 <summary>Implementation details</summary>
 
 This function calculates a hash for all parameters in the aggregate, then uses it in calculations.
-It uses an adaptive sampling algorithm.
-For the calculation state, the function uses a sample of element hash values up to 65536.
-This algorithm is very accurate and very efficient on the CPU.
-When the query contains several of these functions, using `uniq` is almost as fast as using other aggregate functions.
+It uses the [KMV](https://datasketches.apache.org/docs/Theta/InverseEstimate.html) algorithm to approximate the number of different argument values.
 
+4096(2^12) 64-bit sketch are used.
+The size of the state is about 41 KB.
+
+The relative error is 3.125% (95% confidence), see the [relative error table](https://datasketches.apache.org/docs/Theta/ThetaErrorTable.html) for detail.
 </details>
-
-:::tip
-We recommend using this function over other variants in almost all scenarios.
-:::
     )";
     FunctionDocumentation::Syntax syntax = R"(
-uniq(x[, ...])
+uniqTheta(x[, ...])
     )";
     FunctionDocumentation::Arguments arguments = {
         {"x", "The function takes a variable number of parameters.", {"Tuple(T)", "Array(T)", "Date", "DateTime", "String", "(U)Int*", "Float*", "Decimal"}}
     };
-    FunctionDocumentation::ReturnedValue returned_value = {"Returns a UInt64-type number representing the approximate number of different values.", {"UInt64"}};
+    FunctionDocumentation::ReturnedValue returned_value = {"Returns a UInt64-type number representing the approximate number of different argument values.", {"UInt64"}};
     FunctionDocumentation::Examples examples = {
     {
-        "Example usage",
+        "Basic usage",
         R"(
-CREATE TABLE example_table (
+CREATE TABLE example_theta
+(
     id UInt32,
-    category String,
-    value Float64
-) ENGINE = Memory;
+    category String
+)
+ENGINE = Memory;
 
-INSERT INTO example_table VALUES
-(1, 'A', 10.5),
-(2, 'B', 20.3),
-(3, 'A', 15.7),
-(4, 'C', 8.9),
-(5, 'B', 12.1),
-(6, 'A', 18.4);
+INSERT INTO example_theta VALUES
+(1, 'A'), (2, 'B'), (3, 'A'), (4, 'C'), (5, 'B'), (6, 'A');
 
-SELECT uniq(category) as unique_categories
-FROM example_table;
+SELECT uniqTheta(category) as theta_unique_categories
+FROM example_theta;
         )",
         R"(
-┌─unique_categories─┐
-│                 3 │
-└───────────────────┘
-        )"
-    },
-    {
-        "Multiple arguments",
-        R"(
-SELECT uniq(category, value) as unique_combinations
-FROM example_table;
-        )",
-        R"(
-┌─unique_combinations─┐
-│                   6 │
-└─────────────────────┘
+┌─theta_unique_categories─┐
+│                       3 │
+└─────────────────────────┘
         )"
     }
     };
-    FunctionDocumentation::IntroducedIn introduced_in = {1, 1};
+    FunctionDocumentation::IntroducedIn introduced_in = {21, 6};
     FunctionDocumentation::Category category = FunctionDocumentation::Category::AggregateFunction;
     FunctionDocumentation documentation = {description, syntax, arguments, {}, returned_value, examples, introduced_in, category};
 
-    factory.registerFunction("uniq",
-        {createAggregateFunctionUniq<AggregateFunctionUniqUniquesHashSetData, AggregateFunctionUniqUniquesHashSetDataForVariadic>, properties, documentation});
+    factory.registerFunction("uniqTheta",
+        {createAggregateFunctionUniq<AggregateFunctionUniqThetaData, AggregateFunctionUniqThetaDataForVariadic>, properties, documentation});
+#else
+    UNUSED(factory);
+#endif
 }
 
 }
