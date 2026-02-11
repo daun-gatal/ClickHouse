@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <vector>
+#include <string_view>
 #include <Core/ColumnsWithTypeAndName.h>
 #include <Core/NamesAndTypes.h>
 #include <Core/Names.h>
@@ -79,6 +80,19 @@ public:
         /// Placeholder node for correlated column
         PLACEHOLDER,
     };
+
+    static std::string_view actionTypeToString(ActionType type)
+    {
+        switch (type)
+        {
+            case ActionType::INPUT: return "INPUT";
+            case ActionType::COLUMN: return "COLUMN";
+            case ActionType::ALIAS: return "ALIAS";
+            case ActionType::ARRAY_JOIN: return "ARRAY_JOIN";
+            case ActionType::FUNCTION: return "FUNCTION";
+            case ActionType::PLACEHOLDER: return "PLACEHOLDER";
+        }
+    }
 
     struct Node;
     using NodeRawPtrs = std::vector<Node *>;

@@ -1,5 +1,4 @@
 #include <Interpreters/Cache/FileSegmentKeyType.h>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -8,12 +7,20 @@ String getKeyTypePrefix(FileSegmentKeyType type)
 {
     if (type == FileSegmentKeyType::General)
         return "";
-    return String(magic_enum::enum_name(type));
+    return toString(type);
 }
 
 String toString(FileSegmentKeyType type)
 {
-    return String(magic_enum::enum_name(type));
+    switch (type)
+    {
+        case FileSegmentKeyType::General:
+            return "General";
+        case FileSegmentKeyType::System:
+            return "System";
+        case FileSegmentKeyType::Data:
+            return "Data";
+    }
 }
 
 }

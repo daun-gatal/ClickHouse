@@ -3,6 +3,7 @@
 #include <Common/NamedCollections/NamedCollections_fwd.h>
 #include <Parsers/ASTCreateNamedCollectionQuery.h>
 #include <Parsers/ASTAlterNamedCollectionQuery.h>
+#include <string_view>
 
 #include <mutex>
 
@@ -101,6 +102,16 @@ protected:
     const bool is_mutable;
     mutable std::mutex mutex;
 };
+
+inline std::string_view toString(NamedCollection::SourceId id)
+{
+    switch (id)
+    {
+        case NamedCollection::SourceId::NONE: return "NONE";
+        case NamedCollection::SourceId::CONFIG: return "CONFIG";
+        case NamedCollection::SourceId::SQL: return "SQL";
+    }
+}
 
 class NamedCollectionFromSQL final : public NamedCollection
 {

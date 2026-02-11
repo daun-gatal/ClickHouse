@@ -8,7 +8,6 @@
 #include <IO/Operators.h>
 #include <IO/ReadBufferFromString.h>
 #include <IO/WriteHelpers.h>
-#include <magic_enum.hpp>
 #include <Storages/MergeTree/MergeTreeSettings.h>
 #include <Common/assert_cast.h>
 #include <Common/escapeForFileName.h>
@@ -147,7 +146,57 @@ String ISerialization::Substream::toString() const
     if (type == VariantElementNullMap)
         return fmt::format("VariantElementNullMap({}.null)", variant_element_name);
 
-    return String(magic_enum::enum_name(type));
+    switch (type)
+    {
+        case ArrayElements: return "ArrayElements";
+        case ArraySizes: return "ArraySizes";
+        case StringSizes: return "StringSizes";
+        case InlinedStringSizes: return "InlinedStringSizes";
+        case NullableElements: return "NullableElements";
+        case NullMap: return "NullMap";
+        case SparseNullMap: return "SparseNullMap";
+        case TupleElement: return "TupleElement";
+        case NamedOffsets: return "NamedOffsets";
+        case NamedNullMap: return "NamedNullMap";
+        case DictionaryKeys: return "DictionaryKeys";
+        case DictionaryKeysPrefix: return "DictionaryKeysPrefix";
+        case DictionaryIndexes: return "DictionaryIndexes";
+        case SparseElements: return "SparseElements";
+        case SparseOffsets: return "SparseOffsets";
+        case ReplicatedElements: return "ReplicatedElements";
+        case ReplicatedIndexes: return "ReplicatedIndexes";
+        case DeprecatedObjectStructure: return "DeprecatedObjectStructure";
+        case DeprecatedObjectData: return "DeprecatedObjectData";
+        case VariantDiscriminators: return "VariantDiscriminators";
+        case VariantDiscriminatorsPrefix: return "VariantDiscriminatorsPrefix";
+        case NamedVariantDiscriminators: return "NamedVariantDiscriminators";
+        case VariantOffsets: return "VariantOffsets";
+        case VariantElements: return "VariantElements";
+        case VariantElement: return "VariantElement";
+        case VariantElementNullMap: return "VariantElementNullMap";
+        case DynamicData: return "DynamicData";
+        case DynamicStructure: return "DynamicStructure";
+        case ObjectData: return "ObjectData";
+        case ObjectTypedPath: return "ObjectTypedPath";
+        case ObjectDynamicPath: return "ObjectDynamicPath";
+        case ObjectSharedData: return "ObjectSharedData";
+        case ObjectSharedDataBucket: return "ObjectSharedDataBucket";
+        case ObjectSharedDataStructure: return "ObjectSharedDataStructure";
+        case ObjectSharedDataStructurePrefix: return "ObjectSharedDataStructurePrefix";
+        case ObjectSharedDataStructureSuffix: return "ObjectSharedDataStructureSuffix";
+        case ObjectSharedDataData: return "ObjectSharedDataData";
+        case ObjectSharedDataSubstreams: return "ObjectSharedDataSubstreams";
+        case ObjectSharedDataPathsMarks: return "ObjectSharedDataPathsMarks";
+        case ObjectSharedDataSubstreamsMarks: return "ObjectSharedDataSubstreamsMarks";
+        case ObjectSharedDataPathsSubstreamsMetadata: return "ObjectSharedDataPathsSubstreamsMetadata";
+        case ObjectSharedDataPathsInfos: return "ObjectSharedDataPathsInfos";
+        case ObjectSharedDataCopy: return "ObjectSharedDataCopy";
+        case ObjectSharedDataCopySizes: return "ObjectSharedDataCopySizes";
+        case ObjectSharedDataCopyPathsIndexes: return "ObjectSharedDataCopyPathsIndexes";
+        case ObjectSharedDataCopyValues: return "ObjectSharedDataCopyValues";
+        case ObjectStructure: return "ObjectStructure";
+        case Regular: return "Regular";
+    }
 }
 
 String ISerialization::SubstreamPath::toString() const

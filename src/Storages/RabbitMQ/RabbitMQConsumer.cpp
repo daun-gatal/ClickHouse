@@ -10,7 +10,6 @@
 #include <Common/logger_useful.h>
 #include <Poco/Timer.h>
 #include <amqpcpp.h>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -96,7 +95,7 @@ bool RabbitMQConsumer::ackMessages(const CommitInfo & commit_info)
 {
     if (state != State::OK)
     {
-        LOG_TEST(log, "State is {}, will not ack messages", magic_enum::enum_name(state.load(std::memory_order_relaxed)));
+        LOG_TEST(log, "State is {}, will not ack messages", stateToString(state.load(std::memory_order_relaxed)));
         return false;
     }
 
@@ -150,7 +149,7 @@ bool RabbitMQConsumer::nackMessages(const CommitInfo & commit_info)
 {
     if (state != State::OK)
     {
-        LOG_TEST(log, "State is {}, will not nack messages", magic_enum::enum_name(state.load(std::memory_order_relaxed)));
+        LOG_TEST(log, "State is {}, will not nack messages", stateToString(state.load(std::memory_order_relaxed)));
         return false;
     }
 

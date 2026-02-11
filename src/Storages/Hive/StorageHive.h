@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config.h"
-#include <magic_enum.hpp>
+#include <string_view>
 
 #if USE_HIVE
 
@@ -81,7 +81,13 @@ private:
 
     static String pruneLevelToString(PruneLevel level)
     {
-        return String(magic_enum::enum_name(level));
+        switch (level)
+        {
+            case PruneLevel::None: return "None";
+            case PruneLevel::Partition: return "Partition";
+            case PruneLevel::File: return "File";
+            case PruneLevel::Split: return "Split";
+        }
     }
 
     static ASTPtr extractKeyExpressionList(const ASTPtr & node);

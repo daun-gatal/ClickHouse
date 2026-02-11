@@ -24,7 +24,6 @@
 #include <Interpreters/Context.h>
 
 #include <Parsers/ASTCreateResourceQuery.h>
-#include <magic_enum.hpp>
 #if ENABLE_DISTRIBUTED_CACHE
 #include <DistributedCache/Utils.h>
 #endif
@@ -858,7 +857,7 @@ std::unique_ptr<ReadBufferFromFileBase> DiskObjectStorage::readFile(
     {
         /// We identify the file by its first object, with the assumption that an object can't
         /// belong to more than one file.
-        auto cache_path_prefix = fmt::format("{}:{}:", /*disk*/ name, magic_enum::enum_name(object_storages->takePointingTo(cluster->getLocalLocation())->getType()));
+        auto cache_path_prefix = fmt::format("{}:{}:", /*disk*/ name, toString(object_storages->takePointingTo(cluster->getLocalLocation())->getType()));
         const auto object_namespace = object_storages->takePointingTo(cluster->getLocalLocation())->getObjectsNamespace();
         if (!object_namespace.empty())
             cache_path_prefix += object_namespace + "/";

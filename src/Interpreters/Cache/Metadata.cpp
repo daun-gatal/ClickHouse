@@ -7,7 +7,6 @@
 #include <Common/ElapsedTimeProfileEventIncrement.h>
 #include <filesystem>
 #include <Interpreters/Cache/FileSegmentInfo.h>
-#include <magic_enum.hpp>
 
 namespace fs = std::filesystem;
 
@@ -33,6 +32,19 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
     extern const int BAD_ARGUMENTS;
     extern const int FILECACHE_ACCESS_DENIED;
+}
+
+static std::string_view toString(KeyMetadata::KeyState state)
+{
+    switch (state)
+    {
+        case KeyMetadata::KeyState::ACTIVE:
+            return "ACTIVE";
+        case KeyMetadata::KeyState::REMOVING:
+            return "REMOVING";
+        case KeyMetadata::KeyState::REMOVED:
+            return "REMOVED";
+    }
 }
 
 FileSegmentMetadata::FileSegmentMetadata(FileSegmentPtr && file_segment_)
@@ -105,7 +117,7 @@ LockedKeyPtr KeyMetadata::lock()
 
     throw Exception(
         ErrorCodes::LOGICAL_ERROR,
-        "Cannot lock key {} (state: {})", key, magic_enum::enum_name(key_state));
+        "Cannot lock key {} (state: {})", key, toString(key_state));
 }
 
 LockedKeyPtr KeyMetadata::tryLock()
@@ -546,7 +558,7 @@ void CacheMetadata::removeKey(const Key & key, bool if_exists, bool if_releasabl
     {
         if (if_exists)
             return;
-        throw Exception(ErrorCodes::BAD_ARGUMENTS, "No such key: {} (state: {})", key, magic_enum::enum_name(state));
+        throw Exception(ErrorCodes::BAD_ARGUMENTS, "No such key: {} (state: {})", key, toString(state));
     }
 
     bool removed_all = locked_key->removeAllFileSegments(if_releasable);

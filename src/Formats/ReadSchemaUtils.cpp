@@ -11,7 +11,7 @@
 #include <Storages/IStorage.h>
 #include <Common/assert_cast.h>
 #include <base/scope_guard.h>
-#include <magic_enum.hpp>
+#include <Core/SchemaInferenceMode.h>
 
 namespace DB
 {
@@ -585,7 +585,7 @@ SchemaCache::Keys getKeysForSchemaCache(
     /// For example, for Protobuf format additional information is the path to the schema
     /// and message name.
     String additional_format_info = FormatFactory::instance().getAdditionalInfoForSchemaCache(format, context, format_settings);
-    String schema_inference_mode(magic_enum::enum_name(context->getSettingsRef()[Setting::schema_inference_mode].value));
+    String schema_inference_mode(toString(context->getSettingsRef()[Setting::schema_inference_mode].value));
     SchemaCache::Keys cache_keys;
     cache_keys.reserve(sources.size());
     std::transform(

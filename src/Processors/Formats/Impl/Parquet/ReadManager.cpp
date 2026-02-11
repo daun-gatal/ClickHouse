@@ -13,7 +13,6 @@
 #include <string>
 #include <thread>
 #include <unordered_set>
-#include <magic_enum.hpp>
 
 namespace DB::ErrorCodes
 {
@@ -339,7 +338,7 @@ void ReadManager::finishRowSubgroupStage(size_t row_group_idx, size_t row_subgro
     std::optional<size_t> advanced_ptr;
 
     LOG_DEBUG(getLogger("ParquetReadManager"), "finishRowSubgroupStage: rg={} sg={} stage={} step={} rows_pass={} rows_total={}",
-              row_group_idx, row_subgroup_idx, magic_enum::enum_name(stage), step_idx,
+              row_group_idx, row_subgroup_idx, toString(stage), step_idx,
               row_subgroup.filter.rows_pass, row_subgroup.filter.rows_total);
 
     switch (stage)
@@ -566,7 +565,7 @@ void ReadManager::scheduleTasksIfNeeded(ReadStage stage_idx)
     size_t batches_in_progress = stage.batches_in_progress.load(std::memory_order_relaxed);
 
     LOG_DEBUG(getLogger("ParquetReadManager"), "scheduleTasksIfNeeded: stage={} memory_usage={} batches_in_progress={} limits: mem_low={} mem_high={} threads={}",
-              magic_enum::enum_name(stage_idx), memory_usage, batches_in_progress,
+              toString(stage_idx), memory_usage, batches_in_progress,
               limits.memory_low_watermark, limits.memory_high_watermark, limits.parsing_threads);
     /// Need to be careful to avoid getting deadlocked in a situation where tasks can't be scheduled
     /// because memory usage is high, while memory usage can't decrease because tasks can't be scheduled.
@@ -591,7 +590,7 @@ void ReadManager::scheduleTasksIfNeeded(ReadStage stage_idx)
         if (!row_group_maybe.has_value())
         {
             LOG_DEBUG(getLogger("ParquetReadManager"), "scheduleTasksIfNeeded: stage={} no schedulable row groups",
-                      magic_enum::enum_name(stage_idx));
+                      toString(stage_idx));
             break;
         }
         size_t row_group_idx = *row_group_maybe;
@@ -600,7 +599,7 @@ void ReadManager::scheduleTasksIfNeeded(ReadStage stage_idx)
                 batches_in_progress, tasks.size(), limits);
         bool is_privileged = is_privileged_task(row_group_idx);
         LOG_DEBUG(getLogger("ParquetReadManager"), "scheduleTasksIfNeeded: stage={} rg={} can_schedule={} is_privileged={}",
-                  magic_enum::enum_name(stage_idx), row_group_idx, can_schedule, is_privileged);
+                  toString(stage_idx), row_group_idx, can_schedule, is_privileged);
 
         if (!can_schedule && !is_privileged)
             break;
@@ -635,7 +634,7 @@ void ReadManager::scheduleTasksIfNeeded(ReadStage stage_idx)
     if (!tasks.empty())
     {
         LOG_DEBUG(getLogger("ParquetReadManager"), "scheduleTasksIfNeeded: stage={} scheduling {} tasks in {} batches",
-                  magic_enum::enum_name(stage_idx), tasks.size(), std::min(tasks.size(), limits.parsing_threads) + 1);
+                  toString(stage_idx), tasks.size(), std::min(tasks.size(), limits.parsing_threads) + 1);
 
         /// Group tiny tasks into batches to reduce scheduling overhead.
         /// TODO [parquet]: Try removing this (along with cost_estimate_bytes field).
@@ -675,7 +674,7 @@ void ReadManager::scheduleTasksIfNeeded(ReadStage stage_idx)
     else
     {
         LOG_DEBUG(getLogger("ParquetReadManager"), "scheduleTasksIfNeeded: stage={} no tasks to schedule",
-                  magic_enum::enum_name(stage_idx));
+                  toString(stage_idx));
     }
 }
 
@@ -787,7 +786,7 @@ void ReadManager::runBatchOfTasks(const std::vector<Task> & tasks) noexcept
     }
     catch (DB::Exception & e)
     {
-        e.addMessage("read stage: {}", magic_enum::enum_name(stage));
+        e.addMessage("read stage: {}", toString(stage));
         if (column_idx != UINT64_MAX)
             e.addMessage("column: {}", reader.primitive_columns[column_idx].name);
         exc = std::current_exception();
@@ -944,7 +943,7 @@ std::string ReadManager::collectDeadlockDiagnostics()
             UInt64 bits = atomic_bits.load(std::memory_order_relaxed);
             schedulable_count += __builtin_popcountll(bits);
         }
-        result += " st " + std::to_string(i) + " (" + std::string(magic_enum::enum_name(ReadStage(i))) + "):";
+        result += " st " + std::to_string(i) + " (" + std::string(toString(ReadStage(i))) + "):";
         result += " mem_u: " + std::to_string(stage.memory_usage.load(std::memory_order_relaxed));
         result += " btch: " + std::to_string(stage.batches_in_progress.load(std::memory_order_relaxed));
         result += " rgs_sch: " + std::to_string(schedulable_count) + "\t";
@@ -959,7 +958,7 @@ std::string ReadManager::collectDeadlockDiagnostics()
     {
         const auto & row_group = reader.row_groups[rg_idx];
         result += " rg[" + std::to_string(rg_idx) + "]: ";
-        result += " st: " + std::string(magic_enum::enum_name(row_group.stage.load(std::memory_order_relaxed)));
+        result += " st: " + std::string(toString(row_group.stage.load(std::memory_order_relaxed)));
         result += " del_ptr: " + std::to_string(row_group.delivery_ptr.load(std::memory_order_relaxed)) + "/" + std::to_string(row_group.subgroups.size());
         result += " read_ptr: " + std::to_string(row_group.read_ptr.load(std::memory_order_relaxed));
         result += " ";

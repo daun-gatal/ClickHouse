@@ -22,7 +22,6 @@
 
 #include <unistd.h>
 #include <bit>
-#include <magic_enum.hpp>
 
 #if USE_JEMALLOC
 #include <Common/Jemalloc.h>
@@ -635,7 +634,21 @@ String FeatureFlagsCommand::run()
         writeText('\n', ret);
     };
 
-    for (const auto & [feature_flag, name] : magic_enum::enum_entries<KeeperFeatureFlag>())
+    static constexpr std::pair<KeeperFeatureFlag, std::string_view> feature_flag_entries[] = {
+        {KeeperFeatureFlag::FILTERED_LIST, "FILTERED_LIST"},
+        {KeeperFeatureFlag::MULTI_READ, "MULTI_READ"},
+        {KeeperFeatureFlag::CHECK_NOT_EXISTS, "CHECK_NOT_EXISTS"},
+        {KeeperFeatureFlag::CREATE_IF_NOT_EXISTS, "CREATE_IF_NOT_EXISTS"},
+        {KeeperFeatureFlag::REMOVE_RECURSIVE, "REMOVE_RECURSIVE"},
+        {KeeperFeatureFlag::MULTI_WATCHES, "MULTI_WATCHES"},
+        {KeeperFeatureFlag::CHECK_STAT, "CHECK_STAT"},
+        {KeeperFeatureFlag::PERSISTENT_WATCHES, "PERSISTENT_WATCHES"},
+        {KeeperFeatureFlag::CREATE_WITH_STATS, "CREATE_WITH_STATS"},
+        {KeeperFeatureFlag::TRY_REMOVE, "TRY_REMOVE"},
+        {KeeperFeatureFlag::LIST_WITH_STAT_AND_DATA, "LIST_WITH_STAT_AND_DATA"},
+    };
+
+    for (const auto & [feature_flag, name] : feature_flag_entries)
     {
         std::string feature_flag_string(name);
         boost::to_lower(feature_flag_string);

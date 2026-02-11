@@ -359,6 +359,8 @@ enum class ObjectStorageQueueMode : uint8_t
 
 DECLARE_SETTING_ENUM(ObjectStorageQueueMode)
 
+inline const String & toString(ObjectStorageQueueMode value) { return SettingFieldObjectStorageQueueModeTraits::toString(value); }
+
 enum class ObjectStorageQueueAction : uint8_t
 {
     KEEP,
@@ -377,6 +379,8 @@ enum class ObjectStorageQueuePartitioningMode : uint8_t
 };
 
 DECLARE_SETTING_ENUM(ObjectStorageQueuePartitioningMode)
+
+inline const String & toString(ObjectStorageQueuePartitioningMode value) { return SettingFieldObjectStorageQueuePartitioningModeTraits::toString(value); }
 
 enum class ObjectStorageQueueBucketingMode : uint8_t
 {

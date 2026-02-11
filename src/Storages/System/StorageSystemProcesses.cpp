@@ -14,7 +14,6 @@
 #include <Columns/ColumnArray.h>
 
 #include <Poco/Net/SocketAddress.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -140,7 +139,7 @@ void StorageSystemProcesses::fillData(MutableColumns & res_columns, ContextPtr c
         res_columns[i++]->insert(process.peak_memory_usage);
         res_columns[i++]->insert(process.query);
         res_columns[i++]->insert(process.normalized_query_hash);
-        res_columns[i++]->insert(magic_enum::enum_name(process.query_kind));
+        res_columns[i++]->insert(IAST::queryKindToString(process.query_kind));
 
         {
             Array threads_array;

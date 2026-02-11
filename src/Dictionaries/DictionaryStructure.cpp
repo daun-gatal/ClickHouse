@@ -16,7 +16,6 @@
 #include <DataTypes/DataTypeArray.h>
 #include <DataTypes/DataTypesNumber.h>
 #include <Functions/FunctionHelpers.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -54,7 +53,36 @@ std::optional<AttributeUnderlyingType> tryGetAttributeUnderlyingType(TypeIndex i
         default: break;
     }
 
-    return magic_enum::enum_cast<AttributeUnderlyingType>(static_cast<TypeIndexUnderlying>(index));
+    auto value = static_cast<TypeIndexUnderlying>(index);
+    switch (static_cast<AttributeUnderlyingType>(value))
+    {
+        case AttributeUnderlyingType::Int8:
+        case AttributeUnderlyingType::Int16:
+        case AttributeUnderlyingType::Int32:
+        case AttributeUnderlyingType::Int64:
+        case AttributeUnderlyingType::Int128:
+        case AttributeUnderlyingType::Int256:
+        case AttributeUnderlyingType::UInt8:
+        case AttributeUnderlyingType::UInt16:
+        case AttributeUnderlyingType::UInt32:
+        case AttributeUnderlyingType::UInt64:
+        case AttributeUnderlyingType::UInt128:
+        case AttributeUnderlyingType::UInt256:
+        case AttributeUnderlyingType::Float32:
+        case AttributeUnderlyingType::Float64:
+        case AttributeUnderlyingType::Decimal32:
+        case AttributeUnderlyingType::Decimal64:
+        case AttributeUnderlyingType::Decimal128:
+        case AttributeUnderlyingType::Decimal256:
+        case AttributeUnderlyingType::DateTime64:
+        case AttributeUnderlyingType::UUID:
+        case AttributeUnderlyingType::String:
+        case AttributeUnderlyingType::Array:
+        case AttributeUnderlyingType::IPv4:
+        case AttributeUnderlyingType::IPv6:
+            return static_cast<AttributeUnderlyingType>(value);
+    }
+    return std::nullopt;
 }
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "config.h"
-#include <magic_enum.hpp>
+#include <string_view>
 
 #if USE_HIVE
 
@@ -67,6 +67,20 @@ public:
         {ORC_INPUT_FORMAT, FileFormat::ORC},
     };
 
+    static std::string_view fileFormatToString(FileFormat fmt)
+    {
+        switch (fmt)
+        {
+            case FileFormat::RC_FILE: return "RC_FILE";
+            case FileFormat::TEXT: return "TEXT";
+            case FileFormat::LZO_TEXT: return "LZO_TEXT";
+            case FileFormat::SEQUENCE_FILE: return "SEQUENCE_FILE";
+            case FileFormat::AVRO: return "AVRO";
+            case FileFormat::PARQUET: return "PARQUET";
+            case FileFormat::ORC: return "ORC";
+        }
+    }
+
     static bool isFormatClass(const String & format_class) { return VALID_HDFS_FORMATS.contains(format_class); }
     static FileFormat toFileFormat(const String & format_class)
     {
@@ -98,7 +112,7 @@ public:
     }
     virtual ~IHiveFile() = default;
 
-    String getFormatName() const { return String(magic_enum::enum_name(getFormat())); }
+    String getFormatName() const { return String(fileFormatToString(getFormat())); }
     const String & getPath() const { return path; }
     UInt64 getLastModTs() const { return last_modify_time; }
     size_t getSize() const { return size; }

@@ -2,6 +2,7 @@
 
 #include <base/defines.h>
 #include <base/types.h>
+#include <string_view>
 
 namespace DB
 {
@@ -37,6 +38,44 @@ enum class MetadataStorageType : uint8_t
 };
 
 MetadataStorageType metadataTypeFromString(const String & type);
+
+inline std::string_view toString(DataSourceType type)
+{
+    switch (type)
+    {
+        case DataSourceType::Local: return "Local";
+        case DataSourceType::RAM: return "RAM";
+        case DataSourceType::ObjectStorage: return "ObjectStorage";
+    }
+}
+
+inline std::string_view toString(ObjectStorageType type)
+{
+    switch (type)
+    {
+        case ObjectStorageType::None: return "None";
+        case ObjectStorageType::S3: return "S3";
+        case ObjectStorageType::Azure: return "Azure";
+        case ObjectStorageType::HDFS: return "HDFS";
+        case ObjectStorageType::Web: return "Web";
+        case ObjectStorageType::Local: return "Local";
+        case ObjectStorageType::Max: return "Max";
+    }
+}
+
+inline std::string_view toString(MetadataStorageType type)
+{
+    switch (type)
+    {
+        case MetadataStorageType::None: return "None";
+        case MetadataStorageType::Local: return "Local";
+        case MetadataStorageType::Keeper: return "Keeper";
+        case MetadataStorageType::Plain: return "Plain";
+        case MetadataStorageType::PlainRewritable: return "PlainRewritable";
+        case MetadataStorageType::StaticWeb: return "StaticWeb";
+        case MetadataStorageType::Memory: return "Memory";
+    }
+}
 
 struct DataSourceDescription
 {

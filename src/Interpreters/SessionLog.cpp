@@ -29,7 +29,6 @@
 #include <Poco/Net/SocketAddress.h>
 
 #include <cassert>
-#include <magic_enum.hpp>
 
 
 namespace
@@ -116,7 +115,8 @@ ColumnsDescription SessionLogElement::getColumnsDescription()
             {"Prometheus",             static_cast<Int8>(Interface::PROMETHEUS)},
             {"Background",             static_cast<Int8>(Interface::BACKGROUND)},
         });
-    static_assert(magic_enum::enum_count<Interface>() == 10, "Please update the array above to match the enum.");
+    /// NOTE: If you add a new Interface value, please update the array above.
+    static_assert(static_cast<int>(Interface::ARROW_FLIGHT) == 10, "Please update the array above to match the enum.");
 
     auto lc_string_datatype = std::make_shared<DataTypeLowCardinality>(std::make_shared<DataTypeString>());
 

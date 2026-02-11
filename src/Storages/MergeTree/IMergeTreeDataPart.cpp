@@ -50,7 +50,6 @@
 #include <exception>
 #include <optional>
 #include <string_view>
-#include <magic_enum.hpp>
 
 
 namespace CurrentMetrics
@@ -550,7 +549,7 @@ void IMergeTreeDataPart::setState(MergeTreeDataPartState new_state) const
 
 std::string_view IMergeTreeDataPart::stateString(MergeTreeDataPartState state)
 {
-    return magic_enum::enum_name(state);
+    return toString(state);
 }
 
 std::pair<DayNum, DayNum> IMergeTreeDataPart::getMinMaxDate() const
@@ -2887,7 +2886,7 @@ std::unique_ptr<ReadBuffer> IMergeTreeDataPart::readFileIfExists(const String & 
 
 String IMergeTreeDataPart::stateToString() const
 {
-    return String(magic_enum::enum_name<MergeTreeDataPartState>(state.load(std::memory_order_relaxed)));
+    return String(toString(state.load(std::memory_order_relaxed)));
 }
 
 }

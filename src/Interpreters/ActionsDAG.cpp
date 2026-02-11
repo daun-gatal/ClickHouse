@@ -37,7 +37,6 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/inlined_vector.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -125,7 +124,7 @@ bool ActionsDAG::Node::isDeterministic() const
 
 void ActionsDAG::Node::toTree(JSONBuilder::JSONMap & map) const
 {
-    map.add("Node Type", magic_enum::enum_name(type));
+    map.add("Node Type", ActionsDAG::actionTypeToString(type));
 
     if (result_type)
         map.add("Result Type", result_type->getName());
@@ -4098,7 +4097,7 @@ ActionsDAG ActionsDAG::deserialize(ReadBuffer & in, DeserializedSetsRegistry & r
         if (input->type != ActionType::INPUT)
             throw Exception(ErrorCodes::INCORRECT_DATA,
                 "Deserialized input {} has type {}",
-                input->result_name, magic_enum::enum_name(input->type));
+                input->result_name, ActionsDAG::actionTypeToString(input->type));
 
         if (!inputs_set.emplace(input).second)
             throw Exception(ErrorCodes::INCORRECT_DATA,

@@ -3,41 +3,38 @@
 #include <vector>
 #include <algorithm>
 
-#include <magic_enum.hpp>
-
 
 namespace DB
 {
-
-namespace
-{
-    std::vector<std::string> getTypeIndexToTypeName()
-    {
-        constexpr std::size_t types_size = magic_enum::enum_count<ServerType::Type>();
-
-        std::vector<std::string> type_index_to_type_name;
-        type_index_to_type_name.resize(types_size);
-
-        auto entries = magic_enum::enum_entries<ServerType::Type>();
-        for (const auto & [entry, str] : entries)
-        {
-            auto str_copy = String(str);
-            std::replace(str_copy.begin(), str_copy.end(), '_', ' ');
-            type_index_to_type_name[static_cast<UInt64>(entry)] = std::move(str_copy);
-        }
-
-        return type_index_to_type_name;
-    }
-}
 
 const char * ServerType::serverTypeToString(ServerType::Type type)
 {
     /** During parsing if SystemQuery is not parsed properly it is added to Expected variants as description check IParser.h.
       * Description string must be statically allocated.
       */
-    static std::vector<std::string> type_index_to_type_name = getTypeIndexToTypeName();
-    const auto & type_name = type_index_to_type_name[static_cast<UInt64>(type)];
-    return type_name.data();
+    switch (type)
+    {
+        case Type::TCP_WITH_PROXY:    return "TCP WITH PROXY";
+        case Type::TCP_SECURE:        return "TCP SECURE";
+        case Type::TCP_SSH:           return "TCP SSH";
+        case Type::TCP:               return "TCP";
+        case Type::HTTP:              return "HTTP";
+        case Type::HTTPS:             return "HTTPS";
+        case Type::MYSQL:             return "MYSQL";
+        case Type::GRPC:              return "GRPC";
+        case Type::ARROW_FLIGHT:      return "ARROW FLIGHT";
+        case Type::POSTGRESQL:        return "POSTGRESQL";
+        case Type::PROMETHEUS:        return "PROMETHEUS";
+        case Type::CUSTOM:            return "CUSTOM";
+        case Type::INTERSERVER_HTTP:  return "INTERSERVER HTTP";
+        case Type::INTERSERVER_HTTPS: return "INTERSERVER HTTPS";
+        case Type::QUERIES_ALL:       return "QUERIES ALL";
+        case Type::QUERIES_DEFAULT:   return "QUERIES DEFAULT";
+        case Type::QUERIES_CUSTOM:    return "QUERIES CUSTOM";
+        case Type::CLOUD:             return "CLOUD";
+        case Type::END:               return "END";
+    }
+    return "UNKNOWN";
 }
 
 bool ServerType::shouldStart(Type server_type, const std::string & server_custom_name) const

@@ -2,7 +2,6 @@
 #include <Interpreters/Cache/EvictionCandidates.h>
 #include <Common/CurrentMetrics.h>
 #include <Common/Exception.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -45,7 +44,7 @@ std::string IFileCachePriority::Entry::toString(const std::string & prefix) cons
     return fmt::format(
         "{}{}:{}:{} (state: {})",
         prefix, key, offset, size.load(),
-        magic_enum::enum_name(state.load(std::memory_order_relaxed)));
+        stateToString(state.load(std::memory_order_relaxed)));
 }
 
 void IFileCachePriority::check(const CacheStateGuard::Lock & lock) const
@@ -60,12 +59,27 @@ void IFileCachePriority::check(const CacheStateGuard::Lock & lock) const
         throw Exception(ErrorCodes::LOGICAL_ERROR, "Cache became inconsistent. There must be a bug");
 }
 
+static std::string_view toString(IFileCachePriority::Type type)
+{
+    switch (type)
+    {
+        case IFileCachePriority::Type::LRU:
+            return "LRU";
+        case IFileCachePriority::Type::SLRU:
+            return "SLRU";
+        case IFileCachePriority::Type::LRU_OVERCOMMIT:
+            return "LRU_OVERCOMMIT";
+        case IFileCachePriority::Type::SLRU_OVERCOMMIT:
+            return "SLRU_OVERCOMMIT";
+    }
+}
+
 std::unordered_map<std::string, IFileCachePriority::UsageStat> IFileCachePriority::getUsageStatPerClient()
 {
     throw Exception(
         ErrorCodes::NOT_IMPLEMENTED,
         "getUsageStatPerClient() is not implemented for {} policy",
-        magic_enum::enum_name(getType()));
+        toString(getType()));
 }
 
 void IFileCachePriority::removeEntries(
@@ -83,7 +97,7 @@ void IFileCachePriority::removeEntries(
         /// so we use `entry` to check validity of the iterator.
         const auto entry_state = entry->getState();
         chassert(entry_state == Entry::State::Invalidated || entry_state == Entry::State::Removed,
-                 fmt::format("Unexpected state: {}", magic_enum::enum_name(entry_state)));
+                 fmt::format("Unexpected state: {}", Entry::stateToString(entry_state)));
         if (entry_state != Entry::State::Removed)
             it->remove(lock);
     }

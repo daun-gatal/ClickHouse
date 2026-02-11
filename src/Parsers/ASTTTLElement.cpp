@@ -2,7 +2,6 @@
 #include <Parsers/ASTTTLElement.h>
 #include <Parsers/ASTWithAlias.h>
 #include <IO/Operators.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -47,7 +46,7 @@ void ASTTTLElement::formatImpl(WriteBuffer & ostr, const FormatSettings & settin
         else
             throw Exception(ErrorCodes::LOGICAL_ERROR,
                 "Unsupported destination type {} for TTL MOVE",
-                    magic_enum::enum_name(destination_type));
+                    toString(destination_type));
 
         if (if_exists)
             ostr << "IF EXISTS ";

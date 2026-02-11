@@ -12,7 +12,8 @@
 
 #include <Functions/keyvaluepair/impl/KeyValuePairExtractorBuilder.h>
 #include <Functions/keyvaluepair/ArgumentExtractor.h>
-#include <magic_enum.hpp>
+
+#include <Poco/String.h>
 
 namespace DB
 {
@@ -57,15 +58,18 @@ class ExtractKeyValuePairs : public IFunction
         if (parsed_arguments.unexpected_quoting_character_strategy)
         {
             const std::string unexpected_quoting_character_strategy_string{parsed_arguments.unexpected_quoting_character_strategy->getDataAt(0)};
-            const auto unexpected_quoting_character_strategy = magic_enum::enum_cast<extractKV::Configuration::UnexpectedQuotingCharacterStrategy>(
-                    unexpected_quoting_character_strategy_string, magic_enum::case_insensitive);
-
-            if (!unexpected_quoting_character_strategy)
-            {
+            const auto upper_strategy = Poco::toUpper(unexpected_quoting_character_strategy_string);
+            extractKV::Configuration::UnexpectedQuotingCharacterStrategy unexpected_quoting_character_strategy;
+            if (upper_strategy == "INVALID")
+                unexpected_quoting_character_strategy = extractKV::Configuration::UnexpectedQuotingCharacterStrategy::INVALID;
+            else if (upper_strategy == "ACCEPT")
+                unexpected_quoting_character_strategy = extractKV::Configuration::UnexpectedQuotingCharacterStrategy::ACCEPT;
+            else if (upper_strategy == "PROMOTE")
+                unexpected_quoting_character_strategy = extractKV::Configuration::UnexpectedQuotingCharacterStrategy::PROMOTE;
+            else
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Invalid unexpected_quoting_character_strategy argument: {}", unexpected_quoting_character_strategy_string);
-            }
 
-            builder.withUnexpectedQuotingCharacterStrategy(unexpected_quoting_character_strategy.value());
+            builder.withUnexpectedQuotingCharacterStrategy(unexpected_quoting_character_strategy);
         }
 
         return builder;

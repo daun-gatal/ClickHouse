@@ -12,7 +12,6 @@
 #include <Common/logger_useful.h>
 #include <Common/Exception.h>
 #include <Interpreters/Context_fwd.h>
-#include <magic_enum.hpp>
 
 namespace Coordination
 {
@@ -706,7 +705,7 @@ size_t ZooKeeperCheckWatchRequest::sizeImpl() const
 std::string ZooKeeperCheckWatchRequest::toStringImpl(bool /*short_format*/) const
 {
     String result = fmt::format("path: {}\n", path);
-    result += fmt::format("type: {}\n", String(magic_enum::enum_name(type)));
+    result += fmt::format("type: {}\n", String(CheckWatchRequest::toString(type)));
     return result;
 }
 

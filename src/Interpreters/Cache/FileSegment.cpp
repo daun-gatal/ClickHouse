@@ -5,7 +5,7 @@
 #include <IO/WriteBufferFromString.h>
 #include <Interpreters/Cache/FileCache.h>
 #include <Interpreters/Cache/FileCacheUtils.h>
-#include <magic_enum.hpp>
+
 #include <base/getThreadId.h>
 #include <base/hex.h>
 #include <Common/CurrentThread.h>
@@ -46,7 +46,13 @@ namespace ErrorCodes
 
 String toString(FileSegmentKind kind)
 {
-    return String(magic_enum::enum_name(kind));
+    switch (kind)
+    {
+        case FileSegmentKind::Regular:
+            return "Regular";
+        case FileSegmentKind::Ephemeral:
+            return "Ephemeral";
+    }
 }
 
 FileSegment::FileSegment(

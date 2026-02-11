@@ -26,7 +26,6 @@
 #include <Common/logger_useful.h>
 
 #include <fmt/ranges.h>
-#include <magic_enum.hpp>
 
 using namespace DB;
 
@@ -915,7 +914,7 @@ public:
     size_t total_rows_to_read = 0;
     bool state_initialized{false};
 
-    LoggerPtr log = getLogger(fmt::format("{}{}", magic_enum::enum_name(mode), "Coordinator"));
+    LoggerPtr log = getLogger(fmt::format("{}{}", ::DB::toString(mode), "Coordinator"));
 };
 
 void InOrderCoordinator::markReplicaAsUnavailable(size_t replica_number)
@@ -1117,8 +1116,8 @@ void ParallelReplicasReadingCoordinator::handleInitialAllRangesAnnouncement(Init
                 ErrorCodes::LOGICAL_ERROR,
                 "Replica {} decided to read in {} mode, not in {}. This is a bug",
                 announcement.replica_num,
-                magic_enum::enum_name(announcement.mode),
-                magic_enum::enum_name(pimpl->getCoordinationMode()));
+                toString(announcement.mode),
+                toString(pimpl->getCoordinationMode()));
         }
     });
 
@@ -1142,8 +1141,8 @@ void ParallelReplicasReadingCoordinator::handleInitialAllRangesAnnouncement(Init
             ErrorCodes::LOGICAL_ERROR,
             "Replica {} decided to read in {} mode, not in {}. This is a bug",
             announcement.replica_num,
-            magic_enum::enum_name(announcement.mode),
-            magic_enum::enum_name(pimpl->getCoordinationMode()));
+            toString(announcement.mode),
+            toString(pimpl->getCoordinationMode()));
 
     pimpl->handleInitialAllRangesAnnouncement(std::move(announcement));
 }
@@ -1178,8 +1177,8 @@ ParallelReadResponse ParallelReplicasReadingCoordinator::handleRequest(ParallelR
                 ErrorCodes::LOGICAL_ERROR,
                 "Replica {} decided to read in {} mode, not in {}. This is a bug",
                 request.replica_num,
-                magic_enum::enum_name(request.mode),
-                magic_enum::enum_name(pimpl->getCoordinationMode()));
+                toString(request.mode),
+                toString(pimpl->getCoordinationMode()));
 
         const auto replica_num = request.replica_num;
 

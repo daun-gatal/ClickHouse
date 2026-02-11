@@ -7,7 +7,6 @@
 #include <Interpreters/InstrumentationManager.h>
 #include <IO/WriteBuffer.h>
 #include <IO/Operators.h>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -17,35 +16,131 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-namespace
-{
-    std::vector<std::string> getTypeIndexToTypeName()
-    {
-        constexpr std::size_t types_size = magic_enum::enum_count<ASTSystemQuery::Type>();
-
-        std::vector<std::string> type_index_to_type_name;
-        type_index_to_type_name.resize(types_size);
-
-        auto entries = magic_enum::enum_entries<ASTSystemQuery::Type>();
-        for (const auto & [entry, str] : entries)
-        {
-            auto str_copy = String(str);
-            std::replace(str_copy.begin(), str_copy.end(), '_', ' ');
-            type_index_to_type_name[static_cast<UInt64>(entry)] = std::move(str_copy);
-        }
-
-        return type_index_to_type_name;
-    }
-}
-
 const char * ASTSystemQuery::typeToString(Type type)
 {
     /** During parsing if SystemQuery is not parsed properly it is added to Expected variants as description check IParser.h.
       * Description string must be statically allocated.
       */
-    static std::vector<std::string> type_index_to_type_name = getTypeIndexToTypeName();
-    const auto & type_name = type_index_to_type_name[static_cast<UInt64>(type)];
-    return type_name.data();
+    switch (type)
+    {
+        case Type::UNKNOWN:                      return "UNKNOWN";
+        case Type::SHUTDOWN:                     return "SHUTDOWN";
+        case Type::KILL:                         return "KILL";
+        case Type::SUSPEND:                      return "SUSPEND";
+        case Type::CLEAR_DNS_CACHE:              return "CLEAR DNS CACHE";
+        case Type::CLEAR_CONNECTIONS_CACHE:      return "CLEAR CONNECTIONS CACHE";
+        case Type::PREWARM_MARK_CACHE:           return "PREWARM MARK CACHE";
+        case Type::PREWARM_PRIMARY_INDEX_CACHE:  return "PREWARM PRIMARY INDEX CACHE";
+        case Type::CLEAR_MARK_CACHE:             return "CLEAR MARK CACHE";
+        case Type::CLEAR_PRIMARY_INDEX_CACHE:    return "CLEAR PRIMARY INDEX CACHE";
+        case Type::CLEAR_UNCOMPRESSED_CACHE:     return "CLEAR UNCOMPRESSED CACHE";
+        case Type::CLEAR_INDEX_MARK_CACHE:       return "CLEAR INDEX MARK CACHE";
+        case Type::CLEAR_INDEX_UNCOMPRESSED_CACHE: return "CLEAR INDEX UNCOMPRESSED CACHE";
+        case Type::CLEAR_VECTOR_SIMILARITY_INDEX_CACHE: return "CLEAR VECTOR SIMILARITY INDEX CACHE";
+        case Type::CLEAR_TEXT_INDEX_DICTIONARY_CACHE: return "CLEAR TEXT INDEX DICTIONARY CACHE";
+        case Type::CLEAR_TEXT_INDEX_HEADER_CACHE: return "CLEAR TEXT INDEX HEADER CACHE";
+        case Type::CLEAR_TEXT_INDEX_POSTINGS_CACHE: return "CLEAR TEXT INDEX POSTINGS CACHE";
+        case Type::CLEAR_TEXT_INDEX_CACHES:      return "CLEAR TEXT INDEX CACHES";
+        case Type::CLEAR_MMAP_CACHE:             return "CLEAR MMAP CACHE";
+        case Type::CLEAR_QUERY_CONDITION_CACHE:  return "CLEAR QUERY CONDITION CACHE";
+        case Type::CLEAR_QUERY_CACHE:            return "CLEAR QUERY CACHE";
+        case Type::CLEAR_COMPILED_EXPRESSION_CACHE: return "CLEAR COMPILED EXPRESSION CACHE";
+        case Type::CLEAR_ICEBERG_METADATA_CACHE: return "CLEAR ICEBERG METADATA CACHE";
+        case Type::CLEAR_PARQUET_METADATA_CACHE: return "CLEAR PARQUET METADATA CACHE";
+        case Type::CLEAR_FILESYSTEM_CACHE:       return "CLEAR FILESYSTEM CACHE";
+        case Type::CLEAR_DISTRIBUTED_CACHE:      return "CLEAR DISTRIBUTED CACHE";
+        case Type::CLEAR_DISK_METADATA_CACHE:    return "CLEAR DISK METADATA CACHE";
+        case Type::CLEAR_PAGE_CACHE:             return "CLEAR PAGE CACHE";
+        case Type::CLEAR_SCHEMA_CACHE:           return "CLEAR SCHEMA CACHE";
+        case Type::CLEAR_FORMAT_SCHEMA_CACHE:    return "CLEAR FORMAT SCHEMA CACHE";
+        case Type::CLEAR_S3_CLIENT_CACHE:        return "CLEAR S3 CLIENT CACHE";
+        case Type::STOP_LISTEN:                  return "STOP LISTEN";
+        case Type::START_LISTEN:                 return "START LISTEN";
+        case Type::RESTART_REPLICAS:             return "RESTART REPLICAS";
+        case Type::RESTART_REPLICA:              return "RESTART REPLICA";
+        case Type::RESTORE_REPLICA:              return "RESTORE REPLICA";
+        case Type::RESTORE_DATABASE_REPLICA:     return "RESTORE DATABASE REPLICA";
+        case Type::WAIT_LOADING_PARTS:           return "WAIT LOADING PARTS";
+        case Type::DROP_REPLICA:                 return "DROP REPLICA";
+        case Type::DROP_DATABASE_REPLICA:        return "DROP DATABASE REPLICA";
+        case Type::DROP_CATALOG_REPLICA:         return "DROP CATALOG REPLICA";
+        case Type::JEMALLOC_PURGE:               return "JEMALLOC PURGE";
+        case Type::JEMALLOC_ENABLE_PROFILE:      return "JEMALLOC ENABLE PROFILE";
+        case Type::JEMALLOC_DISABLE_PROFILE:     return "JEMALLOC DISABLE PROFILE";
+        case Type::JEMALLOC_FLUSH_PROFILE:       return "JEMALLOC FLUSH PROFILE";
+        case Type::SYNC_REPLICA:                 return "SYNC REPLICA";
+        case Type::SYNC_DATABASE_REPLICA:        return "SYNC DATABASE REPLICA";
+        case Type::SYNC_TRANSACTION_LOG:         return "SYNC TRANSACTION LOG";
+        case Type::SYNC_FILE_CACHE:              return "SYNC FILE CACHE";
+        case Type::REPLICA_READY:                return "REPLICA READY";
+        case Type::REPLICA_UNREADY:              return "REPLICA UNREADY";
+        case Type::RELOAD_DICTIONARY:            return "RELOAD DICTIONARY";
+        case Type::RELOAD_DICTIONARIES:          return "RELOAD DICTIONARIES";
+        case Type::RELOAD_MODEL:                 return "RELOAD MODEL";
+        case Type::RELOAD_MODELS:                return "RELOAD MODELS";
+        case Type::RELOAD_FUNCTION:              return "RELOAD FUNCTION";
+        case Type::RELOAD_FUNCTIONS:             return "RELOAD FUNCTIONS";
+        case Type::RELOAD_EMBEDDED_DICTIONARIES: return "RELOAD EMBEDDED DICTIONARIES";
+        case Type::RELOAD_CONFIG:                return "RELOAD CONFIG";
+        case Type::RELOAD_USERS:                 return "RELOAD USERS";
+        case Type::RELOAD_ASYNCHRONOUS_METRICS:  return "RELOAD ASYNCHRONOUS METRICS";
+        case Type::RESTART_DISK:                 return "RESTART DISK";
+        case Type::STOP_MERGES:                  return "STOP MERGES";
+        case Type::START_MERGES:                 return "START MERGES";
+        case Type::STOP_TTL_MERGES:              return "STOP TTL MERGES";
+        case Type::START_TTL_MERGES:             return "START TTL MERGES";
+        case Type::STOP_FETCHES:                 return "STOP FETCHES";
+        case Type::START_FETCHES:                return "START FETCHES";
+        case Type::STOP_MOVES:                   return "STOP MOVES";
+        case Type::START_MOVES:                  return "START MOVES";
+        case Type::STOP_REPLICATED_SENDS:        return "STOP REPLICATED SENDS";
+        case Type::START_REPLICATED_SENDS:       return "START REPLICATED SENDS";
+        case Type::STOP_REPLICATION_QUEUES:      return "STOP REPLICATION QUEUES";
+        case Type::START_REPLICATION_QUEUES:     return "START REPLICATION QUEUES";
+        case Type::STOP_REPLICATED_DDL_QUERIES:  return "STOP REPLICATED DDL QUERIES";
+        case Type::START_REPLICATED_DDL_QUERIES: return "START REPLICATED DDL QUERIES";
+        case Type::FLUSH_LOGS:                   return "FLUSH LOGS";
+        case Type::FLUSH_DISTRIBUTED:            return "FLUSH DISTRIBUTED";
+        case Type::FLUSH_ASYNC_INSERT_QUEUE:     return "FLUSH ASYNC INSERT QUEUE";
+        case Type::STOP_DISTRIBUTED_SENDS:       return "STOP DISTRIBUTED SENDS";
+        case Type::START_DISTRIBUTED_SENDS:      return "START DISTRIBUTED SENDS";
+        case Type::START_THREAD_FUZZER:          return "START THREAD FUZZER";
+        case Type::STOP_THREAD_FUZZER:           return "STOP THREAD FUZZER";
+        case Type::UNFREEZE:                     return "UNFREEZE";
+        case Type::ENABLE_FAILPOINT:             return "ENABLE FAILPOINT";
+        case Type::DISABLE_FAILPOINT:            return "DISABLE FAILPOINT";
+        case Type::WAIT_FAILPOINT:               return "WAIT FAILPOINT";
+        case Type::NOTIFY_FAILPOINT:             return "NOTIFY FAILPOINT";
+        case Type::SYNC_FILESYSTEM_CACHE:        return "SYNC FILESYSTEM CACHE";
+        case Type::STOP_PULLING_REPLICATION_LOG: return "STOP PULLING REPLICATION LOG";
+        case Type::START_PULLING_REPLICATION_LOG: return "START PULLING REPLICATION LOG";
+        case Type::STOP_CLEANUP:                 return "STOP CLEANUP";
+        case Type::START_CLEANUP:                return "START CLEANUP";
+        case Type::RESET_COVERAGE:               return "RESET COVERAGE";
+        case Type::REFRESH_VIEW:                 return "REFRESH VIEW";
+        case Type::WAIT_VIEW:                    return "WAIT VIEW";
+        case Type::START_VIEW:                   return "START VIEW";
+        case Type::START_VIEWS:                  return "START VIEWS";
+        case Type::START_REPLICATED_VIEW:        return "START REPLICATED VIEW";
+        case Type::STOP_VIEW:                    return "STOP VIEW";
+        case Type::STOP_VIEWS:                   return "STOP VIEWS";
+        case Type::STOP_REPLICATED_VIEW:         return "STOP REPLICATED VIEW";
+        case Type::CANCEL_VIEW:                  return "CANCEL VIEW";
+        case Type::TEST_VIEW:                    return "TEST VIEW";
+        case Type::LOAD_PRIMARY_KEY:             return "LOAD PRIMARY KEY";
+        case Type::UNLOAD_PRIMARY_KEY:           return "UNLOAD PRIMARY KEY";
+        case Type::STOP_VIRTUAL_PARTS_UPDATE:    return "STOP VIRTUAL PARTS UPDATE";
+        case Type::START_VIRTUAL_PARTS_UPDATE:   return "START VIRTUAL PARTS UPDATE";
+        case Type::STOP_REDUCE_BLOCKING_PARTS:   return "STOP REDUCE BLOCKING PARTS";
+        case Type::START_REDUCE_BLOCKING_PARTS:  return "START REDUCE BLOCKING PARTS";
+        case Type::UNLOCK_SNAPSHOT:              return "UNLOCK SNAPSHOT";
+        case Type::RECONNECT_ZOOKEEPER:          return "RECONNECT ZOOKEEPER";
+        case Type::INSTRUMENT_ADD:               return "INSTRUMENT ADD";
+        case Type::INSTRUMENT_REMOVE:            return "INSTRUMENT REMOVE";
+        case Type::RESET_DDL_WORKER:             return "RESET DDL WORKER";
+        case Type::END:                          return "END";
+    }
+    return "UNKNOWN";
 }
 
 String ASTSystemQuery::getDatabase() const
@@ -230,7 +325,7 @@ void ASTSystemQuery::formatImpl(WriteBuffer & ostr, const FormatSettings & setti
             if (sync_replica_mode != SyncReplicaMode::DEFAULT)
             {
                 ostr << ' ';
-                print_keyword(magic_enum::enum_name(sync_replica_mode));
+                print_keyword(toString(sync_replica_mode));
 
                 // If the mode is LIGHTWEIGHT and specific source replicas are specified
                 if (sync_replica_mode == SyncReplicaMode::LIGHTWEIGHT && !src_replicas.empty())
@@ -294,7 +389,7 @@ void ASTSystemQuery::formatImpl(WriteBuffer & ostr, const FormatSettings & setti
             if (sync_replica_mode != SyncReplicaMode::DEFAULT)
             {
                 ostr << ' ';
-                print_keyword(magic_enum::enum_name(sync_replica_mode));
+                print_keyword(toString(sync_replica_mode));
             }
             break;
         }

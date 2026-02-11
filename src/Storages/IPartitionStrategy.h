@@ -4,6 +4,7 @@
 #include <Parsers/IAST_fwd.h>
 #include <Storages/KeyDescription.h>
 #include <Processors/Chunk.h>
+#include <string_view>
 
 namespace DB
 {
@@ -82,6 +83,34 @@ struct PartitionStrategyFactory
         bool contains_partition_wildcard,
         bool partition_columns_in_data_file);
 };
+
+inline std::string_view toString(PartitionStrategyFactory::StrategyType type)
+{
+    switch (type)
+    {
+        case PartitionStrategyFactory::StrategyType::NONE: return "NONE";
+        case PartitionStrategyFactory::StrategyType::WILDCARD: return "WILDCARD";
+        case PartitionStrategyFactory::StrategyType::HIVE: return "HIVE";
+    }
+}
+
+/// Case-insensitive parse of StrategyType from string.
+inline std::optional<PartitionStrategyFactory::StrategyType> strategyTypeFromString(const std::string & str)
+{
+    auto upper = str;
+    for (auto & c : upper)
+        c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
+    if (upper == "NONE") return PartitionStrategyFactory::StrategyType::NONE;
+    if (upper == "WILDCARD") return PartitionStrategyFactory::StrategyType::WILDCARD;
+    if (upper == "HIVE") return PartitionStrategyFactory::StrategyType::HIVE;
+    return std::nullopt;
+}
+
+/// Case-insensitive check if string is a valid StrategyType.
+inline bool isStrategyType(const std::string & str)
+{
+    return strategyTypeFromString(str).has_value();
+}
 
 /*
  * Simply wraps the partition expression with a `toString` function call.

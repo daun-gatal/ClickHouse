@@ -2,6 +2,7 @@
 
 #include <Disks/IDisk.h>
 #include <Disks/DiskSelector.h>
+#include <string_view>
 
 #include <Poco/Util/AbstractConfiguration.h>
 
@@ -15,11 +16,30 @@ enum class VolumeType : uint8_t
     UNKNOWN
 };
 
+inline std::string_view toString(VolumeType type)
+{
+    switch (type)
+    {
+        case VolumeType::JBOD: return "JBOD";
+        case VolumeType::SINGLE_DISK: return "SINGLE_DISK";
+        case VolumeType::UNKNOWN: return "UNKNOWN";
+    }
+}
+
 enum class VolumeLoadBalancing : uint8_t
 {
     ROUND_ROBIN,
     LEAST_USED,
 };
+
+inline std::string_view toString(VolumeLoadBalancing balancing)
+{
+    switch (balancing)
+    {
+        case VolumeLoadBalancing::ROUND_ROBIN: return "ROUND_ROBIN";
+        case VolumeLoadBalancing::LEAST_USED: return "LEAST_USED";
+    }
+}
 
 VolumeLoadBalancing parseVolumeLoadBalancing(const String & config);
 

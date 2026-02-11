@@ -104,7 +104,6 @@ public:
                 printUnexpectedState(prev, stateToString(from_state), std::string(stateToString(to_state))));
         }
 
-    private:
         static std::string_view stateToString(State s)
         {
             switch (s)
@@ -118,6 +117,7 @@ public:
             return "Unknown";
         }
 
+    private:
         std::string printUnexpectedState(
             State prev_state, std::string_view expected_state, std::string type) const
         {

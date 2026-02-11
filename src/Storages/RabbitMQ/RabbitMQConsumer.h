@@ -4,6 +4,7 @@
 #include <base/types.h>
 #include <IO/ReadBuffer.h>
 #include <Common/ConcurrentBoundedQueue.h>
+#include <string_view>
 
 namespace Poco
 {
@@ -106,6 +107,16 @@ private:
         OK,
         ERROR,
     };
+    static std::string_view stateToString(State s)
+    {
+        switch (s)
+        {
+            case State::NONE: return "NONE";
+            case State::INITIALIZING: return "INITIALIZING";
+            case State::OK: return "OK";
+            case State::ERROR: return "ERROR";
+        }
+    }
     std::atomic<State> state = State::NONE;
     size_t subscriptions_num = 0;
 

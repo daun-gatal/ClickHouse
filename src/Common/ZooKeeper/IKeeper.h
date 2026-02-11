@@ -274,6 +274,18 @@ struct CheckWatchRequest : virtual Request
         PERSISTENT_RECURSIVE = 5
     };
 
+    static inline std::string_view toString(CheckWatchType t)
+    {
+        switch (t)
+        {
+            case CheckWatchType::CHILDREN: return "CHILDREN";
+            case CheckWatchType::DATA: return "DATA";
+            case CheckWatchType::ANY: return "ANY";
+            case CheckWatchType::PERSISTENT: return "PERSISTENT";
+            case CheckWatchType::PERSISTENT_RECURSIVE: return "PERSISTENT_RECURSIVE";
+        }
+    }
+
     String path;
     CheckWatchType type;
 

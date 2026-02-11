@@ -5,7 +5,6 @@
 #include <Parsers/CommonParsers.h>
 #include <Parsers/IAST_erase.h>
 #include <IO/WriteHelpers.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -39,7 +38,15 @@ std::string_view toString(ViewTarget::Kind kind)
 
 void parseFromString(ViewTarget::Kind & out, std::string_view str)
 {
-    for (auto kind : magic_enum::enum_values<ViewTarget::Kind>())
+    static constexpr ViewTarget::Kind all_kinds[] =
+    {
+        ViewTarget::To,
+        ViewTarget::Inner,
+        ViewTarget::Data,
+        ViewTarget::Tags,
+        ViewTarget::Metrics,
+    };
+    for (auto kind : all_kinds)
     {
         if (toString(kind) == str)
         {

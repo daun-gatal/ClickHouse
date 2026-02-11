@@ -13,7 +13,7 @@
 #include <IO/WriteBufferFromVector.h>
 
 #include <pcg_random.hpp>
-#include <magic_enum.hpp>
+#include <Core/TypeId.h>
 
 namespace DB
 {
@@ -169,7 +169,7 @@ namespace
             if (type == TypeIndex::FixedString)
                 writeString("FixedString(" + std::to_string(rng() % MAX_FIXEDSTRING_SIZE_WITHOUT_SUSPICIOUS + 1) + ")", buf);
             else
-                writeString(magic_enum::enum_name<TypeIndex>(type), buf);
+                writeString(toString(type), buf);
         }
         else
         {
@@ -236,7 +236,7 @@ namespace
                 writeChar(')', buf);
                 break;
             default:
-                writeString(magic_enum::enum_name<TypeIndex>(type), buf);
+                writeString(toString(type), buf);
                 break;
         }
     }
@@ -341,7 +341,7 @@ namespace
                 return;
             }
             default:
-                writeString(magic_enum::enum_name<TypeIndex>(type), buf);
+                writeString(toString(type), buf);
                 return;
         }
     }

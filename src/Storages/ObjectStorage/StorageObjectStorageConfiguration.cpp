@@ -8,7 +8,6 @@
 #include <Common/logger_useful.h>
 #include <Core/Settings.h>
 #include <Storages/ObjectStorage/Common.h>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -150,7 +149,7 @@ void StorageObjectStorageConfiguration::initPartitionStrategy(ASTPtr partition_b
     if (partition_strategy)
     {
         read_path = partition_strategy->getPathForRead(getRawPath().path);
-        LOG_DEBUG(getLogger("StorageObjectStorageConfiguration"), "Initialized partition strategy {}", magic_enum::enum_name(partition_strategy_type));
+        LOG_DEBUG(getLogger("StorageObjectStorageConfiguration"), "Initialized partition strategy {}", toString(partition_strategy_type));
     }
 }
 

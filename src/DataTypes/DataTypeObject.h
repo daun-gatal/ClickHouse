@@ -4,6 +4,7 @@
 #include <DataTypes/DataTypeDynamic.h>
 #include <DataTypes/IDataType.h>
 
+#include <string_view>
 
 namespace DB
 {
@@ -91,5 +92,13 @@ private:
     /// Limit of dynamic types that should be used for Dynamic columns.
     size_t max_dynamic_types;
 };
+
+inline std::string_view toString(DataTypeObject::SchemaFormat format)
+{
+    switch (format)
+    {
+        case DataTypeObject::SchemaFormat::JSON: return "JSON";
+    }
+}
 
 }

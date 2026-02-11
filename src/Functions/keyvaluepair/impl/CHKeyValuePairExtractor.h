@@ -6,7 +6,8 @@
 #include <Functions/keyvaluepair/impl/StateHandler.h>
 #include <Functions/keyvaluepair/impl/StateHandlerImpl.h>
 #include <absl/container/flat_hash_map.h>
-#include <magic_enum.hpp>
+
+#include <string_view>
 
 namespace DB
 {
@@ -19,6 +20,25 @@ namespace ErrorCodes
 
 namespace extractKV
 {
+
+inline std::string_view toString(StateHandler::State state)
+{
+    switch (state)
+    {
+        case StateHandler::State::WAITING_KEY: return "WAITING_KEY";
+        case StateHandler::State::READING_KEY: return "READING_KEY";
+        case StateHandler::State::READING_QUOTED_KEY: return "READING_QUOTED_KEY";
+        case StateHandler::State::READING_KV_DELIMITER: return "READING_KV_DELIMITER";
+        case StateHandler::State::WAITING_VALUE: return "WAITING_VALUE";
+        case StateHandler::State::READING_VALUE: return "READING_VALUE";
+        case StateHandler::State::READING_QUOTED_VALUE: return "READING_QUOTED_VALUE";
+        case StateHandler::State::FLUSH_PAIR: return "FLUSH_PAIR";
+        case StateHandler::State::FLUSH_PAIR_AFTER_QUOTED_VALUE: return "FLUSH_PAIR_AFTER_QUOTED_VALUE";
+        case StateHandler::State::WAITING_PAIR_DELIMITER: return "WAITING_PAIR_DELIMITER";
+        case StateHandler::State::END: return "END";
+    }
+}
+
 /*
  * Thread-safe key value pair extractor. This class in particular handles state transitions.
  * */
@@ -52,7 +72,7 @@ protected:
             {
                 throw Exception(ErrorCodes::LOGICAL_ERROR,
                         "Attempt to move read pointer past end of available data, from state {} to new state: {}, new position: {}, available data: {}",
-                        magic_enum::enum_name(state), magic_enum::enum_name(next_state.state),
+                        toString(state), toString(next_state.state),
                         next_state.position_in_string, data.size());
             }
 

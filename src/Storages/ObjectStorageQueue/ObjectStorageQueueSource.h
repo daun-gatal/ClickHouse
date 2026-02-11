@@ -261,6 +261,16 @@ private:
         Cancelled,
         Processed,
     };
+    static std::string_view fileStateToString(FileState state)
+    {
+        switch (state)
+        {
+            case FileState::Processing: return "Processing";
+            case FileState::ErrorOnRead: return "ErrorOnRead";
+            case FileState::Cancelled: return "Cancelled";
+            case FileState::Processed: return "Processed";
+        }
+    }
     struct ProcessedFile
     {
         explicit ProcessedFile(FileMetadataPtr metadata_)

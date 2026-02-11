@@ -7,7 +7,6 @@
 #include <Interpreters/FilesystemReadPrefetchesLog.h>
 #include <base/getFQDNOrHostName.h>
 #include <Common/DateLUTImpl.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -60,7 +59,7 @@ void FilesystemReadPrefetchesLogElement::appendToBlock(MutableColumns & columns)
         columns[i++]->insertDefault();
         columns[i++]->insertDefault();
     }
-    columns[i++]->insert(magic_enum::enum_name(state));
+    columns[i++]->insert(toString(state));
     columns[i++]->insert(thread_id);
     columns[i++]->insert(reader_id);
 }

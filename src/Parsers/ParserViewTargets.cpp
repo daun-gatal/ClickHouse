@@ -5,7 +5,6 @@
 #include <Parsers/ExpressionElementParsers.h>
 #include <Parsers/ParserCreateQuery.h>
 #include <IO/ReadHelpers.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -13,7 +12,15 @@ namespace DB
 
 ParserViewTargets::ParserViewTargets()
 {
-    for (auto kind : magic_enum::enum_values<ViewTarget::Kind>())
+    static constexpr ViewTarget::Kind all_kinds[] =
+    {
+        ViewTarget::To,
+        ViewTarget::Inner,
+        ViewTarget::Data,
+        ViewTarget::Tags,
+        ViewTarget::Metrics,
+    };
+    for (auto kind : all_kinds)
         accept_kinds.push_back(kind);
 }
 

@@ -2,6 +2,7 @@
 #include <Core/Types.h>
 #include <Common/logger_useful.h>
 #include <Common/ZooKeeper/ZooKeeper.h>
+#include <string_view>
 
 namespace DB
 {
@@ -220,5 +221,16 @@ protected:
 
     static std::string getProcessorInfo(const std::string & processor_id);
 };
+
+inline std::string_view toString(ObjectStorageQueueIFileMetadata::FileStatus::State state)
+{
+    switch (state)
+    {
+        case ObjectStorageQueueIFileMetadata::FileStatus::State::Processing: return "Processing";
+        case ObjectStorageQueueIFileMetadata::FileStatus::State::Processed: return "Processed";
+        case ObjectStorageQueueIFileMetadata::FileStatus::State::Failed: return "Failed";
+        case ObjectStorageQueueIFileMetadata::FileStatus::State::None: return "None";
+    }
+}
 
 }

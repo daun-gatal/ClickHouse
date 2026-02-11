@@ -108,7 +108,6 @@
 #include <boost/container_hash/hash.hpp>
 #include <fmt/format.h>
 #include <Poco/Net/NetException.h>
-#include <magic_enum.hpp>
 
 #if USE_AZURE_BLOB_STORAGE
 #endif
@@ -1859,7 +1858,7 @@ MergeTreeData::LoadPartResult MergeTreeData::loadDataPart(
     MergeTreeDataPartState to_state,
     DB::SharedMutex & part_loading_mutex)
 {
-    LOG_TRACE(log, "Loading {} part {} from disk {}", magic_enum::enum_name(to_state), part_name, part_disk_ptr->getName());
+    LOG_TRACE(log, "Loading {} part {} from disk {}", toString(to_state), part_name, part_disk_ptr->getName());
 
     LoadPartResult res;
     auto single_disk_volume = std::make_shared<SingleDiskVolume>("volume_" + part_name, part_disk_ptr, 0);
@@ -2026,7 +2025,7 @@ MergeTreeData::LoadPartResult MergeTreeData::loadDataPart(
     if (res.part->hasLightweightDelete())
         has_lightweight_delete_parts.store(true);
 
-    LOG_TRACE(log, "Finished loading {} part {} on disk {}", magic_enum::enum_name(to_state), part_name, part_disk_ptr->getName());
+    LOG_TRACE(log, "Finished loading {} part {} on disk {}", toString(to_state), part_name, part_disk_ptr->getName());
     return res;
 }
 
@@ -3172,7 +3171,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeData::asMutableDeletingPart(const Dat
     auto state = part->getState();
     if (state != DataPartState::Deleting && state != DataPartState::DeleteOnDestroy)
         throw Exception(ErrorCodes::LOGICAL_ERROR,
-            "Cannot remove part {}, because it has state: {}", part->name, magic_enum::enum_name(state));
+            "Cannot remove part {}, because it has state: {}", part->name, toString(state));
 
     return std::const_pointer_cast<IMergeTreeDataPart>(part);
 }

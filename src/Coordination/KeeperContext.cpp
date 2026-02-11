@@ -20,7 +20,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include "config.h"
-#include <magic_enum.hpp>
 #if USE_ROCKSDB
 #include <rocksdb/table.h>
 #include <rocksdb/convenience.h>
@@ -531,16 +530,30 @@ void KeeperContext::initializeFeatureFlags(const Poco::Util::AbstractConfigurati
         for (const auto & key : keys)
         {
             auto feature_flag_string = boost::to_upper_copy(key);
-            auto feature_flag = magic_enum::enum_cast<KeeperFeatureFlag>(feature_flag_string);
 
-            if (!feature_flag.has_value())
+            static const std::unordered_map<std::string, KeeperFeatureFlag> feature_flag_map = {
+                {"FILTERED_LIST", KeeperFeatureFlag::FILTERED_LIST},
+                {"MULTI_READ", KeeperFeatureFlag::MULTI_READ},
+                {"CHECK_NOT_EXISTS", KeeperFeatureFlag::CHECK_NOT_EXISTS},
+                {"CREATE_IF_NOT_EXISTS", KeeperFeatureFlag::CREATE_IF_NOT_EXISTS},
+                {"REMOVE_RECURSIVE", KeeperFeatureFlag::REMOVE_RECURSIVE},
+                {"MULTI_WATCHES", KeeperFeatureFlag::MULTI_WATCHES},
+                {"CHECK_STAT", KeeperFeatureFlag::CHECK_STAT},
+                {"PERSISTENT_WATCHES", KeeperFeatureFlag::PERSISTENT_WATCHES},
+                {"CREATE_WITH_STATS", KeeperFeatureFlag::CREATE_WITH_STATS},
+                {"TRY_REMOVE", KeeperFeatureFlag::TRY_REMOVE},
+                {"LIST_WITH_STAT_AND_DATA", KeeperFeatureFlag::LIST_WITH_STAT_AND_DATA},
+            };
+
+            auto it = feature_flag_map.find(feature_flag_string);
+            if (it == feature_flag_map.end())
                 throw Exception(ErrorCodes::BAD_ARGUMENTS, "Invalid feature flag defined in config for Keeper: {}", key);
 
             auto is_enabled = config.getBool(feature_flags_key + "." + key);
             if (is_enabled)
-                feature_flags.enableFeatureFlag(feature_flag.value());
+                feature_flags.enableFeatureFlag(it->second);
             else
-                feature_flags.disableFeatureFlag(feature_flag.value());
+                feature_flags.disableFeatureFlag(it->second);
         }
 
         if (feature_flags.isEnabled(KeeperFeatureFlag::MULTI_READ))

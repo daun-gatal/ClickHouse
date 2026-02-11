@@ -3,6 +3,8 @@
 #include <Common/threadPoolCallbackRunner.h>
 #include <Formats/FormatSettings.h>
 
+#include <string_view>
+
 namespace DB
 {
 struct FormatParserSharedResources;
@@ -100,6 +102,21 @@ enum class ReadStage
 
     Deallocated,
 };
+
+inline std::string_view toString(ReadStage stage)
+{
+    switch (stage)
+    {
+        case ReadStage::NotStarted: return "NotStarted";
+        case ReadStage::BloomFilterHeader: return "BloomFilterHeader";
+        case ReadStage::BloomFilterBlocksOrDictionary: return "BloomFilterBlocksOrDictionary";
+        case ReadStage::ColumnIndexAndOffsetIndex: return "ColumnIndexAndOffsetIndex";
+        case ReadStage::OffsetIndex: return "OffsetIndex";
+        case ReadStage::ColumnData: return "ColumnData";
+        case ReadStage::Deliver: return "Deliver";
+        case ReadStage::Deallocated: return "Deallocated";
+    }
+}
 
 
 /// We track approximate current memory usage per ReadStage that allocated the memory (*).

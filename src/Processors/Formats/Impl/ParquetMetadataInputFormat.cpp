@@ -1,5 +1,4 @@
 #include <Processors/Formats/Impl/ParquetMetadataInputFormat.h>
-#include <magic_enum.hpp>
 
 #if USE_PARQUET
 
@@ -24,6 +23,61 @@
 #include <Processors/Formats/Impl/ArrowBufferedStreams.h>
 #include <DataTypes/NestedUtils.h>
 
+namespace
+{
+
+std::string_view parquetPhysicalTypeName(parquet::Type::type type)
+{
+    switch (type)
+    {
+        case parquet::Type::type::BOOLEAN: return "BOOLEAN";
+        case parquet::Type::type::INT32: return "INT32";
+        case parquet::Type::type::INT64: return "INT64";
+        case parquet::Type::type::INT96: return "INT96";
+        case parquet::Type::type::FLOAT: return "FLOAT";
+        case parquet::Type::type::DOUBLE: return "DOUBLE";
+        case parquet::Type::type::BYTE_ARRAY: return "BYTE_ARRAY";
+        case parquet::Type::type::FIXED_LEN_BYTE_ARRAY: return "FIXED_LEN_BYTE_ARRAY";
+        case parquet::Type::type::UNDEFINED: return "UNDEFINED";
+    }
+}
+
+std::string_view parquetCompressionName(arrow::Compression::type type)
+{
+    switch (type)
+    {
+        case arrow::Compression::type::UNCOMPRESSED: return "UNCOMPRESSED";
+        case arrow::Compression::type::SNAPPY: return "SNAPPY";
+        case arrow::Compression::type::GZIP: return "GZIP";
+        case arrow::Compression::type::BROTLI: return "BROTLI";
+        case arrow::Compression::type::ZSTD: return "ZSTD";
+        case arrow::Compression::type::LZ4: return "LZ4";
+        case arrow::Compression::type::LZ4_FRAME: return "LZ4_FRAME";
+        case arrow::Compression::type::LZO: return "LZO";
+        case arrow::Compression::type::BZ2: return "BZ2";
+        case arrow::Compression::type::LZ4_HADOOP: return "LZ4_HADOOP";
+    }
+}
+
+std::string_view parquetEncodingName(parquet::Encoding::type type)
+{
+    switch (type)
+    {
+        case parquet::Encoding::type::PLAIN: return "PLAIN";
+        case parquet::Encoding::type::PLAIN_DICTIONARY: return "PLAIN_DICTIONARY";
+        case parquet::Encoding::type::RLE: return "RLE";
+        case parquet::Encoding::type::BIT_PACKED: return "BIT_PACKED";
+        case parquet::Encoding::type::DELTA_BINARY_PACKED: return "DELTA_BINARY_PACKED";
+        case parquet::Encoding::type::DELTA_LENGTH_BYTE_ARRAY: return "DELTA_LENGTH_BYTE_ARRAY";
+        case parquet::Encoding::type::DELTA_BYTE_ARRAY: return "DELTA_BYTE_ARRAY";
+        case parquet::Encoding::type::RLE_DICTIONARY: return "RLE_DICTIONARY";
+        case parquet::Encoding::type::BYTE_STREAM_SPLIT: return "BYTE_STREAM_SPLIT";
+        case parquet::Encoding::type::UNDEFINED: return "UNDEFINED";
+        case parquet::Encoding::type::UNKNOWN: return "UNKNOWN";
+    }
+}
+
+}
 
 namespace DB
 {
@@ -257,7 +311,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
         /// max_repetition_level
         assert_cast<ColumnUInt64 &>(tuple_column.getColumn(3)).insertValue(column_info->max_repetition_level());
         /// physical_type
-        std::string_view physical_type = magic_enum::enum_name(column_info->physical_type());
+        std::string_view physical_type = parquetPhysicalTypeName(column_info->physical_type());
         assert_cast<ColumnString &>(tuple_column.getColumn(4)).insertData(physical_type.data(), physical_type.size());
         /// logical_type
         String logical_type = column_info->logical_type()->ToString();
@@ -267,7 +321,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
         {
             auto column_chunk_metadata = metadata->RowGroup(0)->ColumnChunk(column_i);
             /// compression
-            std::string_view compression = magic_enum::enum_name(column_chunk_metadata->compression());
+            std::string_view compression = parquetCompressionName(column_chunk_metadata->compression());
             assert_cast<ColumnString &>(tuple_column.getColumn(6)).insertData(compression.data(), compression.size());
 
             /// total_uncompressed_size/total_compressed_size
@@ -291,7 +345,7 @@ void ParquetMetadataInputFormat::fillColumnsMetadata(const std::shared_ptr<parqu
             auto & encodings_nested_column = assert_cast<ColumnString &>(encodings_array_column.getData());
             for (auto codec : column_chunk_metadata->encodings())
             {
-                auto codec_name = magic_enum::enum_name(codec);
+                auto codec_name = parquetEncodingName(codec);
                 encodings_nested_column.insertData(codec_name.data(), codec_name.size());
             }
             encodings_array_column.getOffsets().push_back(encodings_nested_column.size());

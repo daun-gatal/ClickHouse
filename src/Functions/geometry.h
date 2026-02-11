@@ -16,7 +16,6 @@
 #include <Functions/FunctionHelpers.h>
 
 #include <memory>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -167,10 +166,9 @@ public:
         for (size_t i = 0; i < input_rows_count; ++i)
         {
             column_variant.get(i, field);
-            auto type = magic_enum::enum_cast<GeometryColumnType>(descriptors[i]);
-            if (!type)
-                throw Exception(ErrorCodes::BAD_ARGUMENTS, "Unknown type of geometry {}", static_cast<Int32>(descriptors[i]));
-            switch (*type)
+            auto descriptor_val = descriptors[i];
+            auto type = static_cast<GeometryColumnType>(descriptor_val);
+            switch (type)
             {
                 case GeometryColumnType::Linestring:
                 {

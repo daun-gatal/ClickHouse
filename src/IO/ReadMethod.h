@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace DB
 {
@@ -49,10 +51,28 @@ enum class LocalFSReadMethod : uint8_t
     pread_fake_async
 };
 
+inline std::optional<LocalFSReadMethod> localFSReadMethodFromString(std::string_view str)
+{
+    if (str == "read") return LocalFSReadMethod::read;
+    if (str == "pread") return LocalFSReadMethod::pread;
+    if (str == "mmap") return LocalFSReadMethod::mmap;
+    if (str == "io_uring") return LocalFSReadMethod::io_uring;
+    if (str == "pread_threadpool") return LocalFSReadMethod::pread_threadpool;
+    if (str == "pread_fake_async") return LocalFSReadMethod::pread_fake_async;
+    return std::nullopt;
+}
+
 enum class RemoteFSReadMethod : uint8_t
 {
     read,
     threadpool,
 };
+
+inline std::optional<RemoteFSReadMethod> remoteFSReadMethodFromString(std::string_view str)
+{
+    if (str == "read") return RemoteFSReadMethod::read;
+    if (str == "threadpool") return RemoteFSReadMethod::threadpool;
+    return std::nullopt;
+}
 
 }

@@ -12,7 +12,8 @@
 #include <Common/thread_local_rng.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
-#include <magic_enum.hpp>
+
+#include <optional>
 
 
 namespace DB
@@ -21,6 +22,22 @@ namespace ErrorCodes
 {
     extern const int BAD_ARGUMENTS;
 }
+}
+
+namespace
+{
+
+std::optional<DB::LoadBalancing> loadBalancingFromString(const String & str)
+{
+    if (str == "RANDOM") return DB::LoadBalancing::RANDOM;
+    if (str == "NEAREST_HOSTNAME") return DB::LoadBalancing::NEAREST_HOSTNAME;
+    if (str == "HOSTNAME_LEVENSHTEIN_DISTANCE") return DB::LoadBalancing::HOSTNAME_LEVENSHTEIN_DISTANCE;
+    if (str == "IN_ORDER") return DB::LoadBalancing::IN_ORDER;
+    if (str == "FIRST_OR_RANDOM") return DB::LoadBalancing::FIRST_OR_RANDOM;
+    if (str == "ROUND_ROBIN") return DB::LoadBalancing::ROUND_ROBIN;
+    return std::nullopt;
+}
+
 }
 
 namespace zkutil
@@ -136,8 +153,7 @@ void ZooKeeperArgs::initFromKeeperServerSection(const Poco::Util::AbstractConfig
             config.has(load_balancing_config))
         {
             String load_balancing_str = config.getString(load_balancing_config);
-            /// Use magic_enum to avoid dependency from dbms (`SettingFieldLoadBalancingTraits::fromString(...)`)
-            auto load_balancing = magic_enum::enum_cast<DB::LoadBalancing>(Poco::toUpper(load_balancing_str));
+            auto load_balancing = loadBalancingFromString(Poco::toUpper(load_balancing_str));
             if (!load_balancing)
                 throw DB::Exception(DB::ErrorCodes::BAD_ARGUMENTS, "Unknown load balancing: {}", load_balancing_str);
             get_priority_load_balancing = DB::GetPriorityForLoadBalancing(*load_balancing, thread_local_rng() % hosts.size());
@@ -238,8 +254,7 @@ void ZooKeeperArgs::initFromKeeperSection(const Poco::Util::AbstractConfiguratio
         else if (key == "zookeeper_load_balancing" || key == "keeper_load_balancing")
         {
             String load_balancing_str = config.getString(config_name + "." + key);
-            /// Use magic_enum to avoid dependency from dbms (`SettingFieldLoadBalancingTraits::fromString(...)`)
-            load_balancing = magic_enum::enum_cast<DB::LoadBalancing>(Poco::toUpper(load_balancing_str));
+            load_balancing = loadBalancingFromString(Poco::toUpper(load_balancing_str));
             if (!load_balancing)
                 throw DB::Exception(DB::ErrorCodes::BAD_ARGUMENTS, "Unknown load balancing: {}", load_balancing_str);
         }

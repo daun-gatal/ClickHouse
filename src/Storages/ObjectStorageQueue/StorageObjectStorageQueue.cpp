@@ -40,7 +40,6 @@
 #include <filesystem>
 
 #include <fmt/ranges.h>
-#include <magic_enum.hpp>
 
 namespace fs = std::filesystem;
 
@@ -1265,7 +1264,7 @@ void StorageObjectStorageQueue::checkAlterIsPossible(const AlterCommands & comma
                 throw Exception(
                     ErrorCodes::SUPPORT_IS_DISABLED,
                     "Changing setting {} is not allowed for {} mode of {}",
-                    setting.name, magic_enum::enum_name(mode), getName());
+                    setting.name, toString(mode), getName());
             }
 
             /// Some settings affect the work of background processing thread,
@@ -1378,7 +1377,7 @@ void StorageObjectStorageQueue::alter(
                 throw Exception(
                     ErrorCodes::SUPPORT_IS_DISABLED,
                     "Changing setting {} is not allowed for {} mode of {}",
-                    setting.name, magic_enum::enum_name(mode), getName());
+                    setting.name, toString(mode), getName());
             }
 
             if (requiresDetachedMV(setting.name))

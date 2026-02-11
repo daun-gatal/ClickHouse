@@ -16,7 +16,6 @@
 #include <Common/assert_cast.h>
 #include <Common/getRandomASCIIString.h>
 #include <Common/logger_useful.h>
-#include <magic_enum.hpp>
 
 
 namespace ProfileEvents
@@ -307,7 +306,12 @@ bool CachedOnDiskReadBufferFromFile::canStartFromCache(size_t current_offset, co
 
 String CachedOnDiskReadBufferFromFile::toString(ReadType type)
 {
-    return String(magic_enum::enum_name(type));
+    switch (type)
+    {
+        case ReadType::CACHED: return "CACHED";
+        case ReadType::REMOTE_FS_READ_BYPASS_CACHE: return "REMOTE_FS_READ_BYPASS_CACHE";
+        case ReadType::REMOTE_FS_READ_AND_PUT_IN_CACHE: return "REMOTE_FS_READ_AND_PUT_IN_CACHE";
+    }
 }
 
 CachedOnDiskReadBufferFromFile::ImplementationBufferPtr

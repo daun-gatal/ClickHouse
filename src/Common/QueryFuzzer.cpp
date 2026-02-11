@@ -42,7 +42,6 @@
 #include <Common/typeid_cast.h>
 
 #include <AggregateFunctions/AggregateFunctionFactory.h>
-#include <magic_enum.hpp>
 
 #if USE_BUZZHOUSE
 #    include <Client/BuzzHouse/Generator/RandomGenerator.h>
@@ -761,7 +760,7 @@ DataTypePtr QueryFuzzer::getRandomType()
         case TypeIndex::Dynamic:
             return std::make_shared<DataTypeDynamic>(fuzz_rand() % 20);
         default:
-            return DataTypeFactory::instance().get(String(magic_enum::enum_name(type_id)));
+            return DataTypeFactory::instance().get(String(toString(type_id)));
     }
 
 #undef DISPATCH

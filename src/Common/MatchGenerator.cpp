@@ -9,7 +9,6 @@
 
 #include <Common/MatchGenerator.h>
 
-#include <magic_enum.hpp>
 #include <Common/Exception.h>
 #include <Common/thread_local_rng.h>
 
@@ -294,7 +293,7 @@ private:
     {
     public:
         explicit ThrowExceptionFunction(Regexp * re_)
-            : operation(magic_enum::enum_name(re_->op()))
+            : operation(std::to_string(re_->op()))
         {
         }
 

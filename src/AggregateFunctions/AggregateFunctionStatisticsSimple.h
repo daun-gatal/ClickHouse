@@ -16,7 +16,7 @@
 #include <DataTypes/DataTypesDecimal.h>
 #include <Columns/ColumnVector.h>
 #include <Columns/ColumnDecimal.h>
-#include <magic_enum.hpp>
+#include <string_view>
 
 
 /** This is simple, not numerically stable
@@ -45,6 +45,24 @@ enum class StatisticsFunctionKind : uint8_t
     covarPop, covarSamp,
     corr
 };
+
+inline std::string_view toString(StatisticsFunctionKind kind)
+{
+    switch (kind)
+    {
+        case StatisticsFunctionKind::varPop: return "varPop";
+        case StatisticsFunctionKind::varSamp: return "varSamp";
+        case StatisticsFunctionKind::stddevPop: return "stddevPop";
+        case StatisticsFunctionKind::stddevSamp: return "stddevSamp";
+        case StatisticsFunctionKind::skewPop: return "skewPop";
+        case StatisticsFunctionKind::skewSamp: return "skewSamp";
+        case StatisticsFunctionKind::kurtPop: return "kurtPop";
+        case StatisticsFunctionKind::kurtSamp: return "kurtSamp";
+        case StatisticsFunctionKind::covarPop: return "covarPop";
+        case StatisticsFunctionKind::covarSamp: return "covarSamp";
+        case StatisticsFunctionKind::corr: return "corr";
+    }
+}
 
 
 template <typename T, size_t _level>
@@ -93,7 +111,7 @@ public:
 
     String getName() const override
     {
-        return String(magic_enum::enum_name(kind));
+        return String(toString(kind));
     }
 
     bool allocatesMemoryInArena() const override { return false; }

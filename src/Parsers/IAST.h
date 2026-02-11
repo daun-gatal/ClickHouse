@@ -400,6 +400,46 @@ public:
     /// Return QueryKind of this AST query.
     virtual QueryKind getQueryKind() const { return QueryKind::None; }
 
+    static std::string_view queryKindToString(QueryKind kind)
+    {
+        switch (kind)
+        {
+            case QueryKind::None: return "None";
+            case QueryKind::Select: return "Select";
+            case QueryKind::Insert: return "Insert";
+            case QueryKind::Delete: return "Delete";
+            case QueryKind::Update: return "Update";
+            case QueryKind::Create: return "Create";
+            case QueryKind::Drop: return "Drop";
+            case QueryKind::Undrop: return "Undrop";
+            case QueryKind::Rename: return "Rename";
+            case QueryKind::Optimize: return "Optimize";
+            case QueryKind::Check: return "Check";
+            case QueryKind::Alter: return "Alter";
+            case QueryKind::Grant: return "Grant";
+            case QueryKind::Revoke: return "Revoke";
+            case QueryKind::Move: return "Move";
+            case QueryKind::System: return "System";
+            case QueryKind::Set: return "Set";
+            case QueryKind::Use: return "Use";
+            case QueryKind::Show: return "Show";
+            case QueryKind::Exists: return "Exists";
+            case QueryKind::Describe: return "Describe";
+            case QueryKind::Explain: return "Explain";
+            case QueryKind::Backup: return "Backup";
+            case QueryKind::Restore: return "Restore";
+            case QueryKind::KillQuery: return "KillQuery";
+            case QueryKind::ExternalDDL: return "ExternalDDL";
+            case QueryKind::Begin: return "Begin";
+            case QueryKind::Commit: return "Commit";
+            case QueryKind::Rollback: return "Rollback";
+            case QueryKind::SetTransactionSnapshot: return "SetTransactionSnapshot";
+            case QueryKind::AsyncInsertFlush: return "AsyncInsertFlush";
+            case QueryKind::ParallelWithQuery: return "ParallelWithQuery";
+            case QueryKind::Copy: return "Copy";
+        }
+    }
+
 protected:
     virtual void formatImpl(WriteBuffer & ostr, const FormatSettings & settings, FormatState & state, FormatStateStacked frame) const
     {

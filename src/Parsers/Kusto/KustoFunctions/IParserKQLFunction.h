@@ -3,6 +3,7 @@
 #include <Parsers/IParserBase.h>
 
 #include <span>
+#include <string_view>
 
 namespace DB
 {
@@ -88,4 +89,15 @@ protected:
         String & out, IParser::Pos & pos, std::string_view ch_fn, const Interval & argument_count_interval = {0, Interval::max_bound});
     static void validateEndOfFunction(const String & fn_name, IParser::Pos & pos);
 };
+
+inline std::string_view toString(IParserKQLFunction::ArgumentState state)
+{
+    switch (state)
+    {
+        case IParserKQLFunction::ArgumentState::Parsed: return "Parsed";
+        case IParserKQLFunction::ArgumentState::Raw:    return "Raw";
+    }
+    return "Unknown";
+}
+
 }

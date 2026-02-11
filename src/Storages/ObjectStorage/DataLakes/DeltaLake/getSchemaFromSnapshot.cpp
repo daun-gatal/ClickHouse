@@ -1,5 +1,4 @@
 #include "config.h"
-#include <magic_enum.hpp>
 
 #if USE_DELTA_KERNEL_RS
 #include <DataTypes/DataTypeFactory.h>
@@ -34,7 +33,7 @@ namespace
 {
     DataTypePtr getSimpleDataTypeFromTypeIndex(TypeIndex type_index)
     {
-        std::string_view name = magic_enum::enum_name(type_index);
+        std::string_view name = toString(type_index);
         return DB::DataTypeFactory::instance().get(std::string(name), nullptr);
     }
 

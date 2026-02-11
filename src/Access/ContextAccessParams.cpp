@@ -5,7 +5,6 @@
 
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/IPAddress.h>
-#include <magic_enum.hpp>
 
 
 namespace DB
@@ -85,9 +84,9 @@ String ContextAccessParams::toString() const
         out << separator() << "allow_introspection = " << allow_introspection;
     if (!current_database.empty())
         out << separator() << "current_database = " << current_database;
-    out << separator() << "interface = " << magic_enum::enum_name(interface);
+    out << separator() << "interface = " << ::DB::toString(interface);
     if (http_method != ClientInfo::HTTPMethod::UNKNOWN)
-        out << separator() << "http_method = " << magic_enum::enum_name(http_method);
+        out << separator() << "http_method = " << ::DB::toString(http_method);
     if (!address->isWildcard())
         out << separator() << "address = " << address->toString();
     if (!forwarded_address.empty())

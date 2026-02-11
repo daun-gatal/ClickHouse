@@ -2,7 +2,6 @@
 #include <Storages/StorageMergeTree.h>
 #include <IO/ReadBufferFromString.h>
 #include <IO/WriteBufferFromString.h>
-#include <magic_enum.hpp>
 
 namespace DB
 {
@@ -22,39 +21,46 @@ PlainCommittingBlockHolder::~PlainCommittingBlockHolder()
     storage.removeCommittingBlock(block);
 }
 
-template <class Enum>
-int64_t toIntChecked(Enum value)
+static int64_t opToIntChecked(CommittingBlock::Op value)
 {
-    int64_t underlying = magic_enum::enum_integer(value);
-    auto checked = magic_enum::enum_cast<Enum>(underlying);
+    int64_t underlying = static_cast<std::underlying_type_t<CommittingBlock::Op>>(value);
 
-    if (!checked.has_value())
-        throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown {} value {}", magic_enum::enum_type_name<Enum>(), underlying);
+    switch (value)
+    {
+        case CommittingBlock::Op::Unknown:
+        case CommittingBlock::Op::NewPart:
+        case CommittingBlock::Op::Update:
+        case CommittingBlock::Op::Mutation:
+            return underlying;
+    }
 
-    return underlying;
+    throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown CommittingBlock::Op value {}", underlying);
 }
 
-template <class Enum>
-Enum fromIntChecked(int64_t underlying)
+static CommittingBlock::Op opFromIntChecked(int64_t underlying)
 {
-    auto checked = magic_enum::enum_cast<Enum>(underlying);
+    switch (static_cast<CommittingBlock::Op>(underlying))
+    {
+        case CommittingBlock::Op::Unknown:
+        case CommittingBlock::Op::NewPart:
+        case CommittingBlock::Op::Update:
+        case CommittingBlock::Op::Mutation:
+            return static_cast<CommittingBlock::Op>(underlying);
+    }
 
-    if (!checked.has_value())
-        throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown {} value {}", magic_enum::enum_type_name<Enum>(), underlying);
-
-    return checked.value();
+    throw Exception(ErrorCodes::UNKNOWN_FORMAT_VERSION, "Unknown CommittingBlock::Op value {}", underlying);
 }
 
 static void serializeCommittingBlockOpToBuffer(CommittingBlock::Op op, WriteBuffer & out)
 {
-    out << "operation: " << toIntChecked(op) << "\n";
+    out << "operation: " << opToIntChecked(op) << "\n";
 }
 
 static CommittingBlock::Op deserializeCommittingBlockOpFromBuffer(ReadBuffer & in)
 {
     int64_t op;
     in >> "operation: " >> op >> "\n";
-    return fromIntChecked<CommittingBlock::Op>(op);
+    return opFromIntChecked(op);
 }
 
 std::string serializeCommittingBlockOpToString(CommittingBlock::Op op)

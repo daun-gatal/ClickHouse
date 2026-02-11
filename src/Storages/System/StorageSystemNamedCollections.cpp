@@ -1,6 +1,5 @@
 #include <Storages/System/StorageSystemNamedCollections.h>
 
-#include <magic_enum.hpp>
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnTuple.h>
 #include <Core/Settings.h>
@@ -77,7 +76,7 @@ void StorageSystemNamedCollections::fillData(MutableColumns & res_columns, Conte
 
         offsets.push_back(offsets.back() + size);
 
-        res_columns[2]->insert(magic_enum::enum_name(collection->getSourceId()));
+        res_columns[2]->insert(toString(collection->getSourceId()));
         res_columns[3]->insert(collection->getCreateStatement(access_secrets));
     }
 }

@@ -6,7 +6,6 @@
 #include <filesystem>
 
 #include <Common/FailPoint.h>
-#include <magic_enum.hpp>
 
 namespace DB::ErrorCodes
 {
@@ -69,16 +68,25 @@ StorageType parseStorageTypeFromString(const std::string & type)
     else if (storage_type_str == "abfss") /// Azure Blob File System Secure
         storage_type_str = "Azure";
 
-    auto storage_type = magic_enum::enum_cast<StorageType>(capitalize_first_letter(storage_type_str));
+    auto capitalized = capitalize_first_letter(storage_type_str);
 
-    if (!storage_type)
-    {
+    StorageType result;
+    if (capitalized == "S3")
+        result = StorageType::S3;
+    else if (capitalized == "Azure")
+        result = StorageType::Azure;
+    else if (capitalized == "Local")
+        result = StorageType::Local;
+    else if (capitalized == "Hdfs")
+        result = StorageType::HDFS;
+    else if (capitalized == "Other")
+        result = StorageType::Other;
+    else
         throw DB::Exception(
             DB::ErrorCodes::NOT_IMPLEMENTED,
             "Unsupported storage type: {}", storage_type_str);
-    }
 
-    return *storage_type;
+    return result;
 }
 
 void TableMetadata::setLocation(const std::string & location_)

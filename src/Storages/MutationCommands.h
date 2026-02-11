@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string_view>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -124,5 +125,30 @@ struct MutationActions
     bool project_input;
     std::optional<UInt64> mutation_version;
 };
+
+inline std::string_view toString(MutationCommand::Type type)
+{
+    switch (type)
+    {
+        case MutationCommand::Type::EMPTY: return "EMPTY";
+        case MutationCommand::Type::DELETE: return "DELETE";
+        case MutationCommand::Type::UPDATE: return "UPDATE";
+        case MutationCommand::Type::MATERIALIZE_INDEX: return "MATERIALIZE_INDEX";
+        case MutationCommand::Type::MATERIALIZE_PROJECTION: return "MATERIALIZE_PROJECTION";
+        case MutationCommand::Type::MATERIALIZE_STATISTICS: return "MATERIALIZE_STATISTICS";
+        case MutationCommand::Type::READ_COLUMN: return "READ_COLUMN";
+        case MutationCommand::Type::DROP_COLUMN: return "DROP_COLUMN";
+        case MutationCommand::Type::DROP_INDEX: return "DROP_INDEX";
+        case MutationCommand::Type::DROP_PROJECTION: return "DROP_PROJECTION";
+        case MutationCommand::Type::DROP_STATISTICS: return "DROP_STATISTICS";
+        case MutationCommand::Type::MATERIALIZE_TTL: return "MATERIALIZE_TTL";
+        case MutationCommand::Type::REWRITE_PARTS: return "REWRITE_PARTS";
+        case MutationCommand::Type::RENAME_COLUMN: return "RENAME_COLUMN";
+        case MutationCommand::Type::MATERIALIZE_COLUMN: return "MATERIALIZE_COLUMN";
+        case MutationCommand::Type::APPLY_DELETED_MASK: return "APPLY_DELETED_MASK";
+        case MutationCommand::Type::APPLY_PATCHES: return "APPLY_PATCHES";
+        case MutationCommand::Type::ALTER_WITHOUT_MUTATION: return "ALTER_WITHOUT_MUTATION";
+    }
+}
 
 }

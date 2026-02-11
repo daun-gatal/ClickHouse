@@ -11,7 +11,6 @@
 #include <Common/ProfileEvents.h>
 #include <Core/Settings.h>
 #include <ranges>
-#include <magic_enum.hpp>
 
 namespace ProfileEvents
 {
@@ -483,7 +482,7 @@ MutationCommands AlterConversions::filterMutationCommands(Names & read_columns, 
         {
             throw Exception(ErrorCodes::LOGICAL_ERROR,
                 "Unexpected mutation of type {} in AlterConversions. Only UPDATE and DELETE mutations are supported",
-                magic_enum::enum_name(command.type));
+                toString(command.type));
         }
 
         for (const auto & column : source_columns)

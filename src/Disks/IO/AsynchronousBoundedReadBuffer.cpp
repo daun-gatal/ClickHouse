@@ -9,7 +9,6 @@
 #include <Interpreters/FilesystemReadPrefetchesLog.h>
 #include <Interpreters/Context.h>
 #include <base/getThreadId.h>
-#include <magic_enum.hpp>
 
 
 namespace CurrentMetrics
@@ -416,7 +415,7 @@ void AsynchronousBoundedReadBuffer::resetPrefetch(FilesystemPrefetchState state)
             ProfileEvents::increment(ProfileEvents::RemoteFSCancelledPrefetches);
             break;
         default:
-            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state of prefetch: {}", magic_enum::enum_name(state));
+            throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected state of prefetch: {}", toString(state));
     }
 }
 

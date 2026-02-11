@@ -1,9 +1,9 @@
-#include <magic_enum.hpp>
 #include <Poco/Util/XMLConfiguration.h>
 #include <Common/Exception.h>
 #include <Common/FieldVisitorToString.h>
 #include <Common/NamedCollections/NamedCollectionConfiguration.h>
 #include <Common/SettingsChanges.h>
+#include <Core/Field.h>
 
 
 namespace DB
@@ -69,7 +69,7 @@ template <typename T> T getConfigValueOrDefault(
         throw Exception(
             ErrorCodes::BAD_ARGUMENTS,
             "Cannot extract {} from {}",
-            magic_enum::enum_name(Field::TypeToEnum<NearestFieldType<T>>::value),
+            fieldTypeToString(Field::TypeToEnum<NearestFieldType<T>>::value),
             path);
     }
 }

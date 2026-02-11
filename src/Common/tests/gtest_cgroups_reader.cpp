@@ -1,4 +1,3 @@
-#include <magic_enum.hpp>
 #if defined(OS_LINUX)
 
 #include <gtest/gtest.h>
@@ -132,7 +131,8 @@ class CgroupsMemoryUsageObserverFixture : public ::testing::TestWithParam<ICgrou
     void SetUp() override
     {
         const uint8_t version = static_cast<uint8_t>(GetParam());
-        tmp_dir = fmt::format("./test_cgroups_{}", magic_enum::enum_name(GetParam()));
+        const char * version_name = (GetParam() == ICgroupsReader::CgroupsVersion::V1) ? "V1" : "V2";
+        tmp_dir = fmt::format("./test_cgroups_{}", version_name);
         fs::create_directories(tmp_dir);
 
         auto stat_file = WriteBufferFromFile(tmp_dir + "/memory.stat");
