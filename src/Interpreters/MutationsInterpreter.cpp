@@ -70,7 +70,6 @@ namespace DB
 {
 namespace Setting
 {
-    extern const SettingsBool allow_experimental_analyzer;
     extern const SettingsBool allow_nondeterministic_mutations;
     extern const SettingsNonZeroUInt64 max_block_size;
     extern const SettingsBool use_concurrency_control;
@@ -371,7 +370,7 @@ ColumnDependencies getAllColumnDependencies(
 IsStorageTouched isStorageTouchedByMutations(
     MergeTreeData::DataPartPtr source_part,
     MergeTreeData::MutationsSnapshotPtr mutations_snapshot,
-    const StorageMetadataPtr & metadata_snapshot,
+    const StorageMetadataPtr & /*metadata_snapshot*/,
     const std::vector<MutationCommand> & commands,
     ContextPtr context,
     std::function<void(const Progress & value)> check_operation_is_not_cancelled)
@@ -421,26 +420,10 @@ IsStorageTouched isStorageTouchedByMutations(
     if (all_commands_can_be_skipped)
         return no_rows;
 
-    std::optional<InterpreterSelectQuery> interpreter_select_query;
     BlockIO io;
-
-    if (context->getSettingsRef()[Setting::allow_experimental_analyzer])
-    {
-        auto select_query_tree = prepareQueryAffectedQueryTree(commands, storage_from_part, context);
-        InterpreterSelectQueryAnalyzer interpreter(select_query_tree, context, SelectQueryOptions().ignoreLimits());
-        io = interpreter.execute();
-    }
-    else
-    {
-        ASTPtr select_query = prepareQueryAffectedAST(commands, storage_from_part, context);
-        /// Interpreter must be alive, when we use result of execute() method.
-        /// For some reason it may copy context and give it into ExpressionTransform
-        /// after that we will use context from destroyed stack frame in our stream.
-        interpreter_select_query.emplace(
-            select_query, context, storage_from_part, metadata_snapshot, SelectQueryOptions().ignoreLimits());
-
-        io = interpreter_select_query->execute();
-    }
+    auto select_query_tree = prepareQueryAffectedQueryTree(commands, storage_from_part, context);
+    InterpreterSelectQueryAnalyzer interpreter(select_query_tree, context, SelectQueryOptions().ignoreLimits());
+    io = interpreter.execute();
 
     PullingAsyncPipelineExecutor executor(io.pipeline);
     io.pipeline.setConcurrencyControl(context->getSettingsRef()[Setting::use_concurrency_control]);
@@ -705,13 +688,7 @@ MutationsInterpreter::MutationsInterpreter(
     , select_limits(SelectQueryOptions().analyze(!settings.can_execute).ignoreLimits())
     , logger(getLogger("MutationsInterpreter(" + source.getStorage()->getStorageID().getFullTableName() + ")"))
 {
-    auto new_context = Context::createCopy(context_);
-    if (new_context->getSettingsRef()[Setting::allow_experimental_analyzer]
-        && !new_context->getSettingsRef()[Setting::validate_mutation_query])
-    {
-        new_context->setSetting("allow_experimental_analyzer", false);
-    }
-    context = std::move(new_context);
+    context = Context::createCopy(context_);
 }
 
 static NameSet getKeyColumns(const MutationsInterpreter::Source & source, const StorageMetadataPtr & metadata_snapshot)
@@ -880,9 +857,6 @@ void MutationsInterpreter::prepare(bool dry_run)
     auto storage_snapshot = std::make_shared<StorageSnapshot>(*source.getStorage(), metadata_snapshot);
     auto options = GetColumnsOptions(GetColumnsOptions::AllPhysical).withVirtuals();
     auto all_columns = storage_snapshot->getColumnsByNames(options, available_columns);
-    const bool use_analyzer_for_validation
-        = context->getSettingsRef()[Setting::allow_experimental_analyzer]
-        && context->getSettingsRef()[Setting::validate_mutation_query];
     NameSet available_columns_set(available_columns.begin(), available_columns.end());
 
     NameSet updated_columns;
@@ -925,23 +899,13 @@ void MutationsInterpreter::prepare(bool dry_run)
                 auto query = column.default_desc.expression->clone();
                 /// Replace all subcolumns to the getSubcolumn() to get only top level columns as required source columns.
                 replaceSubcolumnsToGetSubcolumnFunctionInQuery(query, all_columns);
-                NameSet required_source_columns;
-                if (use_analyzer_for_validation)
-                {
-                    auto columns_for_expression_analysis
-                        = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
-                    required_source_columns = getRequiredSourceColumnsWithAnalyzer(
-                        query,
-                        columns_for_expression_analysis,
-                        *storage_snapshot->virtual_columns,
-                        context);
-                }
-                else
-                {
-                    auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
-                    for (const auto & dependency : syntax_result->requiredSourceColumns())
-                        required_source_columns.insert(dependency);
-                }
+                auto columns_for_expression_analysis
+                    = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
+                auto required_source_columns = getRequiredSourceColumnsWithAnalyzer(
+                    query,
+                    columns_for_expression_analysis,
+                    *storage_snapshot->virtual_columns,
+                    context);
 
                 for (const auto & dependency : required_source_columns)
                     if (updated_columns.contains(dependency))
@@ -1182,23 +1146,14 @@ void MutationsInterpreter::prepare(bool dry_run)
             if (!source.hasSecondaryIndex(it->name, metadata_snapshot))
             {
                 auto query = (*it).expression_list_ast->clone();
-                Names required_columns;
-                if (use_analyzer_for_validation)
-                {
-                    auto columns_for_expression_analysis
-                        = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
-                    auto required_columns_set = getRequiredSourceColumnsWithAnalyzer(
-                        query,
-                        columns_for_expression_analysis,
-                        *storage_snapshot->virtual_columns,
-                        context);
-                    required_columns.assign(required_columns_set.begin(), required_columns_set.end());
-                }
-                else
-                {
-                    auto syntax_result = TreeRewriter(context).analyze(query, all_columns);
-                    required_columns = syntax_result->requiredSourceColumns();
-                }
+                auto columns_for_expression_analysis
+                    = getColumnsForMutationExpressionAnalysis(all_columns, query, *storage_snapshot->virtual_columns);
+                auto required_columns_set = getRequiredSourceColumnsWithAnalyzer(
+                    query,
+                    columns_for_expression_analysis,
+                    *storage_snapshot->virtual_columns,
+                    context);
+                Names required_columns(required_columns_set.begin(), required_columns_set.end());
 
                 for (const auto & column : required_columns)
                     dependencies.emplace(column, ColumnDependency::SKIP_INDEX);
@@ -1631,9 +1586,7 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
 
     /// Now, calculate `expressions_chain` for each stage except the first.
     /// Do it backwards to propagate information about columns required as input for a stage to the previous stage.
-    const bool use_analyzer
-        = context->getSettingsRef()[Setting::allow_experimental_analyzer]
-        && context->getSettingsRef()[Setting::validate_mutation_query];
+    constexpr bool use_analyzer = true;
     for (int64_t i = prepared_stages.size() - 1; i >= 0; --i)
     {
         auto & stage = prepared_stages[i];
@@ -2097,15 +2050,7 @@ void MutationsInterpreter::validate()
 
     // Make sure the mutation query is valid
     if (context->getSettingsRef()[Setting::validate_mutation_query])
-    {
-        if (context->getSettingsRef()[Setting::allow_experimental_analyzer])
-            prepareQueryAffectedQueryTree(commands, source.getStorage(), context);
-        else
-        {
-            ASTPtr select_query = prepareQueryAffectedAST(commands, source.getStorage(), context);
-            InterpreterSelectQuery(select_query, context, source.getStorage(), metadata_snapshot);
-        }
-    }
+        prepareQueryAffectedQueryTree(commands, source.getStorage(), context);
 
     QueryPlan plan;
 
