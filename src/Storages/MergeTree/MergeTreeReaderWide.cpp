@@ -14,6 +14,7 @@
 #include <Storages/MergeTree/checkDataPart.h>
 #include <Common/escapeForFileName.h>
 #include <Common/typeid_cast.h>
+#include <Core/UUID.h>
 #include <IO/SharedThreadPools.h>
 #include <Compression/CachedCompressedReadBuffer.h>
 
@@ -173,7 +174,10 @@ size_t MergeTreeReaderWide::readRows(
         /// to serve from cache or read from disk. When serving from cache, we skip readData
         /// entirely (no stream advancement). When reading from disk, we accumulate the data
         /// across multiple readRows calls and flush to cache when the full range is read.
-        const bool cache_enabled = deserialized_columns_cache && rows_offset == 0;
+        /// Cache requires a valid table UUID (only works with Atomic/Replicated databases).
+        const bool cache_enabled = deserialized_columns_cache
+            && rows_offset == 0
+            && data_part_info_for_read->getTableUUID() != UUIDHelpers::Nil;
 
         /// IMPORTANT: Reset cache state on new mark range to avoid stale state from previous reads.
         /// This must be done regardless of cache_enabled to handle cases where cache was enabled
@@ -194,7 +198,11 @@ size_t MergeTreeReaderWide::readRows(
                 : data_part_info_for_read->getRowCount();
             size_t total_rows_in_range = last_row - first_row;
 
-            /// Check if ALL columns are cached for this mark range.
+            /// Check if ALL columns are cached for this exact mark range.
+            /// NOTE: Currently we only support exact mark range matches. The design doc
+            /// specifies support for intersecting ranges with cutting, but this would require
+            /// major architectural changes to support mixing cached and non-cached data within
+            /// a single mark range, as well as handling the O(1) memory constraint properly.
             bool all_cached = settings.enable_columns_cache_reads;
             std::unordered_map<String, ColumnPtr> cached_columns;
             if (all_cached)
@@ -208,18 +216,18 @@ size_t MergeTreeReaderWide::readRows(
                         from_mark,
                         current_task_last_mark};
 
-                    LOG_DEBUG(reader_log, "Checking cache for column: name={}, from_mark={}, to_mark={}",
+                    LOG_TEST(reader_log, "Checking cache for column: name={}, from_mark={}, to_mark={}",
                         columns_to_read[pos].name, from_mark, current_task_last_mark);
 
                     auto cached = deserialized_columns_cache->get(cache_key);
                     if (cached && cached->rows == total_rows_in_range)
                     {
                         cached_columns[columns_to_read[pos].name] = cached->column;
-                        LOG_DEBUG(reader_log, "Column found in cache: {}, rows={}", columns_to_read[pos].name, cached->rows);
+                        LOG_TEST(reader_log, "Column found in cache: {}, rows={}", columns_to_read[pos].name, cached->rows);
                     }
                     else
                     {
-                        LOG_DEBUG(reader_log, "Column NOT in cache or wrong size: {}, cached={}, expected_rows={}, actual_rows={}",
+                        LOG_TEST(reader_log, "Column NOT in cache or wrong size: {}, cached={}, expected_rows={}, actual_rows={}",
                             columns_to_read[pos].name, cached != nullptr, total_rows_in_range,
                             (cached ? cached->rows : 0));
                         all_cached = false;
@@ -231,7 +239,7 @@ size_t MergeTreeReaderWide::readRows(
             if (all_cached)
             {
                 /// All columns cached: set up serve state.
-                LOG_DEBUG(reader_log, "All columns cached! Setting up serve state, total_rows={}", total_rows_in_range);
+                LOG_TEST(reader_log, "All columns cached! Setting up serve state, total_rows={}", total_rows_in_range);
                 columns_cache_serve_state.emplace();
                 columns_cache_serve_state->total_rows = total_rows_in_range;
                 columns_cache_serve_state->rows_served = 0;
@@ -240,7 +248,7 @@ size_t MergeTreeReaderWide::readRows(
             else if (settings.enable_columns_cache_writes)
             {
                 /// Not all cached: set up accumulator for writing to cache.
-                LOG_DEBUG(reader_log, "Not all cached, setting up accumulator. total_rows={}", total_rows_in_range);
+                LOG_TEST(reader_log, "Not all cached, setting up accumulator. total_rows={}", total_rows_in_range);
                 columns_cache_accumulator.emplace();
                 columns_cache_accumulator->from_mark = from_mark;
                 columns_cache_accumulator->end_mark = current_task_last_mark;
@@ -249,12 +257,12 @@ size_t MergeTreeReaderWide::readRows(
             }
             else
             {
-                LOG_DEBUG(reader_log, "Cache writes disabled, not setting up accumulator");
+                LOG_TEST(reader_log, "Cache writes disabled, not setting up accumulator");
             }
         }
         else
         {
-            LOG_DEBUG(reader_log, "Skipping cache check: cache_enabled={}, continue_reading={}", cache_enabled, continue_reading);
+            LOG_TEST(reader_log, "Skipping cache check: cache_enabled={}, continue_reading={}", cache_enabled, continue_reading);
         }
 
         /// If serving from cache, skip prefetch/deserialize since we won't use streams.
@@ -361,7 +369,7 @@ size_t MergeTreeReaderWide::readRows(
         /// Advance columns cache serve state.
         if (columns_cache_serve_state)
         {
-            LOG_DEBUG(reader_log, "Advancing cache serve state: read_rows={}, max_rows_to_read={}, rows_served={}, total_rows={}",
+            LOG_TEST(reader_log, "Advancing cache serve state: read_rows={}, max_rows_to_read={}, rows_served={}, total_rows={}",
                 read_rows, max_rows_to_read, columns_cache_serve_state->rows_served, columns_cache_serve_state->total_rows);
 
             if (read_rows == 0 && max_rows_to_read > 0)
@@ -376,10 +384,10 @@ size_t MergeTreeReaderWide::readRows(
         }
         else
         {
-            LOG_DEBUG(reader_log, "Not serving from cache. read_rows={}, max_rows_to_read={}", read_rows, max_rows_to_read);
+            LOG_TEST(reader_log, "Not serving from cache. read_rows={}, max_rows_to_read={}", read_rows, max_rows_to_read);
         }
 
-        LOG_DEBUG(reader_log, "readRows completed: returning read_rows={}", read_rows);
+        LOG_TEST(reader_log, "readRows completed: returning read_rows={}", read_rows);
 
         /// Advance columns cache accumulator and flush to cache when complete.
         if (columns_cache_accumulator)
@@ -399,10 +407,15 @@ size_t MergeTreeReaderWide::readRows(
                             columns_cache_accumulator->from_mark,
                             columns_cache_accumulator->end_mark};
 
-                        size_t rows = acc_col->size();
-                        auto entry = std::make_shared<ColumnsCacheEntry>(
-                            ColumnsCacheEntry{std::move(acc_col), rows});
-                        deserialized_columns_cache->set(cache_key, entry);
+                        /// Check if this exact range is already in cache to avoid redundant writes
+                        auto existing = deserialized_columns_cache->get(cache_key);
+                        if (!existing || existing->rows != acc_col->size())
+                        {
+                            size_t rows = acc_col->size();
+                            auto entry = std::make_shared<ColumnsCacheEntry>(
+                                ColumnsCacheEntry{std::move(acc_col), rows});
+                            deserialized_columns_cache->set(cache_key, entry);
+                        }
                     }
                 }
                 columns_cache_accumulator.reset();
