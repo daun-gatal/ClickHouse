@@ -62,7 +62,7 @@ if __name__ == "__main__":
                 merge_base_sha = merge_base_sha.strip()
                 # Get the merge-base and its predecessors on master to find one with a build
                 raw = Shell.get_output(
-                    f"gh api 'repos/ClickHouse/ClickHouse/commits?sha={merge_base_sha}&per_page=30' -q '.[].sha' | head -n30",
+                    f"gh api 'repos/ClickHouse/ClickHouse/commits?sha={merge_base_sha}&per_page=50' -q '.[].sha' | head -n50",
                     verbose=True,
                 )
                 commits = [
