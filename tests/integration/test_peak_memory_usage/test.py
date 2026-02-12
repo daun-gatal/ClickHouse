@@ -62,7 +62,7 @@ def started_cluster():
         cluster.shutdown()
 
 
-def get_memory_usage_from_client_output_and_close(client_output, shard_name):
+def get_memory_usage_from_client_output_and_close(client_output):
     client_output.seek(0)
     query_id = None
     peak_memory_usage = None
