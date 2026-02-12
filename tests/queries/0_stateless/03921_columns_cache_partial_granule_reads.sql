@@ -124,38 +124,47 @@ LIMIT 10;
 SELECT id, value1 FROM t_cache_granules
 PREWHERE category = 'cat_10'
 WHERE value2 > 100
-LIMIT 100;
+LIMIT 100
+FORMAT Hash;
 
 SELECT id, value1 FROM t_cache_granules
 PREWHERE category = 'cat_10'
 WHERE value2 > 100
-LIMIT 100;
+LIMIT 100
+FORMAT Hash;
 
 -- Test 11: Array column with partial reads
 SELECT id, tags FROM t_cache_granules
-WHERE id BETWEEN 10000 AND 11000;
+WHERE id BETWEEN 10000 AND 11000
+FORMAT Hash;
 
 SELECT id, tags FROM t_cache_granules
-WHERE id BETWEEN 10000 AND 11000;
+WHERE id BETWEEN 10000 AND 11000
+FORMAT Hash;
 
 -- Test 12: Reading with LIMIT less than granule size
 SELECT id, category, value1 FROM t_cache_granules
-LIMIT 100;
+LIMIT 100
+FORMAT Hash;
 
 SELECT id, category, value1 FROM t_cache_granules
-LIMIT 5000;
+LIMIT 5000
+FORMAT Hash;
 
 SELECT id, category, value1 FROM t_cache_granules
-LIMIT 100;
+LIMIT 100
+FORMAT Hash;
 
 -- Test 13: Reading with OFFSET
 SELECT id, value1 FROM t_cache_granules
 ORDER BY id
-LIMIT 1000 OFFSET 8000;  -- Crosses granule boundary
+LIMIT 1000 OFFSET 8000
+FORMAT Hash;  -- Crosses granule boundary
 
 SELECT id, value1 FROM t_cache_granules
 ORDER BY id
-LIMIT 1000 OFFSET 8000;
+LIMIT 1000 OFFSET 8000
+FORMAT Hash;
 
 -- Test 14: Multiple different filters on cached data
 SYSTEM DROP COLUMNS CACHE;
@@ -193,14 +202,14 @@ SELECT count(*) FROM t_cache_granules WHERE category <> '';
 SELECT count(*) FROM t_cache_granules WHERE category <> '';
 
 -- Test 17: Very small reads (single row)
-SELECT * FROM t_cache_granules WHERE id = 12345;
-SELECT * FROM t_cache_granules WHERE id = 23456;
-SELECT * FROM t_cache_granules WHERE id = 34567;
+SELECT * FROM t_cache_granules WHERE id = 12345 FORMAT Hash;
+SELECT * FROM t_cache_granules WHERE id = 23456 FORMAT Hash;
+SELECT * FROM t_cache_granules WHERE id = 34567 FORMAT Hash;
 
 -- Repeat
-SELECT * FROM t_cache_granules WHERE id = 12345;
-SELECT * FROM t_cache_granules WHERE id = 23456;
-SELECT * FROM t_cache_granules WHERE id = 34567;
+SELECT * FROM t_cache_granules WHERE id = 12345 FORMAT Hash;
+SELECT * FROM t_cache_granules WHERE id = 23456 FORMAT Hash;
+SELECT * FROM t_cache_granules WHERE id = 34567 FORMAT Hash;
 
 -- Test 18: Read all granules sequentially
 SYSTEM DROP COLUMNS CACHE;
