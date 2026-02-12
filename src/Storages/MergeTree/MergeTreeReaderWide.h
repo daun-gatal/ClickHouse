@@ -119,27 +119,6 @@ private:
     ReadBufferFromFileBase::ProfileCallback profile_callback;
     clockid_t clock_type;
     bool read_without_marks = false;
-
-    /// State for columns cache: accumulates data during cache-miss reads
-    /// and serves cached data during cache-hit reads across multiple readRows calls.
-    struct CacheAccumulator
-    {
-        size_t from_mark = 0;
-        size_t end_mark = 0;
-        size_t total_rows_in_range = 0;
-        size_t rows_accumulated = 0;
-        std::unordered_map<String, MutableColumnPtr> columns;
-    };
-
-    struct CacheServeState
-    {
-        size_t total_rows = 0;
-        size_t rows_served = 0;
-        std::unordered_map<String, ColumnPtr> columns;
-    };
-
-    std::optional<CacheAccumulator> columns_cache_accumulator;
-    std::optional<CacheServeState> columns_cache_serve_state;
 };
 
 }

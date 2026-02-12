@@ -23,17 +23,27 @@ namespace DB
 {
 
 /// Key for looking up cached deserialized columns.
-/// Identifies a specific column in a specific mark range of a specific data part.
+/// Identifies a specific column in a specific row range of a specific data part.
 /// Uses Table UUID so that RENAME TABLE properly invalidates the cache.
+/// Row ranges (not mark ranges) allow for flexible block sizes and intersection queries.
 struct ColumnsCacheKey
 {
     UUID table_uuid;
     String part_name;
     String column_name;
-    size_t mark_begin;
-    size_t mark_end;
+    size_t row_begin;
+    size_t row_end;
 
     bool operator==(const ColumnsCacheKey & other) const = default;
+
+    bool intersects(const ColumnsCacheKey & other) const
+    {
+        return table_uuid == other.table_uuid
+            && part_name == other.part_name
+            && column_name == other.column_name
+            && row_begin < other.row_end
+            && row_end > other.row_begin;
+    }
 };
 
 struct ColumnsCacheKeyHash
@@ -44,8 +54,8 @@ struct ColumnsCacheKeyHash
         hash.update(key.table_uuid);
         hash.update(key.part_name);
         hash.update(key.column_name);
-        hash.update(key.mark_begin);
-        hash.update(key.mark_end);
+        hash.update(key.row_begin);
+        hash.update(key.row_end);
         return hash.get64();
     }
 };
@@ -73,10 +83,38 @@ extern template class CacheBase<ColumnsCacheKey, ColumnsCacheEntry, ColumnsCache
 /// Cache of deserialized columns for MergeTree tables.
 /// Eliminates the need to read compressed data, decompress, and deserialize
 /// for frequently accessed data parts and columns.
+/// Supports intersection queries to find cached blocks overlapping with requested row ranges.
 class ColumnsCache : public CacheBase<ColumnsCacheKey, ColumnsCacheEntry, ColumnsCacheKeyHash, ColumnsCacheWeightFunction>
 {
 private:
     using Base = CacheBase<ColumnsCacheKey, ColumnsCacheEntry, ColumnsCacheKeyHash, ColumnsCacheWeightFunction>;
+
+    /// Interval index: (UUID, part, column) -> sorted map of (row_begin -> key)
+    /// Allows efficient lookup of intersecting row ranges
+    struct ColumnIdentifier
+    {
+        UUID table_uuid;
+        String part_name;
+        String column_name;
+
+        bool operator==(const ColumnIdentifier & other) const = default;
+    };
+
+    struct ColumnIdentifierHash
+    {
+        size_t operator()(const ColumnIdentifier & id) const
+        {
+            SipHash hash;
+            hash.update(id.table_uuid);
+            hash.update(id.part_name);
+            hash.update(id.column_name);
+            return hash.get64();
+        }
+    };
+
+    using IntervalMap = std::map<size_t, ColumnsCacheKey>;
+    std::unordered_map<ColumnIdentifier, IntervalMap, ColumnIdentifierHash> interval_index;
+    mutable std::mutex interval_index_mutex;
 
 public:
     ColumnsCache(
@@ -98,10 +136,24 @@ public:
         return result;
     }
 
+    /// Find all cached entries that intersect with the given row range for a column.
+    /// Returns a vector of (cache_key, cached_entry) pairs, sorted by row_begin.
+    std::vector<std::pair<Key, MappedPtr>> getIntersecting(
+        const UUID & table_uuid,
+        const String & part_name,
+        const String & column_name,
+        size_t row_begin,
+        size_t row_end);
+
     /// Insert a column into the cache.
     void set(const Key & key, const MappedPtr & mapped)
     {
         Base::set(key, mapped);
+
+        /// Update interval index
+        std::lock_guard lock(interval_index_mutex);
+        ColumnIdentifier id{key.table_uuid, key.part_name, key.column_name};
+        interval_index[id][key.row_begin] = key;
     }
 
 private:
@@ -109,6 +161,9 @@ private:
     {
         ProfileEvents::increment(ProfileEvents::ColumnsCacheEvictedEntries);
         ProfileEvents::increment(ProfileEvents::ColumnsCacheEvictedBytes, weight_loss);
+
+        /// Note: We don't remove from interval_index here because we don't have the key.
+        /// The interval_index will be cleaned up lazily when queries find stale entries.
     }
 };
 
