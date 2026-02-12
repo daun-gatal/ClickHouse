@@ -215,10 +215,10 @@ def main():
     config_xml = workspace_path / "config.xml"  # Configuration file for server
     users_xml = workspace_path / "users.xml"  # Configuration file for server
     # Query log files for queries sent to other databases
-    postgresql_query_log = "/tmp/postgresql.sql"
-    mysql_query_log = "/tmp/mysql.sql"
-    sqlite_query_log = "/tmp/sqlite.sql"
-    mongodb_query_log = "/tmp/mongodb.doc"
+    postgresql_query_log = workspace_path / "postgresql.sql"
+    mysql_query_log = workspace_path / "mysql.sql"
+    sqlite_query_log = workspace_path / "sqlite.sql"
+    mongodb_query_log = workspace_path / "mongodb.doc"
     paths = [
         core_file,
         fatal_log,
@@ -250,6 +250,8 @@ def main():
     number_of_nodes = random.randint(1, 3)
     ctree = ET.parse(f"{repo_dir}/ci/jobs/scripts/server_fuzzer/config.xml")
     croot = ctree.getroot()
+    if croot.tag != "clickhouse":
+        raise Exception("<clickhouse> element not found")
     remote_servers = ET.SubElement(croot, "remote_servers")
     for i in range(number_of_nodes):
         next_node = ET.SubElement(remote_servers, f"cluster{i}")
@@ -276,6 +278,8 @@ def main():
     utree = ET.parse(f"{repo_dir}/ci/jobs/scripts/server_fuzzer/users.xml")
     if has_all_cluster:
         uroot = utree.getroot()
+        if uroot.tag != "clickhouse":
+            raise Exception("<clickhouse> element not found")
         profiles = ET.SubElement(uroot, "profiles")
         def_profile = ET.SubElement(profiles, "default")
         cluster_preplicas = ET.SubElement(def_profile, "cluster_for_parallel_replicas")
@@ -285,6 +289,7 @@ def main():
     # Set up and run La Casa del Dolor
     base_command = f"""
 python3 ./tests/casa_del_dolor/dolor.py --seed={session_seed} --generator=buzzhouse
+--tmp-files-dir=/workspace
 --server-config={config_xml}
 --user-config={users_xml}
 --client-binary={clickhouse_path}

@@ -345,6 +345,12 @@ parser.add_argument(
     default=UNSET,
     help="Total time to run the test in minutes (the test will stop after this time)",
 )
+parser.add_argument(
+    "--tmp-files-dir",
+    type=pathlib.Path,
+    default=pathlib.Path("/tmp"),
+    help="Path to temporary files dir",
+)
 
 args = parser.parse_args()
 
@@ -412,7 +418,7 @@ keeper_configs: list[str] = modify_keeper_settings(args, is_private_binary)
 
 if args.with_minio:
     # Set environment variables before cluster starts
-    credentials_file = tempfile.NamedTemporaryFile()
+    credentials_file = tempfile.NamedTemporaryFile(dir=args.tmp_files_dir)
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
@@ -451,7 +457,7 @@ if server_settings is not None:
     )
     if generated_clusters > 0:
         modified_user_settings, user_settings = modify_user_settings(
-            user_settings, generated_clusters
+            args, user_settings, generated_clusters
         )
 
 dolor_main_configs = [
@@ -537,7 +543,7 @@ if args.with_postgresql:
 catalog_server = create_spark_http_server(cluster, args.with_unity, test_env_variables)
 
 # Start the load generator, at the moment only BuzzHouse is available
-generator: Generator = Generator(pathlib.Path(), pathlib.Path(), None)
+generator: Generator = Generator(pathlib.Path(), pathlib.Path(), pathlib.Path(), None)
 if args.generator == "buzzhouse":
     generator = BuzzHouseGenerator(args, cluster, catalog_server, server_settings)
 logger.info("Starting load generator")
