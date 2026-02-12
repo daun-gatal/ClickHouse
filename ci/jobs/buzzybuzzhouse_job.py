@@ -214,6 +214,11 @@ def main():
     server_cmd = workspace_path / "server.sh"  # Command line used for La Casa del Dolor
     config_xml = workspace_path / "config.xml"  # Configuration file for server
     users_xml = workspace_path / "users.xml"  # Configuration file for server
+    # Query log files for queries sent to other databases
+    postgresql_query_log = "/tmp/postgresql.sql"
+    mysql_query_log = "/tmp/mysql.sql"
+    sqlite_query_log = "/tmp/sqlite.sql"
+    mongodb_query_log = "/tmp/mongodb.doc"
     paths = [
         core_file,
         fatal_log,
@@ -229,6 +234,10 @@ def main():
         config_xml,
         users_xml,
         dolor_log,
+        postgresql_query_log,
+        mysql_query_log,
+        sqlite_query_log,
+        mongodb_query_log,
     ]
 
     # Generate BuzzHouse config
