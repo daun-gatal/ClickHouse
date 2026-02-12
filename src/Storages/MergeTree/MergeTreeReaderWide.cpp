@@ -195,7 +195,7 @@ size_t MergeTreeReaderWide::readRows(
                 for (size_t pos = 0; pos < num_columns; ++pos)
                 {
                     ColumnsCacheKey cache_key{
-                        data_part_info_for_read->getTableName(),
+                        data_part_info_for_read->getTableUUID(),
                         data_part_info_for_read->getPartName(),
                         columns_to_read[pos].getNameInStorage(),
                         from_mark,
@@ -335,7 +335,7 @@ size_t MergeTreeReaderWide::readRows(
                     if (acc_col && !acc_col->empty())
                     {
                         ColumnsCacheKey cache_key{
-                            data_part_info_for_read->getTableName(),
+                            data_part_info_for_read->getTableUUID(),
                             data_part_info_for_read->getPartName(),
                             col_name,
                             columns_cache_accumulator->from_mark,

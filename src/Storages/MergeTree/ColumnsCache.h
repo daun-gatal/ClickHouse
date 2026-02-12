@@ -6,6 +6,7 @@
 #include <Common/ProfileEvents.h>
 #include <Common/SipHash.h>
 #include <Columns/IColumn.h>
+#include <Core/UUID.h>
 #include <Storages/MergeTree/MarkRange.h>
 
 
@@ -23,9 +24,10 @@ namespace DB
 
 /// Key for looking up cached deserialized columns.
 /// Identifies a specific column in a specific mark range of a specific data part.
+/// Uses Table UUID so that RENAME TABLE properly invalidates the cache.
 struct ColumnsCacheKey
 {
-    String table_name;
+    UUID table_uuid;
     String part_name;
     String column_name;
     size_t mark_begin;
@@ -39,7 +41,7 @@ struct ColumnsCacheKeyHash
     size_t operator()(const ColumnsCacheKey & key) const
     {
         SipHash hash;
-        hash.update(key.table_name);
+        hash.update(key.table_uuid);
         hash.update(key.part_name);
         hash.update(key.column_name);
         hash.update(key.mark_begin);
