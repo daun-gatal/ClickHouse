@@ -31,10 +31,11 @@ if __name__ == "__main__":
         )
         commits = raw.splitlines()
 
-        for sha in commits:
-            if sha == info.sha:
-                break
-            commits.pop(0)
+        try:
+            idx = commits.index(info.sha)
+            commits = commits[idx:]
+        except ValueError:
+            pass
 
         info.store_kv_data("previous_commits_sha", commits)
 
