@@ -15,7 +15,7 @@ using namespace DB;
 
 using ResourceTest = ResourceTestClass;
 
-TEST(TimeSharedWorkloadNode, Smoke)
+TEST(SchedulerTimeSharedWorkloadNode, Smoke)
 {
     ResourceTest t;
 
@@ -26,7 +26,7 @@ TEST(TimeSharedWorkloadNode, Smoke)
     t.consumed("fifo", 20);
 }
 
-TEST(TimeSharedWorkloadNode, FairnessWeight)
+TEST(SchedulerTimeSharedWorkloadNode, FairnessWeight)
 {
     ResourceTest t;
 
@@ -50,7 +50,7 @@ TEST(TimeSharedWorkloadNode, FairnessWeight)
     t.consumed("B", 20);
 }
 
-TEST(TimeSharedWorkloadNode, FairnessActivation)
+TEST(SchedulerTimeSharedWorkloadNode, FairnessActivation)
 {
     ResourceTest t;
 
@@ -86,7 +86,7 @@ TEST(TimeSharedWorkloadNode, FairnessActivation)
     t.consumed("B", 10);
 }
 
-TEST(TimeSharedWorkloadNode, FairnessMaxMin)
+TEST(SchedulerTimeSharedWorkloadNode, FairnessMaxMin)
 {
     ResourceTest t;
 
@@ -110,7 +110,7 @@ TEST(TimeSharedWorkloadNode, FairnessMaxMin)
     t.consumed("A", 20);
 }
 
-TEST(TimeSharedWorkloadNode, FairnessHierarchical)
+TEST(SchedulerTimeSharedWorkloadNode, FairnessHierarchical)
 {
     ResourceTest t;
 
@@ -196,7 +196,7 @@ TEST(TimeSharedWorkloadNode, FairnessHierarchical)
     }
 }
 
-TEST(TimeSharedWorkloadNode, Priority)
+TEST(SchedulerTimeSharedWorkloadNode, Priority)
 {
     ResourceTest t;
 
@@ -230,7 +230,7 @@ TEST(TimeSharedWorkloadNode, Priority)
     t.consumed("C", 0);
 }
 
-TEST(TimeSharedWorkloadNode, PriorityActivation)
+TEST(SchedulerTimeSharedWorkloadNode, PriorityActivation)
 {
     ResourceTest t;
 
@@ -271,7 +271,7 @@ TEST(TimeSharedWorkloadNode, PriorityActivation)
     t.consumed("C", 0);
 }
 
-TEST(TimeSharedWorkloadNode, List)
+TEST(SchedulerTimeSharedWorkloadNode, List)
 {
     ResourceTest t;
 
@@ -306,7 +306,7 @@ TEST(TimeSharedWorkloadNode, List)
     }
 }
 
-TEST(TimeSharedWorkloadNode, ThrottlerLeakyBucket)
+TEST(SchedulerTimeSharedWorkloadNode, ThrottlerLeakyBucket)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();
@@ -335,7 +335,7 @@ TEST(TimeSharedWorkloadNode, ThrottlerLeakyBucket)
     t.consumed("all", 10);
 }
 
-TEST(TimeSharedWorkloadNode, ThrottlerPacing)
+TEST(SchedulerTimeSharedWorkloadNode, ThrottlerPacing)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();
@@ -354,7 +354,7 @@ TEST(TimeSharedWorkloadNode, ThrottlerPacing)
     }
 }
 
-TEST(TimeSharedWorkloadNode, ThrottlerBucketFilling)
+TEST(SchedulerTimeSharedWorkloadNode, ThrottlerBucketFilling)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();
@@ -387,7 +387,7 @@ TEST(TimeSharedWorkloadNode, ThrottlerBucketFilling)
     t.consumed("all", 3);
 }
 
-TEST(TimeSharedWorkloadNode, ThrottlerAndFairness)
+TEST(SchedulerTimeSharedWorkloadNode, ThrottlerAndFairness)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();
@@ -425,7 +425,7 @@ TEST(TimeSharedWorkloadNode, ThrottlerAndFairness)
     }
 }
 
-TEST(TimeSharedWorkloadNode, QueueWithRequestsDestruction)
+TEST(SchedulerTimeSharedWorkloadNode, QueueWithRequestsDestruction)
 {
     ResourceTest t;
 
@@ -453,7 +453,7 @@ TEST(TimeSharedWorkloadNode, QueueWithRequestsDestruction)
     t.consumed("A", 20);
 }
 
-TEST(TimeSharedWorkloadNode, ResourceGuardException)
+TEST(SchedulerTimeSharedWorkloadNode, ResourceGuardException)
 {
     ResourceTest t;
 
@@ -503,7 +503,7 @@ TEST(TimeSharedWorkloadNode, ResourceGuardException)
     t.consumed("A", 20);
 }
 
-TEST(TimeSharedWorkloadNode, UpdateWeight)
+TEST(SchedulerTimeSharedWorkloadNode, UpdateWeight)
 {
     ResourceTest t;
 
@@ -529,7 +529,7 @@ TEST(TimeSharedWorkloadNode, UpdateWeight)
     t.consumed("B", 20);
 }
 
-TEST(TimeSharedWorkloadNode, UpdatePriority)
+TEST(SchedulerTimeSharedWorkloadNode, UpdatePriority)
 {
     ResourceTest t;
 
@@ -563,7 +563,7 @@ TEST(TimeSharedWorkloadNode, UpdatePriority)
     t.consumed("B", 10);
 }
 
-TEST(TimeSharedWorkloadNode, UpdateParentOfLeafNode)
+TEST(SchedulerTimeSharedWorkloadNode, UpdateParentOfLeafNode)
 {
     ResourceTest t;
 
@@ -600,7 +600,7 @@ TEST(TimeSharedWorkloadNode, UpdateParentOfLeafNode)
     t.consumed("Y", 20);
 }
 
-TEST(TimeSharedWorkloadNode, UpdatePriorityOfIntermediateNode)
+TEST(SchedulerTimeSharedWorkloadNode, UpdatePriorityOfIntermediateNode)
 {
     ResourceTest t;
 
@@ -640,7 +640,7 @@ TEST(TimeSharedWorkloadNode, UpdatePriorityOfIntermediateNode)
     t.consumed("Y2", 20);
 }
 
-TEST(TimeSharedWorkloadNode, UpdateParentOfIntermediateNode)
+TEST(SchedulerTimeSharedWorkloadNode, UpdateParentOfIntermediateNode)
 {
     ResourceTest t;
 
@@ -682,7 +682,7 @@ TEST(TimeSharedWorkloadNode, UpdateParentOfIntermediateNode)
     t.consumed("Y2", 20);
 }
 
-TEST(TimeSharedWorkloadNode, UpdateThrottlerMaxSpeed)
+TEST(SchedulerTimeSharedWorkloadNode, UpdateThrottlerMaxSpeed)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();
@@ -713,7 +713,7 @@ TEST(TimeSharedWorkloadNode, UpdateThrottlerMaxSpeed)
     t.consumed("all", 10);
 }
 
-TEST(TimeSharedWorkloadNode, UpdateThrottlerMaxBurst)
+TEST(SchedulerTimeSharedWorkloadNode, UpdateThrottlerMaxBurst)
 {
     ResourceTest t;
     EventQueue::TimePoint start = std::chrono::system_clock::now();

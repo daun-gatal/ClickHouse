@@ -111,7 +111,7 @@ struct MyRequest : public ResourceRequest
     }
 };
 
-TEST(TimeSharedScheduler, Smoke)
+TEST(SchedulerTimeShared, Smoke)
 {
     ResourceTest t;
 
@@ -154,7 +154,7 @@ TEST(TimeSharedScheduler, Smoke)
     }
 }
 
-TEST(TimeSharedScheduler, Budget)
+TEST(SchedulerTimeShared, Budget)
 {
     ResourceTest t;
 
@@ -179,7 +179,7 @@ TEST(TimeSharedScheduler, Budget)
     EXPECT_EQ(total_real_cost, a.queue->dequeued_cost - a.queue->getBudget());
 }
 
-TEST(TimeSharedScheduler, Cancel)
+TEST(SchedulerTimeShared, Cancel)
 {
     // This barrier is used in the scheduler thread, so we should not destroy it before thread in ~ResourceTest
     std::barrier<std::__empty_completion> destruct_sync(2);
