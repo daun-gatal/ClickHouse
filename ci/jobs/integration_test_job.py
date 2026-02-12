@@ -2,8 +2,6 @@ import argparse
 import os
 import subprocess
 import time
-import signal
-from multiprocessing import Process
 from pathlib import Path
 from typing import List, Tuple
 
@@ -97,50 +95,59 @@ def parse_args():
 
 def merge_profraw_files(llvm_profdata_cmd: str, batch_num: int):
     """Merge all profraw files into final profdata file.
-    
+
     Args:
         llvm_profdata_cmd: Path to llvm-profdata tool
         batch_num: Batch number for naming output file
     """
     import subprocess
     from pathlib import Path
-    
+
     # Find all profraw files
     profraw_files = [str(p) for p in Path(".").rglob("*.profraw")]
-    
+
     if not profraw_files:
         print("No profraw files found", flush=True)
         return
-    
+
     final_file = f"./it-{batch_num}.profdata"
     print(f"Merging {len(profraw_files)} profraw files into {final_file}", flush=True)
-    
+
     result = subprocess.run(
-        [llvm_profdata_cmd, "merge", "-sparse", "-failure-mode=warn"] + profraw_files + ["-o", final_file],
-        capture_output=True, text=True
+        [llvm_profdata_cmd, "merge", "-sparse", "-failure-mode=warn"]
+        + profraw_files
+        + ["-o", final_file],
+        capture_output=True,
+        text=True,
     )
-    
+
     # Check for corrupted files in stderr
-    corrupted_count = result.stderr.count("invalid instrumentation profile") + result.stderr.count("file header is corrupt")
+    corrupted_count = result.stderr.count(
+        "invalid instrumentation profile"
+    ) + result.stderr.count("file header is corrupt")
     if corrupted_count > 0:
         print(f"  WARNING: Found {corrupted_count} corrupted profraw files", flush=True)
         # Extract and display corrupted filenames from stderr
         corrupted_files = set()
-        for line in result.stderr.split('\n'):
-            if "invalid instrumentation profile" in line or "file header is corrupt" in line or "error:" in line.lower():
+        for line in result.stderr.split("\n"):
+            if (
+                "invalid instrumentation profile" in line
+                or "file header is corrupt" in line
+                or "error:" in line.lower()
+            ):
                 print(f"    {line.strip()}", flush=True)
                 # Extract filename from error message (format: "error: file.profraw: ..." or "warning: file.profraw: ...")
-                parts = line.split(':')
+                parts = line.split(":")
                 if len(parts) >= 2:
                     potential_file = parts[1].strip()
-                    if potential_file.endswith('.profraw'):
+                    if potential_file.endswith(".profraw"):
                         corrupted_files.add(potential_file)
         if corrupted_files:
             print(f"  Corrupted files: {', '.join(corrupted_files)}", flush=True)
-    
+
     if result.returncode == 0:
         print(f"Successfully created final coverage file: {final_file}", flush=True)
-        
+
         # Delete merged profraw files to save disk space
         deleted_count = 0
         for profraw_file in profraw_files:
@@ -459,7 +466,7 @@ tar -czf ./ci/tmp/logs.tar.gz \
             if Shell.check(f"command -v {cmd}", verbose=False):
                 llvm_profdata_cmd = cmd
                 break
-        
+
         if not llvm_profdata_cmd:
             print("ERROR: llvm-profdata not found in PATH")
         else:
@@ -626,7 +633,9 @@ tar -czf ./ci/tmp/logs.tar.gz \
     R = Result.create_from(results=test_results, stopwatch=sw, files=attached_files)
 
     if is_llvm_coverage:
-        assert is_bugfix_validation is False, "LLVM coverage with bugfix validation is not supported"
+        assert (
+            is_bugfix_validation is False
+        ), "LLVM coverage with bugfix validation is not supported"
         has_failure = False
         for r in R.results:
             if r.status == Result.StatusExtended.FAIL:
@@ -647,7 +656,9 @@ tar -czf ./ci/tmp/logs.tar.gz \
         R.set_error().set_info("\n".join(error_info))
 
     if is_bugfix_validation:
-        assert is_llvm_coverage is False, "Bugfix validation with LLVM coverage is not supported"
+        assert (
+            is_llvm_coverage is False
+        ), "Bugfix validation with LLVM coverage is not supported"
         has_failure = False
         for r in R.results:
             # invert statuses
@@ -667,7 +678,7 @@ tar -czf ./ci/tmp/logs.tar.gz \
     force_ok_exit = False
     if is_llvm_coverage and llvm_profdata_cmd:
         print("Collecting and merging LLVM coverage files...")
-        
+
         # Merge all profraw files into final profdata file
         merge_profraw_files(llvm_profdata_cmd, batch_num)
 
