@@ -222,6 +222,8 @@ MutationExpressionAnalysisResult analyzeMutationExpression(
         if (!query_tree)
             continue;
 
+        createUniqueAliasesIfNecessary(query_tree, analysis_context);
+
         auto subquery_options = SelectQueryOptions{}.subquery();
         subquery_options.ignore_limits = false;
         Planner subquery_planner(
