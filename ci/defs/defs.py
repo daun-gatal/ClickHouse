@@ -508,7 +508,7 @@ class ArtifactConfigs:
     llvm_coverage_info_file = Artifact.Config(
         name=ArtifactNames.LLVM_COVERAGE_INFO_FILE,
         type=Artifact.Type.S3,
-        path=f"{TEMP_DIR}/lllvm_coverage.info",
+        path=f"{TEMP_DIR}/llvm_coverage.info",
     )
     clickhouse_debians = Artifact.Config(
         name="*",
