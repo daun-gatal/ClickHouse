@@ -2,6 +2,7 @@
 
 #include <Common/Scheduler/ISchedulerNode.h>
 #include <Common/Scheduler/ISchedulerConstraint.h>
+#include <Common/Scheduler/Debug.h>
 
 #include <memory>
 #include <mutex>
@@ -101,6 +102,8 @@ public:
                 // Update state on request arrival
                 requests++;
                 cost += request->cost;
+                SCHED_DBG("{} -- acquired(cost={}, requests={}/{}, cost={}/{})",
+                    getPath(), request->cost, requests, max_requests, cost, max_cost);
             }
             incrementDequeued(request->cost);
             return {request, active()};
@@ -115,6 +118,8 @@ public:
         bool was_active = active();
         requests--;
         cost -= request->cost;
+        SCHED_DBG("{} -- released(cost={}, requests={}/{}, cost={}/{})",
+            getPath(), request->cost, requests, max_requests, cost, max_cost);
 
         // Schedule activation on transition from inactive state
         if (!was_active && active())

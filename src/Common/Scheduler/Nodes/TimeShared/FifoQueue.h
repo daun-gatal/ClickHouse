@@ -2,6 +2,7 @@
 
 #include <Common/Stopwatch.h>
 #include <Common/Scheduler/ISchedulerQueue.h>
+#include <Common/Scheduler/Debug.h>
 #include <Common/Exception.h>
 
 #include <Poco/Util/AbstractConfiguration.h>
@@ -76,6 +77,7 @@ public:
         queue_cost += request->cost;
         bool was_empty = requests.empty();
         requests.push_back(*request);
+        SCHED_DBG("{} -- enqueue(cost={}, queued={})", getPath(), request->cost, requests.size());
         if (was_empty)
             scheduleActivation();
     }
@@ -94,6 +96,7 @@ public:
         }
         queue_cost -= result->cost;
         incrementDequeued(result->cost);
+        SCHED_DBG("{} -- dequeue(cost={}, queued={})", getPath(), result->cost, requests.size());
         return {result, !requests.empty()};
     }
 

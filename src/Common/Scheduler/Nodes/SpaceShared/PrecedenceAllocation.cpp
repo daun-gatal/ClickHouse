@@ -1,4 +1,5 @@
 #include <Common/Scheduler/Nodes/SpaceShared/PrecedenceAllocation.h>
+#include <Common/Scheduler/Debug.h>
 #include <Common/Exception.h>
 
 namespace DB
@@ -81,6 +82,8 @@ ResourceAllocation * PrecedenceAllocation::selectAllocationToKill(IncreaseReques
 void PrecedenceAllocation::approveIncrease()
 {
     chassert(increase);
+    SCHED_DBG("{} -- approveIncrease(child={}, id={}, size={})",
+        getPath(), increase_child->basename, increase->allocation.id, increase->size);
     apply(*increase);
     if (!increase_child->isRunning()) // We are adding the first allocation
         running_children.insert(*increase_child);
@@ -93,6 +96,8 @@ void PrecedenceAllocation::approveIncrease()
 void PrecedenceAllocation::approveDecrease()
 {
     chassert(decrease);
+    SCHED_DBG("{} -- approveDecrease(child={}, id={}, size={})",
+        getPath(), decrease_child->basename, decrease->allocation.id, decrease->size);
     apply(*decrease);
     chassert(decrease_child->isRunning());
     if (decrease_child->allocated == decrease->size) // We are removing the last allocation
@@ -104,6 +109,7 @@ void PrecedenceAllocation::approveDecrease()
 
 void PrecedenceAllocation::propagateUpdate(ISpaceSharedNode & from_child, Update && update)
 {
+    SCHED_DBG("{} -- propagateUpdate(from_child={}, update={})", getPath(), from_child.basename, update.toString());
     apply(update);
     if (update.attached)
     {

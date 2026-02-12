@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Common/Scheduler/ITimeSharedNode.h>
+#include <Common/Scheduler/Debug.h>
 #include <Common/Exception.h>
 
 #include <Common/Stopwatch.h>
@@ -209,6 +210,8 @@ public:
             if (request)
             {
                 incrementDequeued(request->cost);
+                SCHED_DBG("{} -- dequeue(child={}, cost={}, vruntime={:.2f}, sys_vruntime={:.2f})",
+                    getPath(), current.child->basename, request->cost, current.vruntime, system_vruntime);
                 return {request, heap_size > 0};
             }
         }

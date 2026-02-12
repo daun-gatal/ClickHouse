@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Common/Scheduler/ITimeSharedNode.h>
+#include <Common/Scheduler/Debug.h>
 #include <Common/Exception.h>
 
 #include <algorithm>
@@ -142,6 +143,8 @@ public:
 
             if (request)
             {
+                SCHED_DBG("{} -- dequeue(child={}, cost={}, priority={})",
+                    getPath(), items.front().child->basename, request->cost, items.front().priority.value);
                 incrementDequeued(request->cost);
                 return {request, isActive()};
             }

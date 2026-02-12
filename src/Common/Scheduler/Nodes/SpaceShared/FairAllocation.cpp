@@ -99,6 +99,8 @@ ResourceAllocation * FairAllocation::selectAllocationToKill(IncreaseRequest & ki
 void FairAllocation::approveIncrease()
 {
     chassert(increase);
+    SCHED_DBG("{} -- approveIncrease(child={}, id={}, size={})",
+        getPath(), increase_child->basename, increase->allocation.id, increase->size);
     apply(*increase);
     increase = nullptr;
     increase_child->approveIncrease();
@@ -108,6 +110,8 @@ void FairAllocation::approveIncrease()
 void FairAllocation::approveDecrease()
 {
     chassert(decrease);
+    SCHED_DBG("{} -- approveDecrease(child={}, id={}, size={})",
+        getPath(), decrease_child->basename, decrease->allocation.id, decrease->size);
     apply(*decrease);
     decrease = nullptr;
     decrease_child->approveDecrease();
@@ -116,6 +120,7 @@ void FairAllocation::approveDecrease()
 
 void FairAllocation::propagateUpdate(ISpaceSharedNode & from_child, Update && update)
 {
+    SCHED_DBG("{} -- propagateUpdate(from_child={}, update={})", getPath(), from_child.basename, update.toString());
     bool reset_increase = false;
     apply(update);
     if (update.attached || update.detached)

@@ -1,5 +1,6 @@
 #include <Common/Scheduler/Nodes/SpaceShared/AllocationQueue.h>
 #include <Common/Scheduler/IWorkloadNode.h>
+#include <Common/Scheduler/Debug.h>
 
 #include <Common/Exception.h>
 #include <Common/ErrorCodes.h>
@@ -68,6 +69,7 @@ void AllocationQueue::insertAllocation(ResourceAllocation & allocation, Resource
         allocation.increase.prepare(initial_size, IncreaseRequest::Kind::Pending);
         pending_allocations.push_back(allocation);
         pending_allocations_size += initial_size;
+        SCHED_DBG("{} -- insert(id={}, size={}, pending={})", getPath(), allocation.unique_id, initial_size, pending_allocations.size());
         if (&allocation == &*pending_allocations.begin() && increasing_allocations.empty()) // Only if it should be processed next
             scheduleActivation();
     }
@@ -186,6 +188,7 @@ void AllocationQueue::approveIncrease()
     std::lock_guard lock(mutex);
     chassert(increase);
     ResourceAllocation & allocation = increase->allocation;
+    SCHED_DBG("{} -- approveIncrease(id={}, size={}, allocated={})", getPath(), allocation.id, increase->size, allocated);
     if (allocation.increase.kind == IncreaseRequest::Kind::Pending)
     {
         pending_allocations.erase(pending_allocations.iterator_to(allocation));
@@ -213,6 +216,7 @@ void AllocationQueue::approveDecrease()
 
     chassert(decrease);
     ResourceAllocation & allocation = decrease->allocation;
+    SCHED_DBG("{} -- approveDecrease(id={}, size={}, allocated={})", getPath(), allocation.id, decrease->size, allocated);
     decreasing_allocations.erase(decreasing_allocations.iterator_to(allocation));
 
     // We need to remove from running/increasing allocations to update the key

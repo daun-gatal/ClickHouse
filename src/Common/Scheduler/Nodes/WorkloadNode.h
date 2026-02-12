@@ -3,6 +3,7 @@
 #include <Common/Exception.h>
 #include <Common/Priority.h>
 #include <Common/Scheduler/CostUnit.h>
+#include <Common/Scheduler/Debug.h>
 #include <Common/Scheduler/ISchedulerNode.h>
 #include <Common/Scheduler/ISchedulerQueue.h>
 #include <Common/Scheduler/ISpaceSharedNode.h>
@@ -626,12 +627,14 @@ public:
 
     void attachWorkloadChild(const WorkloadNodePtr & child) final
     {
+        SCHED_DBG("{} -- attachWorkloadChild(child={})", this->getPath(), child->getWorkload());
         if (auto new_child = impl.attachWorkloadChild(this, this->event_queue, std::static_pointer_cast<WorkloadNodeCommon>(child)))
             reparent(new_child, this);
     }
 
     void detachWorkloadChild(const WorkloadNodePtr & child) final
     {
+        SCHED_DBG("{} -- detachWorkloadChild(child={})", this->getPath(), child->getWorkload());
         if (auto new_child = impl.detachWorkloadChild(this, this->event_queue, std::static_pointer_cast<WorkloadNodeCommon>(child)))
             reparent(new_child, this);
     }
@@ -795,7 +798,10 @@ private:
             this->busy_periods++;
 
         if (request)
+        {
+            SCHED_DBG("{} -- dequeue(cost={})", this->getPath(), request->cost);
             incrementDequeued(request->cost);
+        }
 
         return {request, child_active};
     }
@@ -882,6 +888,7 @@ private:
 
     void propagateUpdate(ISpaceSharedNode & from_child, Update && update) override
     {
+        SCHED_DBG("{} -- propagateUpdate(from_child={}, update={})", this->getPath(), from_child.basename, update.toString());
         chassert(&from_child == child.get());
         apply(update);
         if (update.increase)
@@ -895,6 +902,7 @@ private:
     void approveIncrease() override
     {
         chassert(increase);
+        SCHED_DBG("{} -- approveIncrease(id={}, size={})", this->getPath(), increase->allocation.id, increase->size);
         apply(*increase);
         increase = nullptr;
         child->approveIncrease();
@@ -904,6 +912,7 @@ private:
     void approveDecrease() override
     {
         chassert(decrease);
+        SCHED_DBG("{} -- approveDecrease(id={}, size={})", this->getPath(), decrease->allocation.id, decrease->size);
         apply(*decrease);
         decrease = nullptr;
         child->approveDecrease();

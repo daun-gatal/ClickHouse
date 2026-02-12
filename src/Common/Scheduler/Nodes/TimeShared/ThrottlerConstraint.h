@@ -2,6 +2,7 @@
 
 #include <Common/Scheduler/ISchedulerConstraint.h>
 #include <Common/Scheduler/EventQueue.h>
+#include <Common/Scheduler/Debug.h>
 
 #include <chrono>
 #include <utility>
@@ -103,6 +104,8 @@ public:
             // We don't do `request->addConstraint(this)` because `finishRequest()` is no-op
             ResourceCost cost = request->ignore_throttling ? 0 : request->cost;
             updateBucket(cost);
+            SCHED_DBG("{} -- dequeue(cost={}, tokens={:.2f}, max_speed={:.2f})",
+                getPath(), cost, tokens, max_speed);
             incrementDequeued(cost);
             return {request, active()};
         }
