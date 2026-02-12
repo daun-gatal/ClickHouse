@@ -1,10 +1,12 @@
 import argparse
 import os
+import random
 import re
 import secrets
 import subprocess
 import time
 import traceback
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ci.jobs.ast_fuzzer_job import analyze_job_logs
@@ -210,6 +212,8 @@ def main():
     stderr_log = workspace_path / "stderr.log"  # ClickHouse server stderr log file
     buzz_out = workspace_path / "fuzzerout.sql"  # BuzzHouse generated queries
     server_cmd = workspace_path / "server.sh"  # Command line used for La Casa del Dolor
+    config_xml = workspace_path / "config.xml"  # Configuration file for server
+    users_xml = workspace_path / "users.xml"  # Configuration file for server
     paths = [
         core_file,
         fatal_log,
@@ -222,6 +226,8 @@ def main():
         buzzconfig,
         buzz_out,
         server_cmd,
+        config_xml,
+        users_xml,
         dolor_log,
     ]
 
@@ -231,24 +237,62 @@ def main():
     session_seed = secrets.randbits(64)
     print(f"Using seed {session_seed} for La Casa del Dolor")
 
+    # Set up remote servers configuration for La Casa del Dolor
+    number_of_nodes = random.randint(1, 3)
+    ctree = ET.parse(f"{repo_dir}/ci/jobs/scripts/server_fuzzer/config.xml")
+    croot = ctree.getroot()
+    remote_servers = ET.SubElement(croot, "remote_servers")
+    for i in range(number_of_nodes):
+        next_node = ET.SubElement(remote_servers, f"cluster{i}")
+        next_shard = ET.SubElement(next_node, "shard")
+        next_replica = ET.SubElement(next_shard, "replica")
+        host = ET.SubElement(next_replica, "host")
+        host.text = f"node{i}"
+        port = ET.SubElement(next_replica, "port")
+        port.text = "9000"
+    # Add all nodes cluster with 75% probability
+    has_all_cluster = random.randint(1, 4) != 4
+    if has_all_cluster:
+        next_node = ET.SubElement(remote_servers, "allnodes")
+        next_shard = ET.SubElement(next_node, "shard")
+        for i in range(number_of_nodes):
+            next_replica = ET.SubElement(next_shard, "replica")
+            host = ET.SubElement(next_replica, "host")
+            host.text = f"node{i}"
+            port = ET.SubElement(next_replica, "port")
+            port.text = "9000"
+    ctree.write(config_xml, encoding="utf-8", xml_declaration=True)
+
+    # Set parallel replicas cluster
+    utree = ET.parse(f"{repo_dir}/ci/jobs/scripts/server_fuzzer/users.xml")
+    if has_all_cluster:
+        uroot = utree.getroot()
+        profiles = ET.SubElement(uroot, "profiles")
+        def_profile = ET.SubElement(profiles, "default")
+        cluster_preplicas = ET.SubElement(def_profile, "cluster_for_parallel_replicas")
+        cluster_preplicas.text = "allnodes"
+    utree.write(users_xml, encoding="utf-8", xml_declaration=True)
+
     # Set up and run La Casa del Dolor
     base_command = f"""
 python3 ./tests/casa_del_dolor/dolor.py --seed={session_seed} --generator=buzzhouse
---server-config=./ci/jobs/scripts/server_fuzzer/config.xml
---user-config=./ci/jobs/scripts/server_fuzzer/users.xml
+--server-config={config_xml}
+--user-config={users_xml}
 --client-binary={clickhouse_path}
 --server-binaries={clickhouse_path}
 --client-config={buzzconfig}
 --log-path={dolor_log}
 --timeout=30 --server-settings-prob=0
 --kill-server-prob=50 --without-monitoring
---replica-values=1 --shard-values=1
+--replica-values={','.join(str(i) for i in range(number_of_nodes))}
+--shard-values={','.join(str(1) for _ in range(number_of_nodes))}
 --add-remote-server-settings-prob=0
---add-disk-settings-prob=99 --number-disks=1,3 --add-policy-settings-prob=80
+--add-disk-settings-prob=80 --number-disks=1,3 --add-policy-settings-prob=70
 --add-filesystem-caches-prob=80 --number-caches=1,1
 --time-between-shutdowns=180,180 --restart-clickhouse-prob=75
 --compare-table-dump-prob=0 --set-locales-prob=80 --set-timezones-prob=80
 --keeper-settings-prob=0 --mem-limit=16g --set-shared-mergetree-disk
+{'--with-spark' if random.randint(1, 4) == 4 else ''}
 2>&1 | tee {fuzzer_log}
 """
 

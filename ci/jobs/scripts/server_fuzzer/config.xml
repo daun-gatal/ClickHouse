@@ -72,35 +72,4 @@
         <database>system</database>
         <table>part_log</table>
     </part_log>
-
-    <remote_servers>
-        <cluster0>
-            <shard>
-                <replica>
-                    <host>node0</host>
-                    <port>9000</port>
-                </replica>
-            </shard>
-        </cluster0>
-        <!--<cluster1>
-            <shard>
-                <replica>
-                    <host>node1</host>
-                    <port>9000</port>
-                </replica>
-            </shard>
-        </cluster1>
-        <cluster2>
-            <shard>
-                <replica>
-                    <host>node0</host>
-                    <port>9000</port>
-                </replica>
-                <replica>
-                    <host>node1</host>
-                    <port>9000</port>
-                </replica>
-            </shard>
-        </cluster2>-->
-    </remote_servers>
 </clickhouse>

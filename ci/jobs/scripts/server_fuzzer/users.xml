@@ -48,6 +48,7 @@
             <allow_experimental_live_view>1</allow_experimental_live_view>
             <allow_experimental_materialized_postgresql_table>1</allow_experimental_materialized_postgresql_table>
             <allow_experimental_nlp_functions>1</allow_experimental_nlp_functions>
+            <allow_experimental_nullable_tuple_type>1</allow_experimental_nullable_tuple_type>
             <allow_experimental_object_storage_queue_hive_partitioning>1</allow_experimental_object_storage_queue_hive_partitioning>
             <allow_experimental_object_type>1</allow_experimental_object_type>
             <allow_experimental_prql_dialect>1</allow_experimental_prql_dialect>
@@ -93,7 +94,6 @@
             <max_execution_time>60</max_execution_time>
             <keeper_max_retries>15</keeper_max_retries>
             <database_replicated_allow_replicated_engine_arguments>1</database_replicated_allow_replicated_engine_arguments>
-            <cluster_for_parallel_replicas>cluster0</cluster_for_parallel_replicas>
         </default>
     </profiles>
     <users>
