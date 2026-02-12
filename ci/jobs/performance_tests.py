@@ -324,31 +324,33 @@ def main():
     info = Info()
 
     if Utils.is_arm():
-        if compare_against_master:
-            if info.git_branch == "master":
-                link_for_ref_ch = find_prev_build(info, "build_arm_release")
-                assert link_for_ref_ch, "previous clickhouse build has not been found"
-            else:
-                link_for_ref_ch = "https://clickhouse-builds.s3.us-east-1.amazonaws.com/master/aarch64/clickhouse"
-        elif compare_against_release:
-            link_for_ref_ch = find_base_release_build(info, "build_arm_release")
-            assert link_for_ref_ch, "reference clickhouse build has not been found"
-        else:
-            assert False
+        build_type = "build_arm_release"
+        fallback_url = "https://clickhouse-builds.s3.us-east-1.amazonaws.com/master/aarch64/clickhouse"
     elif Utils.is_amd():
-        if compare_against_master:
-            if info.git_branch == "master":
-                link_for_ref_ch = find_prev_build(info, "build_amd_release")
-                assert link_for_ref_ch, "previous clickhouse build has not been found"
-            else:
-                link_for_ref_ch = "https://clickhouse-builds.s3.us-east-1.amazonaws.com/master/amd64/clickhouse"
-        elif compare_against_release:
-            link_for_ref_ch = find_base_release_build(info, "build_amd_release")
-            assert link_for_ref_ch, "reference clickhouse build has not been found"
-        else:
-            assert False
+        build_type = "build_amd_release"
+        fallback_url = "https://clickhouse-builds.s3.us-east-1.amazonaws.com/master/amd64/clickhouse"
     else:
         Utils.raise_with_error(f"Unknown processor architecture")
+
+    if compare_against_master:
+        if info.git_branch == "master":
+            link_for_ref_ch = find_prev_build(info, build_type)
+            assert link_for_ref_ch, "previous clickhouse build has not been found"
+        else:
+            # PR branch: compare against merge-base commit build
+            link_for_ref_ch = None
+            if info.get_kv_data("previous_commits_sha"):
+                link_for_ref_ch = find_prev_build(info, build_type)
+            if not link_for_ref_ch:
+                print(
+                    "WARNING: No merge-base build found, falling back to latest master binary"
+                )
+                link_for_ref_ch = fallback_url
+    elif compare_against_release:
+        link_for_ref_ch = find_base_release_build(info, build_type)
+        assert link_for_ref_ch, "reference clickhouse build has not been found"
+    else:
+        assert False
 
     if compare_against_release:
         print("It's a comparison against latest release baseline")
