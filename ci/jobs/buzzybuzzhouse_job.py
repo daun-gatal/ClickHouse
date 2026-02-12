@@ -251,7 +251,7 @@ def main():
         port = ET.SubElement(next_replica, "port")
         port.text = "9000"
     # Add all nodes cluster with 75% probability
-    has_all_cluster = random.randint(1, 4) != 4
+    has_all_cluster = random.randint(1, 4) != 1
     if has_all_cluster:
         next_node = ET.SubElement(remote_servers, "allnodes")
         next_shard = ET.SubElement(next_node, "shard")
@@ -292,7 +292,18 @@ python3 ./tests/casa_del_dolor/dolor.py --seed={session_seed} --generator=buzzho
 --time-between-shutdowns=180,180 --restart-clickhouse-prob=75
 --compare-table-dump-prob=0 --set-locales-prob=80 --set-timezones-prob=80
 --keeper-settings-prob=0 --mem-limit=16g --set-shared-mergetree-disk
-{'--with-spark' if random.randint(1, 4) == 4 else ''}
+{'--with-azurite' if random.randint(1, 5) == 1 else ''}
+{'--with-postgresql' if random.randint(1, 5) == 1 else ''}
+{'--with-mysql' if random.randint(1, 5) == 1 else ''}
+{'--with-sqlite' if random.randint(1, 5) == 1 else ''}
+{'--with-mongodb' if random.randint(1, 5) == 1 else ''}
+{'--with-redis' if random.randint(1, 5) == 1 else ''}
+{'--with-arrowflight' if random.randint(1, 6) == 1 else ''}
+{'--with-nginx' if random.randint(1, 6) == 1 else ''}
+{'--with-spark' if random.randint(1, 4) == 1 else ''}
+{'--with-glue' if random.randint(1, 4) == 1 else ''}
+{'--with-rest' if random.randint(1, 4) == 1 else ''}
+{'--with-hms' if random.randint(1, 4) == 1 else ''}
 2>&1 | tee {fuzzer_log}
 """
 
