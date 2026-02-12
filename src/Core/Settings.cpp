@@ -168,7 +168,6 @@ This setting controls block formation in two contexts:
 
 Possible values:
 - Positive integer.
-- 0 — setting does not participate in block formation.
 )", 0, max_insert_block_size_rows) \
 DECLARE(UInt64, max_insert_block_size_bytes, 0, R"(
 The maximum size of blocks (in bytes) to form for insertion into a table.
