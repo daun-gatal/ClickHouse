@@ -743,9 +743,10 @@ def test_table_without_metadata_location(started_cluster):
 
 
 def test_check_database(started_cluster):
+    """Test that CHECK DATABASE works with Glue catalog database."""
     node = started_cluster.instances["node1"]
 
-    test_ref = f"test_system_tables_{uuid.uuid4()}"
+    test_ref = f"test_check_database_{uuid.uuid4()}"
     table_name = f"{test_ref}_table"
     root_namespace = f"{test_ref}_namespace"
 
@@ -758,18 +759,21 @@ def test_check_database(started_cluster):
 
     catalog = load_catalog_impl(started_cluster)
 
+    # Create namespaces
     for namespace in namespaces_to_create:
         catalog.create_namespace(namespace)
         assert len(catalog.list_tables(namespace)) == 0
 
+    # Create ClickHouse Glue database once
+    create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
+
+    # Create tables in each namespace
     for namespace in namespaces_to_create:
         table = create_table(catalog, namespace, table_name)
 
         num_rows = 10
         df = generate_arrow_data(num_rows)
         table.append(df)
-
-        create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
 
         expected = DEFAULT_CREATE_TABLE.format(CATALOG_NAME, namespace, table_name)
         assert expected == node.query(
@@ -780,10 +784,11 @@ def test_check_database(started_cluster):
             node.query(f"SELECT count() FROM {CATALOG_NAME}.`{namespace}.{table_name}`")
         )
 
+    # Verify database exists
     assert CATALOG_NAME in node.query("SHOW DATABASES")
-    node.query(
-        f"CHECK DATABASE {CATALOG_NAME}"
-    )
+
+    # Run CHECK DATABASE and verify it completes without error
+    node.query(f"CHECK DATABASE {CATALOG_NAME}")
 
 def test_sts_smoke(started_cluster):
     """Test that STS authentication works with Glue catalog using role_arn and role_session_name"""
