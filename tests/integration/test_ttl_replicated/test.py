@@ -538,6 +538,20 @@ def test_ttl_empty_parts(started_cluster):
     [(node1, node2, 0), (node3, node4, 1), (node5, node6, 2)],
 )
 def test_ttl_compatibility(started_cluster, node_left, node_right, num_run):
+    # Targeted integration runs repeat selected tests many times.
+    # Running all three compatibility variants under sanitizers often exceeds
+    # the pytest session timeout, so keep the old/new compatibility case only.
+    if (
+        node_left.is_built_with_sanitizer()
+        or node_right.is_built_with_sanitizer()
+        or node_left.is_built_with_llvm_coverage()
+        or node_right.is_built_with_llvm_coverage()
+    ) and num_run != 1:
+        pytest.skip(
+            "Skip extra TTL compatibility variants for sanitizer/coverage builds "
+            "to stay within targeted integration session timeout"
+        )
+
     # The test times out for sanitizer/ARM builds, so we increase the timeout.
     timeout = 60
     if node_left.is_built_with_sanitizer() or node_right.is_built_with_sanitizer() or \
