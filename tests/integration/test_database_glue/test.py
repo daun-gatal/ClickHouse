@@ -745,19 +745,42 @@ def test_table_without_metadata_location(started_cluster):
 def test_check_database(started_cluster):
     node = started_cluster.instances["node1"]
 
-    root_namespace = f"clickhouse_{uuid.uuid4()}"
-    namespace = f"{root_namespace}_test"
-    namespace_tables = ["tableA", "tableB"]
+    test_ref = f"test_system_tables_{uuid.uuid4()}"
+    table_name = f"{test_ref}_table"
+    root_namespace = f"{test_ref}_namespace"
+
+    namespaces_to_create = [
+        root_namespace,
+        f"{root_namespace}_A",
+        f"{root_namespace}_B",
+        f"{root_namespace}_C",
+    ]
 
     catalog = load_catalog_impl(started_cluster)
 
-    catalog.create_namespace(namespace)
+    for namespace in namespaces_to_create:
+        catalog.create_namespace(namespace)
+        assert len(catalog.list_tables(namespace)) == 0
 
-    create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
+    for namespace in namespaces_to_create:
+        table = create_table(catalog, namespace, table_name)
 
-    for table in namespace_tables:
-        create_table(catalog, namespace, table)
+        num_rows = 10
+        df = generate_arrow_data(num_rows)
+        table.append(df)
 
+        create_clickhouse_glue_database(started_cluster, node, CATALOG_NAME)
+
+        expected = DEFAULT_CREATE_TABLE.format(CATALOG_NAME, namespace, table_name)
+        assert expected == node.query(
+            f"SHOW CREATE TABLE {CATALOG_NAME}.`{namespace}.{table_name}`"
+        )
+
+        assert num_rows == int(
+            node.query(f"SELECT count() FROM {CATALOG_NAME}.`{namespace}.{table_name}`")
+        )
+
+    assert CATALOG_NAME in node.query("SHOW DATABASES")
     node.query(
         f"CHECK DATABASE {CATALOG_NAME}"
     )
