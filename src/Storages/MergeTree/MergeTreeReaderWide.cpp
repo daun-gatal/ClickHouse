@@ -256,7 +256,7 @@ size_t MergeTreeReaderWide::readRows(
             {
                 size_t column_size_before_reading = column->size();
 
-                if (serving_from_cache && !append)
+                if (serving_from_cache)
                 {
                     /// Serve from the cached full column.
                     auto it = columns_cache_serve_state->columns.find(column_to_read.getNameInStorage());
@@ -265,7 +265,19 @@ size_t MergeTreeReaderWide::readRows(
                         size_t start = columns_cache_serve_state->rows_served;
                         size_t count = std::min(max_rows_to_read, columns_cache_serve_state->total_rows - start);
                         if (count > 0)
-                            column = it->second->cut(start, count);
+                        {
+                            if (!append)
+                            {
+                                /// First read: replace column
+                                column = it->second->cut(start, count);
+                            }
+                            else
+                            {
+                                /// Subsequent read: append to column
+                                auto cut_column = it->second->cut(start, count);
+                                column->assumeMutable()->insertRangeFrom(*cut_column, 0, cut_column->size());
+                            }
+                        }
                     }
                 }
                 else
