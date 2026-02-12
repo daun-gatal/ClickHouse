@@ -69,11 +69,13 @@ MemoryReservation::~MemoryReservation()
     if (allocated_size > 0) // Running allocation
     {
         queue.decreaseAllocation(*this, allocated_size);
+        decrease_enqueued = true;
         cv.wait(lock, [this]() { return allocated_size == 0; });
     }
     else
     {
         queue.decreaseAllocation(*this, last_size);
+        decrease_enqueued = true;
         // It can be either approved and decreased later or failed (i.e. canceled) right away
         cv.wait(lock, [this]() { return bool(fail_reason) || (!increase_enqueued && !decrease_enqueued && allocated_size == 0); });
     }
