@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Comprehensive correctness tests for columns cache feature
 
 SET max_threads = 1;

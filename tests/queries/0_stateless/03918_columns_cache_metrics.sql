@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Test cache metrics, ProfileEvents, and system commands
 
 SET max_threads = 1;

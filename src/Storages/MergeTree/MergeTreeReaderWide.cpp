@@ -266,16 +266,19 @@ size_t MergeTreeReaderWide::readRows(
                         size_t count = std::min(max_rows_to_read, columns_cache_serve_state->total_rows - start);
                         if (count > 0)
                         {
+                            auto cut_column = it->second->cut(start, count);
                             if (!append)
                             {
                                 /// First read: replace column
-                                column = it->second->cut(start, count);
+                                column = std::move(cut_column);
                             }
                             else
                             {
                                 /// Subsequent read: append to column
-                                auto cut_column = it->second->cut(start, count);
-                                column->assumeMutable()->insertRangeFrom(*cut_column, 0, cut_column->size());
+                                /// Convert to mutable if needed and insert the cached data
+                                auto mutable_col = column->assumeMutable();
+                                mutable_col->insertRangeFrom(*cut_column, 0, cut_column->size());
+                                column = std::move(mutable_col);
                             }
                         }
                     }

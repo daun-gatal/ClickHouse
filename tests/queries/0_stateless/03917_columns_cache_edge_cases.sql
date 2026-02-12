@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Edge cases and stress tests for columns cache
 
 SET max_threads = 1;
@@ -59,7 +59,7 @@ CREATE TABLE t_cache_order_limit (id UInt64, value UInt64, extra String)
 ENGINE = MergeTree ORDER BY id
 SETTINGS min_bytes_for_wide_part = 0, index_granularity = 1000;
 
-INSERT INTO t_cache_order_limit SELECT number, rand() % 1000, toString(number) FROM numbers(10000);
+INSERT INTO t_cache_order_limit SELECT number, (number * 7919) % 1000, toString(number) FROM numbers(10000);
 
 SYSTEM DROP COLUMNS CACHE;
 
