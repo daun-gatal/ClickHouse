@@ -4,7 +4,7 @@
 // This is logging for the scheduler components, normally disabled.
 // Available modes (uncomment one to enable):
 //#define SCHEDULER_DEBUG_COUT    // Log to stdout with colors
-//#define SCHEDULER_DEBUG_TRACE   // Log using LOG_TRACE
+#define SCHEDULER_DEBUG_TRACE   // Log using LOG_TRACE // TODO(serxa): DO NOT MERGE, this is enabled to debug the scheduler issues in CI for this PR only.
 
 #if defined(SCHEDULER_DEBUG_COUT)
 
