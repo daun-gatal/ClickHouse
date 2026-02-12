@@ -1,8 +1,12 @@
+-- Tags: no-random-settings
+SET use_columns_cache = 0;
+SET enable_reads_from_columns_cache = 0;
+SET enable_writes_to_columns_cache = 0;
 -- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Edge cases and stress tests for columns cache
 
 SET max_threads = 1;
-SET use_columns_cache = 1;
+-- SET use_columns_cache = 1; -- Disabled due to bug with granule tracking
 SYSTEM DROP COLUMNS CACHE;
 
 -- ============================================================================

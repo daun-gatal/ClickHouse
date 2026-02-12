@@ -31,15 +31,15 @@ Test 7: Read String.size subcolumn first, then full String
 3000	112890
 3000	112890	string_value_
 3000	112890	string_value_
-Test 8: Read full String first, then String.size subcolumn
+Test 8: Read full String and verify caching
 2000	76000	string_value_
-2000	76000
-2000	76000
+2000	76000	string_value_
+2000	76000	string_value_
 Test 9: String subcolumn with intersecting ranges
 3000	114000
 3000	string_value_
 3000	114000
-3000	114000
+3000	string_value_
 Test 10: Adjacent ranges
 1000	3999000
 1000	5999000

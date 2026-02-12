@@ -197,14 +197,14 @@ size_t MergeTreeReaderWide::readRows(
                     ColumnsCacheKey cache_key{
                         data_part_info_for_read->getTableUUID(),
                         data_part_info_for_read->getPartName(),
-                        columns_to_read[pos].getNameInStorage(),
+                        columns_to_read[pos].name,
                         from_mark,
                         current_task_last_mark};
 
                     auto cached = deserialized_columns_cache->get(cache_key);
                     if (cached && cached->rows == total_rows_in_range)
                     {
-                        cached_columns[columns_to_read[pos].getNameInStorage()] = cached->column;
+                        cached_columns[columns_to_read[pos].name] = cached->column;
                     }
                     else
                     {
@@ -258,8 +258,9 @@ size_t MergeTreeReaderWide::readRows(
 
                 if (serving_from_cache)
                 {
-                    /// Serve from the cached full column.
-                    auto it = columns_cache_serve_state->columns.find(column_to_read.getNameInStorage());
+                    /// Serve from the cached column (subcolumns are pre-extracted during cache check).
+                    auto it = columns_cache_serve_state->columns.find(column_to_read.name);
+
                     if (it != columns_cache_serve_state->columns.end())
                     {
                         size_t start = columns_cache_serve_state->rows_served;
@@ -267,6 +268,7 @@ size_t MergeTreeReaderWide::readRows(
                         if (count > 0)
                         {
                             auto cut_column = it->second->cut(start, count);
+
                             if (!append)
                             {
                                 /// First read: replace column
@@ -275,7 +277,6 @@ size_t MergeTreeReaderWide::readRows(
                             else
                             {
                                 /// Subsequent read: append to column
-                                /// Convert to mutable if needed and insert the cached data
                                 auto mutable_col = column->assumeMutable();
                                 mutable_col->insertRangeFrom(*cut_column, 0, cut_column->size());
                                 column = std::move(mutable_col);
@@ -300,10 +301,10 @@ size_t MergeTreeReaderWide::readRows(
                         cache,
                         deserialize_states_cache);
 
-                    /// Accumulate data for future cache write.
+                    /// Accumulate data for future cache write (each subcolumn is cached independently).
                     if (columns_cache_accumulator && !append && column && !column->empty())
                     {
-                        const auto & col_name = column_to_read.getNameInStorage();
+                        const auto & col_name = column_to_read.name;
                         auto & acc_col = columns_cache_accumulator->columns[col_name];
                         size_t new_rows = column->size() - column_size_before_reading;
                         if (!acc_col)

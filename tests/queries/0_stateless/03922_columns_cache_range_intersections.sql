@@ -177,40 +177,41 @@ SELECT count(), sum(length(s)), any(substring(s, 1, 13)) FROM t_cache_string_sub
 SELECT count(), sum(length(s)), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id < 3000;
 
 -- =============================================================================
--- Test 8: String subcolumn optimization - read full string then subcolumn
+-- Test 8: Base column caching - verify full String is cached and reused
 -- =============================================================================
 
 SYSTEM DROP COLUMNS CACHE;
 
-SELECT 'Test 8: Read full String first, then String.size subcolumn';
+SELECT 'Test 8: Read full String and verify caching';
 
--- First read: full String column (caches both offsets and data)
+-- First read: full String column (caches "s")
 SELECT count(), sum(length(s)), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id >= 3000;
 
--- Second read: String.size subcolumn (should use cached offsets)
-SELECT count(), sum(length(s)) FROM t_cache_string_subcolumns WHERE id >= 3000;
+-- Second read: full String again (served from cache)
+SELECT count(), sum(length(s)), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id >= 3000;
 
--- Third read: verify subcolumn is served from cache
-SELECT count(), sum(length(s)) FROM t_cache_string_subcolumns WHERE id >= 3000;
+-- Third read: verify still served from cache
+SELECT count(), sum(length(s)), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id >= 3000;
 
 -- =============================================================================
--- Test 9: String subcolumn with range intersections
+-- Test 9: Subcolumn caching with range intersections
 -- =============================================================================
 
 SYSTEM DROP COLUMNS CACHE;
 
 SELECT 'Test 9: String subcolumn with intersecting ranges';
 
--- Read String.size for range [1000, 4000)
+-- Read String.size for range [1000, 4000) - caches "s.size"
 SELECT count(), sum(length(s)) FROM t_cache_string_subcolumns WHERE id >= 1000 AND id < 4000;
 
--- Read full String for overlapping range [2000, 5000)
--- Should use cached offsets for [2000, 4000), read from disk for [4000, 5000)
+-- Read full String for overlapping range [2000, 5000) - reads from disk, caches "s"
 SELECT count(), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id >= 2000 AND id < 5000;
 
--- Verify both ranges work correctly
+-- Verify s.size still cached for original range
 SELECT count(), sum(length(s)) FROM t_cache_string_subcolumns WHERE id >= 1000 AND id < 4000;
-SELECT count(), sum(length(s)) FROM t_cache_string_subcolumns WHERE id >= 2000 AND id < 5000;
+
+-- Verify full String cached for its range
+SELECT count(), any(substring(s, 1, 13)) FROM t_cache_string_subcolumns WHERE id >= 2000 AND id < 5000;
 
 -- =============================================================================
 -- Test 10: Adjacent ranges
