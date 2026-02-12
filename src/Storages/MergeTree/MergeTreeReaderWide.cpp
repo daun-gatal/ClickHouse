@@ -1,4 +1,5 @@
 #include <Storages/MergeTree/MergeTreeReaderWide.h>
+#include <Storages/MergeTree/ColumnsCache.h>
 
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnSparse.h>
@@ -36,6 +37,7 @@ MergeTreeReaderWide::MergeTreeReaderWide(
     const StorageSnapshotPtr & storage_snapshot_,
     const MergeTreeSettingsPtr & storage_settings_,
     UncompressedCache * uncompressed_cache_,
+    ColumnsCache * columns_cache_,
     MarkCache * mark_cache_,
     DeserializationPrefixesCache * deserialization_prefixes_cache_,
     MarkRanges mark_ranges_,
@@ -50,6 +52,7 @@ MergeTreeReaderWide::MergeTreeReaderWide(
         storage_snapshot_,
         storage_settings_,
         uncompressed_cache_,
+        columns_cache_,
         mark_cache_,
         mark_ranges_,
         settings_,
@@ -164,8 +167,80 @@ size_t MergeTreeReaderWide::readRows(
         if (num_columns == 0)
             return max_rows_to_read;
 
-        prefetchForAllColumns(Priority{}, num_columns, from_mark, current_task_last_mark, continue_reading, /*deserialize_prefixes=*/ true);
-        deserializePrefixForAllColumns(num_columns, from_mark, current_task_last_mark);
+        /// Columns cache: on a new mark range (continue_reading=false), decide whether
+        /// to serve from cache or read from disk. When serving from cache, we skip readData
+        /// entirely (no stream advancement). When reading from disk, we accumulate the data
+        /// across multiple readRows calls and flush to cache when the full range is read.
+        const bool cache_enabled = deserialized_columns_cache && rows_offset == 0;
+
+        if (cache_enabled && !continue_reading)
+        {
+            /// New mark range: compute total rows and check cache.
+            const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
+            size_t first_row = index_granularity.getMarkStartingRow(from_mark);
+            size_t last_row = (current_task_last_mark < index_granularity.getMarksCount())
+                ? index_granularity.getMarkStartingRow(current_task_last_mark)
+                : data_part_info_for_read->getRowCount();
+            size_t total_rows_in_range = last_row - first_row;
+
+            /// Reset any stale state from a previous mark range.
+            columns_cache_serve_state.reset();
+            columns_cache_accumulator.reset();
+
+            /// Check if ALL columns are cached for this mark range.
+            bool all_cached = settings.enable_columns_cache_reads;
+            std::unordered_map<String, ColumnPtr> cached_columns;
+            if (all_cached)
+            {
+                for (size_t pos = 0; pos < num_columns; ++pos)
+                {
+                    ColumnsCacheKey cache_key{
+                        data_part_info_for_read->getTableName(),
+                        data_part_info_for_read->getPartName(),
+                        columns_to_read[pos].getNameInStorage(),
+                        from_mark,
+                        current_task_last_mark};
+
+                    auto cached = deserialized_columns_cache->get(cache_key);
+                    if (cached && cached->rows == total_rows_in_range)
+                    {
+                        cached_columns[columns_to_read[pos].getNameInStorage()] = cached->column;
+                    }
+                    else
+                    {
+                        all_cached = false;
+                        break;
+                    }
+                }
+            }
+
+            if (all_cached)
+            {
+                /// All columns cached: set up serve state.
+                columns_cache_serve_state.emplace();
+                columns_cache_serve_state->total_rows = total_rows_in_range;
+                columns_cache_serve_state->rows_served = 0;
+                columns_cache_serve_state->columns = std::move(cached_columns);
+            }
+            else if (settings.enable_columns_cache_writes)
+            {
+                /// Not all cached: set up accumulator for writing to cache.
+                columns_cache_accumulator.emplace();
+                columns_cache_accumulator->from_mark = from_mark;
+                columns_cache_accumulator->end_mark = current_task_last_mark;
+                columns_cache_accumulator->total_rows_in_range = total_rows_in_range;
+                columns_cache_accumulator->rows_accumulated = 0;
+            }
+        }
+
+        /// If serving from cache, skip prefetch/deserialize since we won't use streams.
+        const bool serving_from_cache = columns_cache_serve_state.has_value();
+
+        if (!serving_from_cache)
+        {
+            prefetchForAllColumns(Priority{}, num_columns, from_mark, current_task_last_mark, continue_reading, /*deserialize_prefixes=*/ true);
+            deserializePrefixForAllColumns(num_columns, from_mark, current_task_last_mark);
+        }
 
         for (size_t pos = 0; pos < num_columns; ++pos)
         {
@@ -180,20 +255,49 @@ size_t MergeTreeReaderWide::readRows(
             try
             {
                 size_t column_size_before_reading = column->size();
-                auto & cache = caches[column_to_read.getNameInStorage()];
-                auto & deserialize_states_cache = deserialize_states_caches[column_to_read.getNameInStorage()];
 
-                readData(
-                    column_to_read,
-                    serializations[pos],
-                    column,
-                    from_mark,
-                    continue_reading,
-                    current_task_last_mark,
-                    max_rows_to_read,
-                    rows_offset,
-                    cache,
-                    deserialize_states_cache);
+                if (serving_from_cache && !append)
+                {
+                    /// Serve from the cached full column.
+                    auto it = columns_cache_serve_state->columns.find(column_to_read.getNameInStorage());
+                    if (it != columns_cache_serve_state->columns.end())
+                    {
+                        size_t start = columns_cache_serve_state->rows_served;
+                        size_t count = std::min(max_rows_to_read, columns_cache_serve_state->total_rows - start);
+                        if (count > 0)
+                            column = it->second->cut(start, count);
+                    }
+                }
+                else
+                {
+                    auto & cache = caches[column_to_read.getNameInStorage()];
+                    auto & deserialize_states_cache = deserialize_states_caches[column_to_read.getNameInStorage()];
+
+                    readData(
+                        column_to_read,
+                        serializations[pos],
+                        column,
+                        from_mark,
+                        continue_reading,
+                        current_task_last_mark,
+                        max_rows_to_read,
+                        rows_offset,
+                        cache,
+                        deserialize_states_cache);
+
+                    /// Accumulate data for future cache write.
+                    if (columns_cache_accumulator && !append && column && !column->empty())
+                    {
+                        const auto & col_name = column_to_read.getNameInStorage();
+                        auto & acc_col = columns_cache_accumulator->columns[col_name];
+                        size_t new_rows = column->size() - column_size_before_reading;
+                        if (!acc_col)
+                        {
+                            acc_col = column->cloneEmpty();
+                        }
+                        acc_col->insertRangeFrom(*column, column_size_before_reading, new_rows);
+                    }
+                }
 
                 /// For elements of Nested, column_size_before_reading may be greater than column size
                 ///  if offsets are not empty and were already read, but elements are empty.
@@ -211,8 +315,47 @@ size_t MergeTreeReaderWide::readRows(
                 res_columns[pos] = nullptr;
         }
 
-        prefetched_streams.clear();
-        caches.clear();
+        /// Advance columns cache serve state.
+        if (columns_cache_serve_state)
+        {
+            columns_cache_serve_state->rows_served += read_rows;
+            if (columns_cache_serve_state->rows_served >= columns_cache_serve_state->total_rows)
+                columns_cache_serve_state.reset();
+        }
+
+        /// Advance columns cache accumulator and flush to cache when complete.
+        if (columns_cache_accumulator)
+        {
+            columns_cache_accumulator->rows_accumulated += read_rows;
+            if (columns_cache_accumulator->rows_accumulated >= columns_cache_accumulator->total_rows_in_range)
+            {
+                /// Full mark range accumulated. Flush each column to cache.
+                for (auto & [col_name, acc_col] : columns_cache_accumulator->columns)
+                {
+                    if (acc_col && !acc_col->empty())
+                    {
+                        ColumnsCacheKey cache_key{
+                            data_part_info_for_read->getTableName(),
+                            data_part_info_for_read->getPartName(),
+                            col_name,
+                            columns_cache_accumulator->from_mark,
+                            columns_cache_accumulator->end_mark};
+
+                        size_t rows = acc_col->size();
+                        auto entry = std::make_shared<ColumnsCacheEntry>(
+                            ColumnsCacheEntry{std::move(acc_col), rows});
+                        deserialized_columns_cache->set(cache_key, entry);
+                    }
+                }
+                columns_cache_accumulator.reset();
+            }
+        }
+
+        if (!serving_from_cache)
+        {
+            prefetched_streams.clear();
+            caches.clear();
+        }
 
         /// NOTE: positions for all streams must be kept in sync.
         /// In particular, even if for some streams there are no rows to be read,
