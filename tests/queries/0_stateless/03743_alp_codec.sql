@@ -1,3 +1,5 @@
+SET allow_experimental_codecs = 1;
+
 DROP TABLE IF EXISTS base32;
 CREATE TABLE base32 (i UInt32 CODEC(NONE), f Float32 CODEC(NONE)) Engine = MergeTree ORDER BY i;
 

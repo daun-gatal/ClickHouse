@@ -98,6 +98,7 @@ protected:
     bool isCompression() const override { return true; }
     bool isGenericCompression() const override { return false; }
     bool isFloatingPointTimeSeriesCodec() const override { return true; }
+    bool isExperimental() const override { return true; }
     String getDescription() const override;
 private:
     UInt8 float_width;
