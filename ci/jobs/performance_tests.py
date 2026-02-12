@@ -279,10 +279,14 @@ def parse_args():
 
 def find_prev_build(info, build_type):
     commits = info.get_kv_data("previous_commits_sha") or []
+    print('previous_commits_sha:', commits)
     assert commits, "No commits found to fetch reference build"
     for sha in commits:
         link = f"https://clickhouse-builds.s3.us-east-1.amazonaws.com/REFs/master/{sha}/{build_type}/clickhouse"
+        print('trying to download binary:', link)
         if Shell.check(f"curl -sfI {link} > /dev/null"):
+            print('sha:', sha)
+            print(':', link)
             return link
 
     return None
