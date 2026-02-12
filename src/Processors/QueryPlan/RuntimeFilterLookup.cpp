@@ -1,3 +1,4 @@
+#include <DataTypes/IDataType.h>
 #include <Processors/QueryPlan/RuntimeFilterLookup.h>
 #include <Functions/FunctionFactory.h>
 #include <Columns/ColumnConst.h>
@@ -103,6 +104,160 @@ static void mergeBloomFilters(BloomFilter & destination, const BloomFilter & sou
 }
 
 static constexpr UInt64 BLOOM_FILTER_SEED = 42;
+
+void MinMaxRuntimeFilter::insert(ColumnPtr values)
+{
+    if (inserts_are_finished)
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Trying to insert into runtime filter after it was marked as finished");
+
+    if (use_minmax)
+    {
+        /// Already in minmax mode, just update min/max
+        for (size_t i = 0; i < values->size(); ++i)
+        {
+            Field value;
+            values->get(i, value);
+
+            if (value < min_value)
+                min_value = value;
+            if (value > max_value)
+                max_value = value;
+        }
+    }
+    else
+    {
+        /// Try to insert into exact values set
+        Base::insert(values);
+
+        if (isFull())
+            switchToMinMax();
+    }
+}
+
+void MinMaxRuntimeFilter::switchToMinMax()
+{
+    if (use_minmax)
+        return;
+
+    /// Extract min/max from the exact values we've collected so far
+    auto values_column = getValuesColumn();
+    if (!values_column || values_column->size() == 0)
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Trying to switch to minmax mode for runtime filter with no values");
+
+    Field value;
+    values_column->get(0, value);
+    min_value = value;
+    max_value = value;
+
+    for (size_t i = 1; i < values_column->size(); ++i)
+    {
+        values_column->get(i, value);
+        if (value < min_value)
+            min_value = value;
+        if (value > max_value)
+            max_value = value;
+    }
+
+    use_minmax = true;
+    releaseExactValues();
+}
+
+void MinMaxRuntimeFilter::finishInsertImpl()
+{
+    if (use_minmax)
+    {
+        /// TODO: Build ExpressionActions with "value < min OR value > max" condition to be used in findImpl instead of building a column with results of this condition for each row
+        return;
+    }
+
+    Base::finishInsertImpl();
+}
+
+ColumnPtr MinMaxRuntimeFilter::findImpl(const ColumnWithTypeAndName & values) const
+{
+    chassert(inserts_are_finished);
+
+    if (use_minmax)
+    {
+        /// Check if values are within [min, max] range
+        auto dst = ColumnVector<UInt8>::create();
+        auto & dst_data = dst->getData();
+        dst_data.resize(values.column->size());
+
+        size_t passed_count = 0;
+        for (size_t row = 0; row < values.column->size(); ++row)
+        {
+            Field value;
+            values.column->get(row, value);
+            const bool in_range = value >= min_value && value <= max_value;
+            dst_data[row] = in_range;
+            passed_count += in_range ? 1 : 0;
+        }
+
+        updateStats(values.column->size(), passed_count);
+        return dst;
+    }
+    else
+    {
+        return Base::findImpl(values);
+    }
+}
+
+void MinMaxRuntimeFilter::merge(const IRuntimeFilter * source)
+{
+    if (inserts_are_finished)
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Trying to merge into runtime filter after it was marked as finished");
+
+    const auto * source_typed = typeid_cast<const MinMaxRuntimeFilter *>(source);
+    if (!source_typed)
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Trying to merge runtime filters with different types");
+
+    if (use_minmax)
+    {
+        /// This filter is in minmax mode
+        if (source_typed->use_minmax)
+        {
+            /// Source is also in minmax mode, merge ranges
+            if (source_typed->min_value < min_value)
+                min_value = source_typed->min_value;
+            if (source_typed->max_value > max_value)
+                max_value = source_typed->max_value;
+        }
+        else
+        {
+            /// Source is in exact mode, insert its values to update min/max
+            insert(source_typed->getValuesColumn());
+        }
+    }
+    else
+    {
+        /// This filter is in exact mode, insert source values
+        if (source_typed->use_minmax)
+        {
+            /// Source is in minmax mode, switch to minmax and merge
+            min_value = source_typed->min_value;
+            max_value = source_typed->max_value;
+            use_minmax = true;
+
+            /// Insert values in set to update min/max in case they are outside of source min/max range
+            insert(getValuesColumn());
+            /// Finish convertion to minmax mode and release exact values as they are not needed anymore
+            releaseExactValues();
+        }
+        else
+        {
+            /// Both are in exact mode, insert source values
+            insert(source_typed->getValuesColumn());
+        }
+    }
+
+    --filters_to_merge;
+}
+
+bool MinMaxRuntimeFilter::isDataTypeSupported(const DataTypePtr & data_type)
+{
+    return isNativeNumber(data_type);
+}
 
 void ExactContainsRuntimeFilter::merge(const IRuntimeFilter * source)
 {

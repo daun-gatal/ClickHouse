@@ -36,7 +36,17 @@ BuildRuntimeFilterTransform::BuildRuntimeFilterTransform(
 
     if (allow_to_use_not_exact_filter_)
     {
-        if (ApproximateRuntimeFilter::isDataTypeSupported(filter_column_target_type))
+        if (MinMaxRuntimeFilter::isDataTypeSupported(filter_column_target_type))
+        {
+            built_filter = std::make_unique<MinMaxRuntimeFilter>(
+                filters_to_merge_,
+                filter_column_target_type,
+                pass_ratio_threshold_for_disabling_,
+                blocks_to_skip_before_reenabling_,
+                bloom_filter_bytes_,
+                exact_values_limit_);
+        }
+        else if (ApproximateRuntimeFilter::isDataTypeSupported(filter_column_target_type))
         {
             built_filter = std::make_unique<ApproximateRuntimeFilter>(
                 filters_to_merge_,

@@ -189,6 +189,41 @@ private:
     std::optional<Field> single_element_in_set;
 };
 
+/// MinMax filter for numeric types - tracks exact values until limit, then switches to minmax range
+class MinMaxRuntimeFilter : public RuntimeFilterBase<false>
+{
+    using Base = RuntimeFilterBase<false>;
+
+public:
+    MinMaxRuntimeFilter(
+        size_t filters_to_merge_,
+        const DataTypePtr & filter_column_target_type_,
+        Float64 pass_ratio_threshold_for_disabling_,
+        UInt64 blocks_to_skip_before_reenabling_,
+        UInt64 bytes_limit_,
+        UInt64 exact_values_limit_
+    )
+        : RuntimeFilterBase(filters_to_merge_, filter_column_target_type_, pass_ratio_threshold_for_disabling_, blocks_to_skip_before_reenabling_, bytes_limit_, exact_values_limit_)
+    {}
+
+    void insert(ColumnPtr values) override;
+
+    void finishInsertImpl() override;
+
+    ColumnPtr findImpl(const ColumnWithTypeAndName & values) const override;
+
+    void merge(const IRuntimeFilter * source) override;
+
+    static bool isDataTypeSupported(const DataTypePtr & data_type);
+
+private:
+    void switchToMinMax();
+
+    Field min_value;
+    Field max_value;
+    bool use_minmax = false;
+};
+
 class ExactContainsRuntimeFilter : public RuntimeFilterBase<false>
 {
     using Base = RuntimeFilterBase<false>;
