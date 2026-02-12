@@ -1981,7 +1981,8 @@ void MutationsInterpreter::initQueryPlan(Stage & first_stage, QueryPlan & plan)
     plan.setConcurrencyControl(false);
 
     source.read(first_stage, plan, metadata_snapshot, context, settings);
-    addDelayedCreatingSetsStep(plan, first_stage.prepared_sets, context);
+    if (settings.can_execute)
+        addDelayedCreatingSetsStep(plan, first_stage.prepared_sets, context);
 }
 
 QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::vector<Stage> & prepared_stages, QueryPlan & plan) const
@@ -2012,7 +2013,8 @@ QueryPipelineBuilder MutationsInterpreter::addStreamsForLaterStages(const std::v
             }
         }
 
-        addDelayedCreatingSetsStep(plan, stage.prepared_sets, context);
+        if (settings.can_execute)
+            addDelayedCreatingSetsStep(plan, stage.prepared_sets, context);
     }
 
     QueryPlanOptimizationSettings do_not_optimize_plan_settings(context);
