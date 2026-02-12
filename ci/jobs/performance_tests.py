@@ -723,8 +723,8 @@ def main():
 
         def too_many_slow(msg):
             match = re.search(r"(|.* )(\d+) slower.*", msg)
-            threshold = 5
-            return int(match.group(2).strip()) > threshold if match else False
+            threshold = 3
+            return int(match.group(2).strip()) >= threshold if match else False
 
         # Try to fetch status from the report.
         sw = Utils.Stopwatch()
