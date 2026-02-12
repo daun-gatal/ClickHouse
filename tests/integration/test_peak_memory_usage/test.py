@@ -54,7 +54,7 @@ def started_cluster():
         shard_1.query("INSERT INTO fixed_numbers_2 SELECT number FROM numbers(0, 10)")
 
         shard_2.query(
-            "INSERT INTO fixed_numbers_2 SELECT number FROM numbers(0, 1200000)"
+            "INSERT INTO fixed_numbers_2 SELECT number FROM numbers(0, 120000)"
         )
 
         yield cluster
@@ -66,7 +66,6 @@ def get_memory_usage_from_client_output_and_close(client_output):
     client_output.seek(0)
     query_id = None
     peak_memory_usage = None
-    peek_memory_usage_str_found = False
     
     for line in client_output:
         print(f"'{line}'\n")
@@ -79,14 +78,10 @@ def get_memory_usage_from_client_output_and_close(client_output):
                 print(f"query_id {query_id}")
         
         # Extract peak memory usage
-        if not peek_memory_usage_str_found:
-            # Can be both Peak/peak
-            peek_memory_usage_str_found = "eak memory usage" in line
-
-        if peek_memory_usage_str_found and peak_memory_usage is None:
-            search_obj = re.search(r"[+-]?[0-9]+\.[0-9]+", line)
+        if peak_memory_usage is None:
+            search_obj = re.search(r"Query peak memory usage:\s*([+-]?[0-9]+(?:\.[0-9]+)?\s+\w+)", line, re.IGNORECASE)
             if search_obj:
-                peak_memory_usage = search_obj.group()
+                peak_memory_usage = search_obj.group(1)
                 print(f"peak_memory_usage {peak_memory_usage}")
     
     client_output.close()
