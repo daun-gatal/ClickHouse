@@ -972,7 +972,9 @@ bool ParserCreateTableQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expe
             throw Exception(ErrorCodes::BAD_ARGUMENTS, "Multiple primary keys are not allowed.");
 
         query->storage->set(query->storage->primary_key, query->columns_list->primary_key->ptr());
-
+        /// Remove from columns_list: ASTColumns::formatImpl does not output primary_key,
+        /// so keeping it causes AST inconsistency after format+reparse.
+        query->columns_list->reset(query->columns_list->primary_key);
     }
 
     if (query->columns_list && (query->columns_list->primary_key_from_columns))
@@ -984,6 +986,8 @@ bool ParserCreateTableQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expe
             throw Exception(ErrorCodes::BAD_ARGUMENTS, "Multiple primary keys are not allowed.");
 
         query->storage->set(query->storage->primary_key, query->columns_list->primary_key_from_columns->ptr());
+        /// Remove from columns_list for the same reason as above.
+        query->columns_list->reset(query->columns_list->primary_key_from_columns);
     }
 
     tryGetIdentifierNameInto(as_database, query->as_database);
@@ -1661,6 +1665,9 @@ bool ParserCreateViewQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expec
         if (storage_ref.primary_key)
             throw Exception(ErrorCodes::BAD_ARGUMENTS, "Multiple primary keys are not allowed.");
         storage_ref.set(storage_ref.primary_key, query->columns_list->primary_key->ptr());
+        /// Remove from columns_list: ASTColumns::formatImpl does not output primary_key,
+        /// so keeping it causes AST inconsistency after format+reparse.
+        query->columns_list->reset(query->columns_list->primary_key);
     }
 
     if (query->columns_list && (query->columns_list->primary_key_from_columns))
@@ -1672,6 +1679,8 @@ bool ParserCreateViewQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expec
         if (storage_ref.primary_key)
             throw Exception(ErrorCodes::BAD_ARGUMENTS, "Multiple primary keys are not allowed.");
         storage_ref.set(storage_ref.primary_key, query->columns_list->primary_key_from_columns->ptr());
+        /// Remove from columns_list for the same reason as above.
+        query->columns_list->reset(query->columns_list->primary_key_from_columns);
     }
 
     boost::intrusive_ptr<ASTViewTargets> targets;

@@ -1394,8 +1394,10 @@ TreeRewriterResultPtr TreeRewriter::analyzeSelect(
         {
             /// When `enable_order_by_all` is disabled, revert the ORDER BY ALL keyword
             /// back to an ordinary ORDER BY with `all` as a column reference.
+            /// Replace the child with a fresh identifier AFTER normalization so that it
+            /// refers to the table column named "all", not to any alias.
             auto * all_elem = select_query->orderBy()->children[0]->as<ASTOrderByElement>();
-            all_elem->children.push_back(make_intrusive<ASTIdentifier>("all"));
+            all_elem->children[0] = make_intrusive<ASTIdentifier>("all");
             select_query->order_by_all = false;
         }
     }

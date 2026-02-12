@@ -1,4 +1,5 @@
 #include <memory>
+#include <Parsers/ASTIdentifier.h>
 #include <Parsers/ASTLiteral.h>
 #include <Parsers/ASTSelectQuery.h>
 #include <Parsers/IParserBase.h>
@@ -363,6 +364,7 @@ bool ParserSelectQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
                 elem->direction = direction;
                 elem->nulls_direction = nulls_direction;
                 elem->nulls_direction_was_explicitly_specified = nulls_direction_was_explicitly_specified;
+                elem->children.push_back(make_intrusive<ASTIdentifier>("all"));
 
                 order_expression_list = make_intrusive<ASTExpressionList>();
                 order_expression_list->children.push_back(std::move(elem));
