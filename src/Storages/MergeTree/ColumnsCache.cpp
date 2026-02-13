@@ -109,4 +109,31 @@ void ColumnsCache::removePart(const UUID & table_uuid, const String & part_name)
     interval_index.erase(part_it);
 }
 
+std::vector<std::pair<ColumnsCache::Key, ColumnsCache::MappedPtr>>
+ColumnsCache::getAllEntries()
+{
+    std::vector<std::pair<Key, MappedPtr>> result;
+
+    std::lock_guard lock(interval_index_mutex);
+
+    /// Iterate through all parts, columns, and intervals
+    for (const auto & [part_id, columns_map] : interval_index)
+    {
+        for (const auto & [column_name, intervals] : columns_map)
+        {
+            for (const auto & [row_begin, key] : intervals)
+            {
+                /// Verify the entry still exists in cache (might have been evicted)
+                auto entry = Base::get(key);
+                if (entry)
+                {
+                    result.emplace_back(key, entry);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 }

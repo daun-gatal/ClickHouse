@@ -161,6 +161,10 @@ public:
     /// Should be called when a part is dropped, merged, or mutated.
     void removePart(const UUID & table_uuid, const String & part_name);
 
+    /// Get all cache entries for introspection (system.columns_cache table).
+    /// Returns a vector of (key, entry) pairs for all cached columns.
+    std::vector<std::pair<Key, MappedPtr>> getAllEntries();
+
 private:
     void onEntryRemoval(size_t weight_loss, const MappedPtr &) override
     {

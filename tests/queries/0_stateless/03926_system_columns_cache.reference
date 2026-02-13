@@ -1,0 +1,14 @@
+table_uuid	UUID
+part_name	String
+column_name	String
+row_begin	UInt64
+row_end	UInt64
+rows	UInt64
+bytes	UInt64
+10000	149985000	149985000
+0
+ColumnsCacheEvictedBytes	1
+ColumnsCacheEvictedEntries	1
+ColumnsCacheHits	1
+ColumnsCacheMisses	1
+System table and SYSTEM commands test passed
