@@ -935,10 +935,10 @@ class JobConfigs:
             requires=[ArtifactNames.CH_AMD_UBSAN],
         ),
     )
-    buzzybuzz_jobs = Job.Config(
-        name=JobNames.BUZZYBUZZHOUSE,
+    lacasadeldolor_jobs = Job.Config(
+        name=JobNames.LACASADELDOLOR,
         runs_on=[],  # from parametrize()
-        command="python3 ./ci/jobs/buzzybuzzhouse_job.py",
+        command="python3 ./ci/jobs/lacasadeldolor_job.py",
         digest_config=Job.CacheDigestConfig(
             include_paths=[
                 "./ci/docker/integration",

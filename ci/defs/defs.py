@@ -347,7 +347,7 @@ class JobNames:
     INSTALL_TEST = "Install packages"
     ASTFUZZER = "AST fuzzer"
     BUZZHOUSE = "BuzzHouse"
-    BUZZYBUZZHOUSE = "BuzzyBuzzHouse"
+    LACASADELDOLOR = "La Casa Del Dolor"
     BUILDOCKER = "BuildDockers"
     BUGFIX_VALIDATE = "Bugfix validation"
     BUGFIX_VALIDATE_IT = "Bugfix validation (integration tests)"
