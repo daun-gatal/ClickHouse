@@ -704,3 +704,57 @@ def test_gcs(started_cluster):
             """
         )
         assert "Google cloud storage converts to S3" in str(err.value)
+
+def test_catalog_many_tables(started_cluster):
+    node = started_cluster.instances["node1"]
+    root_namespace = f"clickhouse_{uuid.uuid4()}"
+    namespace_1 = f"{root_namespace}.testA.A"
+    namespace_2 = f"{root_namespace}.testB.B"
+    namespace_1_tables = [f"table_1_{i}" for i in range(5000)]
+    namespace_2_tables = [f"table_2_{i}" for i in range(5000)]
+
+    catalog = load_catalog_impl(started_cluster)
+
+    for namespace in [namespace_1, namespace_2]:
+        catalog.create_namespace(namespace)
+
+    found = False
+    for namespace_list in list_namespaces()["namespaces"]:
+        if root_namespace == namespace_list[0]:
+            found = True
+            break
+    assert found
+
+    found = False
+    for namespace_list in catalog.list_namespaces():
+        if root_namespace == namespace_list[0]:
+            found = True
+            break
+    assert found
+
+    for namespace in [namespace_1, namespace_2]:
+        assert len(catalog.list_tables(namespace)) == 0
+
+    create_clickhouse_iceberg_database(started_cluster, node, CATALOG_NAME)
+
+    tables_list = ""
+    for table in namespace_1_tables:
+        create_table(catalog, namespace_1, table)
+        if len(tables_list) > 0:
+            tables_list += "\n"
+        tables_list += f"{namespace_1}.{table}"
+
+    for table in namespace_2_tables:
+        create_table(catalog, namespace_2, table)
+        if len(tables_list) > 0:
+            tables_list += "\n"
+        tables_list += f"{namespace_2}.{table}"
+
+    t = time.time()
+    query_id = uuid.uuid4().hex
+    show_tables = node.query(f"SHOW TABLES FROM {CATALOG_NAME}", query_id=query_id)
+    print("Time taken: ", time.time() - t)
+    node.query("SYSTEM FLUSH LOGS")
+    print(node.query("SELECT ProfileEvents['IcebergRestCatalogHTTPRequests'], ProfileEvents['IcebergRestCatalogHTTPRequestsElapsedMicroseconds'] / 1000 from system.query_log WHERE query_id = '{}' and type = 'QueryFinish'".format(query_id)))
+
+    print("Total tables: ", len(show_tables.strip().split("\n")))

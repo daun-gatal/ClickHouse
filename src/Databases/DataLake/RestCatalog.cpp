@@ -16,6 +16,7 @@
 #include <Common/threadPoolCallbackRunner.h>
 #include <Common/Base64.h>
 #include <Common/checkStackSize.h>
+#include <Common/ProfileEvents.h>
 
 #include <IO/ConnectionTimeouts.h>
 #include <IO/HTTPCommon.h>
@@ -43,6 +44,12 @@ namespace DB::ErrorCodes
     extern const int DATALAKE_DATABASE_ERROR;
     extern const int LOGICAL_ERROR;
     extern const int BAD_ARGUMENTS;
+}
+
+namespace ProfileEvents
+{
+    extern const Event IcebergRestCatalogHTTPRequests;
+    extern const Event IcebergRestCatalogHTTPRequestsElapsedMicroseconds;
 }
 
 namespace DataLake
@@ -338,10 +345,12 @@ DB::ReadWriteBufferFromHTTPPtr RestCatalog::createReadBuffer(
 
     auto create_buffer = [&](bool update_token)
     {
+        ProfileEvents::increment(ProfileEvents::IcebergRestCatalogHTTPRequests);
         auto result_headers = getAuthHeaders(update_token);
         std::move(headers.begin(), headers.end(), std::back_inserter(result_headers));
 
-        return DB::BuilderRWBufferFromHTTP(url)
+        Stopwatch watch;
+        auto result = DB::BuilderRWBufferFromHTTP(url)
             .withConnectionGroup(DB::HTTPConnectionGroupType::HTTP)
             .withSettings(getContext()->getReadSettings())
             .withTimeouts(DB::ConnectionTimeouts::getHTTPTimeouts(context->getSettingsRef(), context->getServerSettings()))
@@ -350,9 +359,12 @@ DB::ReadWriteBufferFromHTTPPtr RestCatalog::createReadBuffer(
             .withDelayInit(false)
             .withSkipNotFound(false)
             .create(credentials);
+
+        ProfileEvents::increment(ProfileEvents::IcebergRestCatalogHTTPRequestsElapsedMicroseconds, watch.elapsedMicroseconds());
+        return result;
     };
 
-    LOG_DEBUG(log, "Requesting: {}", url.toString());
+    LOG_DEBUG(log, "Requesting: {} Stack: {}", url.toString(), StackTrace().toString());
 
     try
     {
@@ -403,9 +415,11 @@ DB::Names RestCatalog::getTables() const
             runner.enqueueAndKeepTrack(
             [=, &tables, &mutex, this]
             {
+                LOG_DEBUG(log, "Loading tables in namespace {}", current_namespace);
                 auto tables_in_namespace = getTables(current_namespace);
                 std::lock_guard lock(mutex);
                 std::move(tables_in_namespace.begin(), tables_in_namespace.end(), std::back_inserter(tables));
+                LOG_DEBUG(log, "Loaded {} tables in namespace {}", tables_in_namespace.size(), current_namespace);
             });
         };
 
@@ -562,7 +576,10 @@ DB::Names RestCatalog::parseTables(DB::ReadBuffer & buf, const std::string & bas
     String json_str;
     readJSONObjectPossiblyInvalid(json_str, buf);
 
-    LOG_DEBUG(log, "Received tables response: {}", json_str);
+    bool str_too_long = json_str.size() > 100;
+    /// It can be a lot of tables
+    std::string_view log_str_view(json_str.begin(), str_too_long ? json_str.begin() + 100 : json_str.end());
+    LOG_DEBUG(log, "Received tables response: {}{}", log_str_view, str_too_long ? "..." : "");
 
     try
     {
@@ -589,6 +606,8 @@ DB::Names RestCatalog::parseTables(DB::ReadBuffer & buf, const std::string & bas
             if (limit && tables.size() >= limit)
                 break;
         }
+
+        LOG_DEBUG(log, "Parsed {} tables in namespace {}", tables.size(), base_namespace);
 
         return tables;
     }
@@ -660,7 +679,6 @@ bool RestCatalog::getTableMetadataImpl(
 
     String json_str;
     readJSONObjectPossiblyInvalid(json_str, *buf);
-    LOG_DEBUG(log, "Receiving table metadata {} {}", table_name, json_str);
 
 #ifdef DEBUG_OR_SANITIZER_BUILD
     /// This log message might contain credentials,
@@ -991,7 +1009,11 @@ ICatalog::CredentialsRefreshCallback RestCatalog::getCredentialsConfigurationCal
 
         String json_str;
         readJSONObjectPossiblyInvalid(json_str, *buf);
+#ifdef DEBUG_OR_SANITIZER_BUILD
+        /// This log message might contain credentials,
+        /// so log it only for debugging.
         LOG_DEBUG(log, "Receiving table metadata {} {}", table_name, json_str);
+#endif
 
         Poco::JSON::Parser parser;
         Poco::Dynamic::Var json = parser.parse(json_str);

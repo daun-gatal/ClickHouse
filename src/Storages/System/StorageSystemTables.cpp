@@ -34,6 +34,7 @@
 
 namespace DB
 {
+
 namespace Setting
 {
     extern const SettingsSeconds lock_acquire_timeout;
@@ -119,16 +120,28 @@ ColumnPtr getFilteredTables(
         }
         else
         {
-            auto table_it = database->getTablesIterator(context,
-                                                                   /* filter_by_table_name */ {},
-                                                                   /* skip_not_loaded */ false);
-            for (; table_it->isValid(); table_it->next())
+            if (engine_column || uuid_column)
             {
-                table_column->insert(table_it->name());
-                if (engine_column)
-                    engine_column->insert(table_it->table()->getName());
-                if (uuid_column)
-                    uuid_column->insert(table_it->table()->getStorageID().uuid);
+                auto table_it = database->getTablesIterator(context,
+                                                                       /* filter_by_table_name */ {},
+                                                                       /* skip_not_loaded */ false);
+                for (; table_it->isValid(); table_it->next())
+                {
+                    table_column->insert(table_it->name());
+                    if (engine_column)
+                        engine_column->insert(table_it->table()->getName());
+                    if (uuid_column)
+                        uuid_column->insert(table_it->table()->getStorageID().uuid);
+                }
+            }
+            else
+            {
+                auto table_details = database->getLightweightTablesIterator(context,
+                                        /* filter_by_table_name */ {},
+                                        /* skip_not_loaded */ false);
+
+                for (const auto & table_detail : table_details)
+                    table_column->insert(table_detail.name);
             }
         }
     }
@@ -478,7 +491,10 @@ protected:
 
             /// This is for queries similar to 'show tables', where only name of the table is needed
             auto needed_columns = getPort().getHeader().getColumnsWithTypeAndName();
-            if (needed_columns.size() == 1 && needed_columns[0].name == "name")
+            std::unordered_set<String> requested_columns;
+            for (const auto & column : needed_columns)
+                requested_columns.insert(column.name);
+            if (needed_columns.size() == 2 && requested_columns.contains("name") && requested_columns.contains("database"))
             {
                 size_t rows_added = fillTableNamesOnly(res_columns, need_to_check_access_for_tables);
                 rows_count += rows_added;
