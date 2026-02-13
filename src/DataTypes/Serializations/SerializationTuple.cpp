@@ -40,7 +40,7 @@ UInt128 SerializationTuple::getHash() const
     hash.update("Tuple");
     hash.update(has_explicit_names);
     for (const auto & elem : elems)
-    {   
+    {
         if (has_explicit_names)
             hash.update(elem->getElementName());
         hash.update(elem->getNested()->getHash());

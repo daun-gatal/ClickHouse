@@ -48,7 +48,7 @@ SerializationObjectDynamicPath::~SerializationObjectDynamicPath() = default;
 
 UInt128 SerializationObjectDynamicPath::getHash() const
 {
-    throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method getHash is not implemented for SerializationObjectDynamicPath");
+    throw Exception(ErrorCodes::LOGICAL_ERROR, "Method getHash is not implemented for SerializationObjectDynamicPath");
 }
 
 void SerializationObjectDynamicPath::enumerateStreams(
