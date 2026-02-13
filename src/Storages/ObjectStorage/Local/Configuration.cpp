@@ -46,6 +46,10 @@ ObjectStoragePtr StorageLocalConfiguration::createObjectStorage(
     ContextPtr context, bool readonly, CredentialsConfigurationCallback /*refresh_credentials_callback*/)
 {
     const auto path_prefix = context->getUserFilesPath();
+    if (path_prefix.empty())
+        throw Exception(
+            ErrorCodes::BAD_ARGUMENTS,
+            "User files path is not properly set, cannot use LocalObjectStorage in this server configuration at all");
     return std::make_shared<LocalObjectStorage>(LocalObjectStorageSettings(disk_name, path_prefix, readonly));
 }
 
