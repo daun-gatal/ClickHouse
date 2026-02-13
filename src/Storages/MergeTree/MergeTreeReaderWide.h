@@ -119,6 +119,7 @@ private:
     ReadBufferFromFileBase::ProfileCallback profile_callback;
     clockid_t clock_type;
     bool read_without_marks = false;
+    LoggerPtr log;
 };
 
 }

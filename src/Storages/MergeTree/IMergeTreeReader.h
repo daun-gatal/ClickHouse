@@ -111,7 +111,7 @@ protected:
     SerializationByName serializations_of_full_columns;
 
     UncompressedCache * const uncompressed_cache;
-    ColumnsCache * const deserialized_columns_cache;
+    ColumnsCache * const columns_cache;
     MarkCache * const mark_cache;
 
     MergeTreeReaderSettings settings;

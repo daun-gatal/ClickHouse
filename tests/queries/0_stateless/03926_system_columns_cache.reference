@@ -1,6 +1,8 @@
+database	String
+table	String
 table_uuid	UUID
-part_name	String
-column_name	String
+part	String
+column	String
 row_begin	UInt64
 row_end	UInt64
 rows	UInt64

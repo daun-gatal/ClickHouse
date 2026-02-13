@@ -31,13 +31,13 @@ SETTINGS use_columns_cache = 1,
 -- Query system.columns_cache table
 -- Note: May be empty if table doesn't have UUID (non-Atomic database)
 SELECT
-    column_name,
+    column,
     row_end - row_begin as row_count,
     rows,
     bytes > 0 as has_bytes
 FROM system.columns_cache
-WHERE part_name LIKE '%t_system_cache_test%'
-ORDER BY column_name, row_begin
+WHERE part LIKE '%t_system_cache_test%'
+ORDER BY column, row_begin
 FORMAT Null;
 
 -- Test SYSTEM DROP COLUMNS CACHE
@@ -46,7 +46,7 @@ SYSTEM DROP COLUMNS CACHE;
 -- Verify cache is empty after drop
 SELECT count(*) as cache_entries
 FROM system.columns_cache
-WHERE part_name LIKE '%t_system_cache_test%';
+WHERE part LIKE '%t_system_cache_test%';
 
 -- Read again to repopulate
 SELECT count(*)

@@ -51,6 +51,9 @@ const VersionToSettingsChangesMap & getSettingsChangesHistory()
             {"use_page_cache_for_object_storage", false, false, "New setting to use userspace page cache for object storage table functions"},
             {"use_statistics_cache", false, true, "Enable statistics cache"},
             {"ignore_format_null_for_explain", false, true, "FORMAT Null is now ignored for EXPLAIN queries by default"},
+            {"use_columns_cache", false, false, "New setting to enable columns cache for MergeTree tables"},
+            {"enable_reads_from_columns_cache", true, true, "New setting to control reading from columns cache"},
+            {"enable_writes_to_columns_cache", true, true, "New setting to control writing to columns cache"},
         });
         addSettingsChanges(settings_changes_history, "26.1",
         {

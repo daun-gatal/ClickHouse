@@ -1,19 +1,10 @@
--- Tags: no-parallel, no-random-settings
-SET use_columns_cache = 0;
-SET enable_reads_from_columns_cache = 0;
-SET enable_writes_to_columns_cache = 0;
 -- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Edge cases and stress tests for columns cache
--- NOTE: Columns cache is currently disabled for this test due to a known issue
--- with Nullable columns in PREWHERE. The cache works correctly for non-Nullable
--- columns and for Nullable columns without WHERE clauses.
--- TODO: Investigate why MergeTreeRangeReader reports num_read_rows=0 for certain
--- PREWHERE queries with Nullable subcolumns after initial caching.
 
 SET max_threads = 1;
-SET use_columns_cache = 0;
-SET enable_reads_from_columns_cache = 0;
-SET enable_writes_to_columns_cache = 0;
+SET use_columns_cache = 1;
+SET enable_reads_from_columns_cache = 1;
+SET enable_writes_to_columns_cache = 1;
 SYSTEM DROP COLUMNS CACHE;
 
 -- ============================================================================

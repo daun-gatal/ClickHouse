@@ -11,6 +11,7 @@
 #include <Processors/QueryPlan/SourceStepWithFilter.h>
 #include <QueryPipeline/QueryPipelineBuilder.h>
 #include <Interpreters/Context.h>
+#include <Interpreters/DatabaseCatalog.h>
 
 
 namespace DB
@@ -84,9 +85,11 @@ protected:
         if (entries.empty())
             return {};
 
+        MutableColumnPtr col_database = ColumnString::create();
+        MutableColumnPtr col_table = ColumnString::create();
         MutableColumnPtr col_table_uuid = ColumnUUID::create();
-        MutableColumnPtr col_part_name = ColumnString::create();
-        MutableColumnPtr col_column_name = ColumnString::create();
+        MutableColumnPtr col_part = ColumnString::create();
+        MutableColumnPtr col_column = ColumnString::create();
         MutableColumnPtr col_row_begin = ColumnUInt64::create();
         MutableColumnPtr col_row_end = ColumnUInt64::create();
         MutableColumnPtr col_rows = ColumnUInt64::create();
@@ -98,9 +101,21 @@ protected:
             if (max_block_size && num_rows >= max_block_size)
                 break;
 
+            /// Look up database and table names from UUID
+            String database_name;
+            String table_name;
+            auto [database, table] = DatabaseCatalog::instance().tryGetByUUID(key.table_uuid);
+            if (database && table)
+            {
+                database_name = database->getDatabaseName();
+                table_name = table->getStorageID().table_name;
+            }
+
+            col_database->insert(database_name);
+            col_table->insert(table_name);
             col_table_uuid->insert(key.table_uuid);
-            col_part_name->insert(key.part_name);
-            col_column_name->insert(key.column_name);
+            col_part->insert(key.part_name);
+            col_column->insert(key.column_name);
             col_row_begin->insert(key.row_begin);
             col_row_end->insert(key.row_end);
             col_rows->insert(entry->rows);
@@ -110,9 +125,11 @@ protected:
         }
 
         Columns columns;
+        columns.emplace_back(std::move(col_database));
+        columns.emplace_back(std::move(col_table));
         columns.emplace_back(std::move(col_table_uuid));
-        columns.emplace_back(std::move(col_part_name));
-        columns.emplace_back(std::move(col_column_name));
+        columns.emplace_back(std::move(col_part));
+        columns.emplace_back(std::move(col_column));
         columns.emplace_back(std::move(col_row_begin));
         columns.emplace_back(std::move(col_row_end));
         columns.emplace_back(std::move(col_rows));
@@ -133,9 +150,11 @@ StorageSystemColumnsCache::StorageSystemColumnsCache(const StorageID & table_id_
     StorageInMemoryMetadata storage_metadata;
 
     ColumnsDescription columns{
+        {"database", std::make_shared<DataTypeString>(), "Database name"},
+        {"table", std::make_shared<DataTypeString>(), "Table name"},
         {"table_uuid", std::make_shared<DataTypeUUID>(), "Table UUID"},
-        {"part_name", std::make_shared<DataTypeString>(), "Data part name"},
-        {"column_name", std::make_shared<DataTypeString>(), "Column name"},
+        {"part", std::make_shared<DataTypeString>(), "Data part name"},
+        {"column", std::make_shared<DataTypeString>(), "Column name"},
         {"row_begin", std::make_shared<DataTypeUInt64>(), "Starting row index (inclusive)"},
         {"row_end", std::make_shared<DataTypeUInt64>(), "Ending row index (exclusive)"},
         {"rows", std::make_shared<DataTypeUInt64>(), "Number of rows in cached block"},

@@ -64,6 +64,7 @@ MergeTreeReaderWide::MergeTreeReaderWide(
     , read_without_marks(
         settings.can_read_part_without_marks
         && all_mark_ranges.isOneRangeForWholePart(data_part_info_for_read->getMarksCount()))
+    , log(getLogger("MergeTreeReaderWide"))
 {
     try
     {
@@ -160,8 +161,6 @@ size_t MergeTreeReaderWide::readRows(
         prefetched_from_mark = -1;
     }
 
-    static LoggerPtr reader_log = getLogger("MergeTreeReaderWide");
-
     try
     {
         size_t num_columns = res_columns.size();
@@ -172,11 +171,11 @@ size_t MergeTreeReaderWide::readRows(
 
         /// Check if we can serve from cache
         /// Cache requires:
-        /// - deserialized_columns_cache is available
+        /// - columns_cache is available
         /// - rows_offset == 0 (we don't cache partial granule reads)
         /// - table has a valid UUID (Atomic/Replicated databases only)
         /// - this is not a continuing read (continue_reading == false)
-        const bool cache_enabled = deserialized_columns_cache
+        const bool cache_enabled = columns_cache
             && rows_offset == 0
             && data_part_info_for_read->getTableUUID() != UUIDHelpers::Nil
             && !continue_reading;
@@ -194,7 +193,7 @@ size_t MergeTreeReaderWide::readRows(
                 : data_part_info_for_read->getRowCount();
             size_t row_end_query = std::min(row_begin + max_rows_to_read, row_end_max);
 
-            LOG_TEST(reader_log, "Checking cache: row_begin={}, row_end_query={}, max_rows_to_read={}",
+            LOG_TEST(log, "Checking cache: row_begin={}, row_end_query={}, max_rows_to_read={}",
                 row_begin, row_end_query, max_rows_to_read);
 
             /// Query cache for intersecting blocks for all columns
@@ -204,25 +203,29 @@ size_t MergeTreeReaderWide::readRows(
             for (size_t pos = 0; pos < num_columns; ++pos)
             {
                 const auto & column_name = columns_to_read[pos].name;
-                auto intersecting = deserialized_columns_cache->getIntersecting(
+                auto intersecting = columns_cache->getIntersecting(
                     data_part_info_for_read->getTableUUID(),
                     data_part_info_for_read->getPartName(),
                     column_name,
                     row_begin,
                     row_end_query);
 
-                /// For simplicity, we only serve from cache if we find exactly one block
-                /// that starts at row_begin and covers at least some of the requested range
-                if (intersecting.size() == 1 && intersecting[0].first.row_begin == row_begin)
+                /// We can serve from cache if we find exactly one block that fully contains
+                /// the requested range [row_begin, row_end_query).
+                /// This allows us to serve subset reads: if cached [a, b), we can serve [a', b')
+                /// where a' >= a and b' <= b.
+                if (intersecting.size() == 1
+                    && intersecting[0].first.row_begin <= row_begin
+                    && intersecting[0].first.row_end >= row_end_query)
                 {
                     cached_columns.emplace_back(intersecting[0].first, intersecting[0].second->column);
-                    LOG_TEST(reader_log, "Found cached block for column {}: row_begin={}, row_end={}",
-                        column_name, intersecting[0].first.row_begin, intersecting[0].first.row_end);
+                    LOG_TEST(log, "Found cached block for column {}: cached=[{}, {}), requested=[{}, {})",
+                        column_name, intersecting[0].first.row_begin, intersecting[0].first.row_end, row_begin, row_end_query);
                 }
                 else
                 {
                     all_columns_have_cache = false;
-                    LOG_TEST(reader_log, "No suitable cached block for column {}: intersecting.size()={}",
+                    LOG_TEST(log, "No suitable cached block for column {}: intersecting.size()={}, need full containment",
                         column_name, intersecting.size());
                     break;
                 }
@@ -238,7 +241,7 @@ size_t MergeTreeReaderWide::readRows(
                     if (key.row_end != cached_row_end)
                     {
                         consistent = false;
-                        LOG_TEST(reader_log, "Inconsistent cached block row_end: expected={}, got={}",
+                        LOG_TEST(log, "Inconsistent cached block row_end: expected={}, got={}",
                             cached_row_end, key.row_end);
                         break;
                     }
@@ -247,7 +250,7 @@ size_t MergeTreeReaderWide::readRows(
                 if (consistent)
                 {
                     serving_from_cache = true;
-                    LOG_TEST(reader_log, "Serving from cache: all columns have consistent cached blocks");
+                    LOG_TEST(log, "Serving from cache: all columns have consistent cached blocks");
                 }
             }
         }
@@ -255,10 +258,20 @@ size_t MergeTreeReaderWide::readRows(
         if (serving_from_cache)
         {
             /// Serve from cached columns
+            /// The cached block may be larger than what we need, so calculate the subset to extract
+            const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
+            size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t row_end_max = (current_task_last_mark < index_granularity.getMarksCount())
+                ? index_granularity.getMarkStartingRow(current_task_last_mark)
+                : data_part_info_for_read->getRowCount();
+            size_t row_end_query = std::min(row_begin + max_rows_to_read, row_end_max);
+
             const auto & cached_row_begin = cached_columns[0].first.row_begin;
             const auto & cached_row_end = cached_columns[0].first.row_end;
-            size_t cached_rows = cached_row_end - cached_row_begin;
-            size_t rows_to_serve = std::min(cached_rows, max_rows_to_read);
+
+            /// Calculate offset within the cached block and how many rows to extract
+            size_t offset_in_cache = row_begin - cached_row_begin;
+            size_t rows_to_serve = std::min(row_end_query - row_begin, cached_row_end - row_begin);
 
             for (size_t pos = 0; pos < num_columns; ++pos)
             {
@@ -270,8 +283,8 @@ size_t MergeTreeReaderWide::readRows(
                 /// Find the cached column for this position
                 const auto & cached_col = cached_columns[pos].second;
 
-                /// Cut the needed portion (may be less than the full cached block)
-                auto cut_column = cached_col->cut(0, rows_to_serve);
+                /// Extract the needed subset from the cached block
+                auto cut_column = cached_col->cut(offset_in_cache, rows_to_serve);
 
                 if (!append)
                 {
@@ -286,7 +299,8 @@ size_t MergeTreeReaderWide::readRows(
             }
 
             read_rows = rows_to_serve;
-            LOG_TEST(reader_log, "Served {} rows from cache", read_rows);
+            LOG_TEST(log, "Served {} rows from cache (offset={}, requested=[{}, {}), cached=[{}, {}))",
+                read_rows, offset_in_cache, row_begin, row_end_query, cached_row_begin, cached_row_end);
         }
         else
         {
@@ -350,7 +364,7 @@ size_t MergeTreeReaderWide::readRows(
                 size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
                 size_t row_end = row_begin + read_rows;
 
-                LOG_TEST(reader_log, "Caching columns: row_begin={}, row_end={}, rows={}", row_begin, row_end, read_rows);
+                LOG_TEST(log, "Caching columns: row_begin={}, row_end={}, rows={}", row_begin, row_end, read_rows);
 
                 for (size_t pos = 0; pos < num_columns; ++pos)
                 {
@@ -380,14 +394,14 @@ size_t MergeTreeReaderWide::readRows(
                                 row_end};
 
                             /// Check if this exact range is already in cache to avoid redundant writes
-                            auto existing = deserialized_columns_cache->get(cache_key);
+                            auto existing = columns_cache->get(cache_key);
                             if (!existing || existing->rows != rows_just_read)
                             {
                                 auto entry = std::make_shared<ColumnsCacheEntry>(
                                     ColumnsCacheEntry{std::move(column_to_cache), rows_just_read});
-                                deserialized_columns_cache->set(cache_key, entry);
+                                columns_cache->set(cache_key, entry);
 
-                                LOG_TEST(reader_log, "Cached column: {}, row_begin={}, row_end={}, rows={}",
+                                LOG_TEST(log, "Cached column: {}, row_begin={}, row_end={}, rows={}",
                                     columns_to_read[pos].name, row_begin, row_end, rows_just_read);
                             }
                         }

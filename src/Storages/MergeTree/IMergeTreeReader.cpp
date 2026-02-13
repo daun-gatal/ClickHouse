@@ -47,7 +47,7 @@ IMergeTreeReader::IMergeTreeReader(
         ? data_part_info_for_read->getColumnsDescriptionWithCollectedNested()
         : data_part_info_for_read->getColumnsDescription())
     , uncompressed_cache(uncompressed_cache_)
-    , deserialized_columns_cache(columns_cache_)
+    , columns_cache(columns_cache_)
     , mark_cache(mark_cache_)
     , settings(settings_)
     , storage_settings(storage_settings_)
