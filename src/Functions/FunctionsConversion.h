@@ -2108,7 +2108,9 @@ struct ConvertImpl
             bool divide = from_position < to_position;
             if (divide)
             {
-                for (int i = from_position; i < to_position; ++i)
+                /// interval_conversions[i] is how many of interval (i-1) fit in interval i, so to go
+                /// `from` -> `to` we need the product of interval_conversions[from+1] * ... * interval_conversions[to]
+                for (int i = from_position + 1; i <= to_position; ++i)
                     conversion_factor *= interval_conversions[i];
             }
             else
