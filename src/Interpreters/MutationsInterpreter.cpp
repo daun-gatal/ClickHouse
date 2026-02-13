@@ -1597,8 +1597,36 @@ void MutationsInterpreter::prepareMutationStages(std::vector<Stage> & prepared_s
         Names output_columns_in_order;
         output_columns_in_order.reserve(stage.output_columns.size());
 
-        for (const auto & ast : stage.filters)
-            all_asts->children.push_back(ast);
+        for (const auto & filter_ast : stage.filters)
+        {
+            ASTPtr filter_expression_for_analysis = filter_ast;
+            if (use_analyzer && dry_run && astContainsSubquery(filter_expression_for_analysis))
+            {
+                auto filter_columns_for_expression_analysis = getColumnsForMutationExpressionAnalysis(
+                    all_columns,
+                    filter_expression_for_analysis,
+                    *storage_snapshot->virtual_columns);
+
+                try
+                {
+                    analyzeMutationExpression(
+                        filter_expression_for_analysis,
+                        filter_columns_for_expression_analysis,
+                        *storage_snapshot->virtual_columns,
+                        context,
+                        /*execute_scalar_subqueries=*/false);
+                }
+                catch (const Exception & e)
+                {
+                    if (e.code() == ErrorCodes::UNKNOWN_TABLE)
+                        filter_expression_for_analysis = makeASTFunction("toUInt8", make_intrusive<ASTLiteral>(Field(1)));
+                    else
+                        throw;
+                }
+            }
+
+            all_asts->children.push_back(filter_expression_for_analysis);
+        }
 
         for (const auto & kv : stage.column_to_updated)
         {
