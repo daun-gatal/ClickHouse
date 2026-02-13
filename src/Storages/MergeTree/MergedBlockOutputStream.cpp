@@ -1,3 +1,4 @@
+#include <Storages/MergeTree/IMergedBlockOutputStream.h>
 #include <Storages/MergeTree/MergedBlockOutputStream.h>
 #include <Storages/MergeTree/MergeTreeSettings.h>
 #include <IO/HashingWriteBuffer.h>
@@ -21,6 +22,7 @@ namespace MergeTreeSetting
 
 MergedBlockOutputStream::MergedBlockOutputStream(
     const MergeTreeMutableDataPartPtr & data_part,
+    MergeTreeSettingsPtr data_settings,
     const StorageMetadataPtr & metadata_snapshot_,
     const NamesAndTypesList & columns_list_,
     const MergeTreeIndices & skip_indices,
@@ -31,8 +33,10 @@ MergedBlockOutputStream::MergedBlockOutputStream(
     size_t part_uncompressed_bytes,
     bool reset_columns_,
     bool blocks_are_granules_size,
-    const WriteSettings & write_settings_)
-    : IMergedBlockOutputStream(data_part->storage.getSettings(), data_part->getDataPartStoragePtr(), metadata_snapshot_, columns_list_, reset_columns_)
+    const WriteSettings & write_settings_,
+    WrittenOffsetSubstreams * written_offset_substreams)
+    : IMergedBlockOutputStream(
+          std::move(data_settings), data_part->getDataPartStoragePtr(), metadata_snapshot_, columns_list_, reset_columns_)
     , columns_list(columns_list_)
     , default_codec(default_codec_)
     , write_settings(write_settings_)
@@ -76,7 +80,8 @@ MergedBlockOutputStream::MergedBlockOutputStream(
         data_part->getMarksFileExtension(),
         default_codec,
         writer_settings,
-        std::move(index_granularity_ptr));
+        std::move(index_granularity_ptr),
+        written_offset_substreams);
 }
 
 /// If data is pre-sorted.
@@ -182,6 +187,11 @@ void MergedBlockOutputStream::finalizePart(
     finalizePartAsync(new_part, sync, total_columns_list, additional_column_checksums, additional_columns_substreams).finish();
 }
 
+void MergedBlockOutputStream::finalizeIndexGranularity()
+{
+    writer->finalizeIndexGranularity();
+}
+
 MergedBlockOutputStream::Finalizer MergedBlockOutputStream::finalizePartAsync(
     const MergeTreeMutableDataPartPtr & new_part,
     bool sync,
@@ -217,7 +227,8 @@ MergedBlockOutputStream::Finalizer MergedBlockOutputStream::finalizePartAsync(
         auto serialization_infos = new_part->getSerializationInfos();
 
         serialization_infos.replaceData(new_serialization_infos);
-        files_to_remove_after_sync = removeEmptyColumnsFromPart(new_part, part_columns, serialization_infos, checksums);
+        files_to_remove_after_sync
+            = removeEmptyColumnsFromPart(new_part, part_columns, new_part->expired_columns, serialization_infos, checksums);
 
         new_part->setColumns(part_columns, serialization_infos, metadata_snapshot->getMetadataVersion());
     }

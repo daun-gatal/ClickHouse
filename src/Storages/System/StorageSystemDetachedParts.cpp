@@ -15,6 +15,7 @@
 #include <QueryPipeline/Pipe.h>
 #include <IO/SharedThreadPools.h>
 #include <Common/threadPoolCallbackRunner.h>
+#include <Common/setThreadName.h>
 #include <QueryPipeline/QueryPipelineBuilder.h>
 #include <Processors/QueryPlan/QueryPlan.h>
 
@@ -172,6 +173,7 @@ private:
             if (worker_state.next_task.load() >= worker_state.tasks.size())
                 break;
 
+            /// Passing a reference to worker_state is safe, because the variable outlives runner
             auto worker = [&worker_state] ()
             {
                 for (auto id = worker_state.next_task++; id < worker_state.tasks.size(); id = worker_state.next_task++)
@@ -182,7 +184,7 @@ private:
                 }
             };
 
-            runner(std::move(worker));
+            runner.enqueueAndKeepTrack(std::move(worker));
         }
 
         runner.waitForAllToFinishAndRethrowFirstError();

@@ -13,10 +13,11 @@ class MergeTreeDataPartWriterWide;
 class MergedColumnOnlyOutputStream final : public IMergedBlockOutputStream
 {
 public:
-    /// Pass empty 'already_written_offset_columns' first time then and pass the same object to subsequent instances of MergedColumnOnlyOutputStream
+    /// Pass empty @written_offset_substreams first time then and pass the same object to subsequent instances of MergedColumnOnlyOutputStream
     ///  if you want to serialize elements of Nested data structure in different instances of MergedColumnOnlyOutputStream.
     MergedColumnOnlyOutputStream(
         const MergeTreeMutableDataPartPtr & data_part,
+        MergeTreeSettingsPtr data_settings,
         const StorageMetadataPtr & metadata_snapshot_,
         const NamesAndTypesList & columns_list_,
         const MergeTreeIndices & indices_to_recalc,
@@ -24,9 +25,11 @@ public:
         CompressionCodecPtr default_codec,
         MergeTreeIndexGranularityPtr index_granularity_ptr,
         size_t part_uncompressed_bytes,
-        WrittenOffsetColumns * offset_columns = nullptr);
+        WrittenOffsetSubstreams * written_offset_substreams);
 
     void write(const Block & block) override;
+
+    void finalizeIndexGranularity();
 
     MergeTreeData::DataPart::Checksums
     fillChecksums(MergeTreeData::MutableDataPartPtr & new_part, MergeTreeData::DataPart::Checksums & all_checksums);

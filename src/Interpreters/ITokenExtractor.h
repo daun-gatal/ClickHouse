@@ -6,6 +6,7 @@
 #include <Common/assert_cast.h>
 
 #include <Functions/sparseGrams.h>
+#include <fmt/format.h>
 
 namespace DB
 {
@@ -16,11 +17,11 @@ struct ITokenExtractor
 public:
     enum class Type
     {
-        Default,
-        Ngram,
-        Split,
-        NoOp,
-        SparseGram,
+        SplitByNonAlpha,
+        Ngrams,
+        SplitByString,
+        Array,
+        SparseGrams,
     };
 
     ITokenExtractor() = default;
@@ -33,23 +34,30 @@ public:
     virtual ~ITokenExtractor() = default;
     virtual std::unique_ptr<ITokenExtractor> clone() const = 0;
 
+    /// Returns a formatted description of the tokenizer with arguments.
+    virtual String getDescription() const = 0;
+
     /// Fast inplace implementation for regular use.
     /// Gets string (data ptr and len) and start position for extracting next token (state of extractor).
     /// Returns false if parsing is finished, otherwise returns true.
-    virtual bool nextInString(const char * data, size_t length, size_t * __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const = 0;
+    virtual bool nextInString(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const = 0;
 
     /// Optimized version that can assume at least 15 padding bytes after data + len (as our Columns provide).
-    virtual bool nextInStringPadded(const char * data, size_t length, size_t * __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const
+    virtual bool nextInStringPadded(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const
     {
         return nextInString(data, length, pos, token_start, token_length);
     }
 
     /// Special implementation for creating bloom filter for LIKE function.
     /// It skips unescaped `%` and `_` and supports escaping symbols, but it is less lightweight.
-    virtual bool nextInStringLike(const char * data, size_t length, size_t * pos, String & out) const = 0;
+    virtual bool nextInStringLike(const char * data, size_t length, size_t & pos, String & out) const = 0;
 
     /// Updates Bloom filter from exact-match string filter value
     virtual void stringToBloomFilter(const char * data, size_t length, BloomFilter & bloom_filter) const = 0;
+
+    /// Filters out tokens excessive for search.
+    /// This method is inefficient and should be used only for constants.
+    virtual std::vector<String> compactTokens(const std::vector<String> & tokens) const = 0;
 
     /// Updates Bloom filter from substring-match string filter value.
     /// An `ITokenExtractor` implementation may decide to skip certain
@@ -115,7 +123,7 @@ private:
         size_t token_start = 0;
         size_t token_len = 0;
 
-        while (cur < length && static_cast<const Derived *>(this)->nextInString(data, length, &cur, &token_start, &token_len))
+        while (cur < length && static_cast<const Derived *>(this)->nextInString(data, length, cur, token_start, token_len))
             bloom_filter.add(data + token_start, token_len);
     }
 
@@ -125,7 +133,7 @@ private:
         size_t token_start = 0;
         size_t token_len = 0;
 
-        while (cur < length && static_cast<const Derived *>(this)->nextInStringPadded(data, length, &cur, &token_start, &token_len))
+        while (cur < length && static_cast<const Derived *>(this)->nextInStringPadded(data, length, cur, token_start, token_len))
             bloom_filter.add(data + token_start, token_len);
     }
 
@@ -134,7 +142,7 @@ private:
         size_t cur = 0;
         String token;
 
-        while (cur < length && static_cast<const Derived *>(this)->nextInStringLike(data, length, &cur, token))
+        while (cur < length && static_cast<const Derived *>(this)->nextInStringLike(data, length, cur, token))
             bloom_filter.add(token.c_str(), token.size());
     }
 
@@ -144,7 +152,7 @@ private:
         size_t token_start = 0;
         size_t token_len = 0;
 
-        while (cur < length && static_cast<const Derived *>(this)->nextInString(data, length, &cur, &token_start, &token_len))
+        while (cur < length && static_cast<const Derived *>(this)->nextInString(data, length, cur, token_start, token_len))
             tokens.push_back({data + token_start, token_len});
     }
 
@@ -153,22 +161,28 @@ private:
         size_t cur = 0;
         String token;
 
-        while (cur < length && static_cast<const Derived *>(this)->nextInStringLike(data, length, &cur, token))
+        while (cur < length && static_cast<const Derived *>(this)->nextInStringLike(data, length, cur, token))
             tokens.push_back(token);
+    }
+
+    std::vector<String> compactTokens(const std::vector<String> & tokens) const override
+    {
+        std::unordered_set<String> unique_tokens(tokens.begin(), tokens.end());
+        return std::vector<String>(unique_tokens.begin(), unique_tokens.end());
     }
 };
 
-
 /// Parser extracting all ngrams from string.
-struct NgramTokenExtractor final : public ITokenExtractorHelper<NgramTokenExtractor>
+struct NgramsTokenExtractor final : public ITokenExtractorHelper<NgramsTokenExtractor>
 {
-    explicit NgramTokenExtractor(size_t n_) : ITokenExtractorHelper(Type::Ngram), n(n_) {}
+    explicit NgramsTokenExtractor(size_t n_) : ITokenExtractorHelper(Type::Ngrams), n(n_) {}
 
     static const char * getName() { return "ngrambf_v1"; }
     static const char * getExternalName() { return "ngrams"; }
+    String getDescription() const override { return fmt::format("ngrams({})", n); }
 
-    bool nextInString(const char * data, size_t length, size_t *  __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const override;
-    bool nextInStringLike(const char * data, size_t length, size_t * pos, String & token) const override;
+    bool nextInString(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const override;
+    bool nextInStringLike(const char * data, size_t length, size_t & pos, String & token) const override;
 
     size_t getN() const { return n; }
 
@@ -178,16 +192,17 @@ private:
 };
 
 /// Parser extracting tokens which consist of alphanumeric ASCII characters or Unicode characters (not necessarily alphanumeric)
-struct DefaultTokenExtractor final : public ITokenExtractorHelper<DefaultTokenExtractor>
+struct SplitByNonAlphaTokenExtractor final : public ITokenExtractorHelper<SplitByNonAlphaTokenExtractor>
 {
-    DefaultTokenExtractor() : ITokenExtractorHelper(Type::Default) {}
+    SplitByNonAlphaTokenExtractor() : ITokenExtractorHelper(Type::SplitByNonAlpha) {}
 
     static const char * getName() { return "tokenbf_v1"; }
     static const char * getExternalName() { return "splitByNonAlpha"; }
+    String getDescription() const override { return "splitByNonAlpha"; }
 
-    bool nextInString(const char * data, size_t length, size_t * __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const override;
-    bool nextInStringPadded(const char * data, size_t length, size_t * __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const override;
-    bool nextInStringLike(const char * data, size_t length, size_t * __restrict pos, String & token) const override;
+    bool nextInString(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const override;
+    bool nextInStringPadded(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const override;
+    bool nextInStringLike(const char * data, size_t length, size_t & __restrict pos, String & token) const override;
     void substringToBloomFilter(const char * data, size_t length, BloomFilter & bloom_filter, bool is_prefix, bool is_suffix) const override;
     void substringToTokens(const char * data, size_t length, std::vector<String> & tokens, bool is_prefix, bool is_suffix) const override;
 
@@ -196,15 +211,16 @@ struct DefaultTokenExtractor final : public ITokenExtractorHelper<DefaultTokenEx
 
 /// Parser extracting tokens which are separated by certain strings.
 /// Allows to emulate e.g. BigQuery's LOG_ANALYZER.
-struct SplitTokenExtractor final : public ITokenExtractorHelper<SplitTokenExtractor>
+struct SplitByStringTokenExtractor final : public ITokenExtractorHelper<SplitByStringTokenExtractor>
 {
-    explicit SplitTokenExtractor(const std::vector<String> & separators_) : ITokenExtractorHelper(Type::Split), separators(separators_) {}
+    explicit SplitByStringTokenExtractor(const std::vector<String> & separators_) : ITokenExtractorHelper(Type::SplitByString), separators(separators_) {}
 
     static const char * getName() { return "splitByString"; }
     static const char * getExternalName() { return getName(); }
+    String getDescription() const override;
 
-    bool nextInString(const char * data, size_t length, size_t * pos, size_t * token_start, size_t * token_length) const override;
-    bool nextInStringLike(const char * data, size_t length, size_t * pos, String & token) const override;
+    bool nextInString(const char * data, size_t length, size_t & pos, size_t & token_start, size_t & token_length) const override;
+    bool nextInStringLike(const char * data, size_t length, size_t & pos, String & token) const override;
 
     bool supportsStringLike() const override { return false; }
 private:
@@ -212,35 +228,40 @@ private:
 };
 
 /// Parser doing "no operation". Returns the entire input as a single token.
-struct NoOpTokenExtractor final : public ITokenExtractorHelper<NoOpTokenExtractor>
+struct ArrayTokenExtractor final : public ITokenExtractorHelper<ArrayTokenExtractor>
 {
-    NoOpTokenExtractor() : ITokenExtractorHelper(Type::NoOp) {}
+    ArrayTokenExtractor() : ITokenExtractorHelper(Type::Array) {}
 
     static const char * getName() { return "array"; }
     static const char * getExternalName() { return getName(); }
+    String getDescription() const override { return getName(); }
 
-    bool nextInString(const char * data, size_t length, size_t * pos, size_t * token_start, size_t * token_length) const override;
-    bool nextInStringLike(const char * data, size_t length, size_t * pos, String & token) const override;
+    bool nextInString(const char * data, size_t length, size_t & pos, size_t & token_start, size_t & token_length) const override;
+    bool nextInStringLike(const char * data, size_t length, size_t & pos, String & token) const override;
 
     bool supportsStringLike() const override { return false; }
 };
 
 /// Parser extracting sparse grams (the same as function sparseGrams).
 /// See sparseGrams.h for more details.
-struct SparseGramTokenExtractor final : public ITokenExtractorHelper<SparseGramTokenExtractor>
+struct SparseGramsTokenExtractor final : public ITokenExtractorHelper<SparseGramsTokenExtractor>
 {
-    explicit SparseGramTokenExtractor(size_t min_length = 3, size_t max_length = 100, std::optional<size_t> min_cutoff_length_ = std::nullopt);
+    explicit SparseGramsTokenExtractor(size_t min_length = 3, size_t max_length = 100, std::optional<size_t> min_cutoff_length_ = std::nullopt);
 
     static const char * getBloomFilterIndexName() { return "sparse_grams"; }
     static const char * getName() { return "sparseGrams"; }
     static const char * getExternalName() { return getName(); }
 
-    bool nextInString(const char * data, size_t length, size_t *  __restrict pos, size_t * __restrict token_start, size_t * __restrict token_length) const override;
+    String getDescription() const override;
+    bool nextInString(const char * data, size_t length, size_t & __restrict pos, size_t & __restrict token_start, size_t & __restrict token_length) const override;
+    std::vector<String> compactTokens(const std::vector<String> & tokens) const override;
 
-    bool nextInStringLike(const char * data, size_t length, size_t * pos, String & token) const override;
+    bool nextInStringLike(const char * data, size_t length, size_t & pos, String & token) const override;
     bool supportsStringLike() const override { return true; }
-
 private:
+    size_t min_gram_length;
+    size_t max_gram_length;
+    std::optional<size_t> min_cutoff_length;
     mutable SparseGramsImpl<true> sparse_grams_iterator;
     mutable const char * previous_data = nullptr;
     mutable size_t previous_len = 0;
@@ -258,7 +279,7 @@ void forEachTokenImpl(const TokenExtractorType & extractor, const char * __restr
 
     if constexpr (is_padded)
     {
-        while (cur < length && extractor.nextInStringPadded(data, length, &cur, &token_start, &token_len))
+        while (cur < length && extractor.nextInStringPadded(data, length, cur, token_start, token_len))
         {
             if (callback(data + token_start, token_len))
                 return;
@@ -266,7 +287,7 @@ void forEachTokenImpl(const TokenExtractorType & extractor, const char * __restr
     }
     else
     {
-        while (cur < length && extractor.nextInString(data, length, &cur, &token_start, &token_len))
+        while (cur < length && extractor.nextInString(data, length, cur, token_start, token_len))
         {
             if (callback(data + token_start, token_len))
                 return;
@@ -282,40 +303,37 @@ void forEachTokenCase(const ITokenExtractor & extractor, const char * __restrict
 
     switch (extractor.getType())
     {
-        case ITokenExtractor::Type::Default:
+        case ITokenExtractor::Type::SplitByNonAlpha:
         {
-            const auto & default_extractor = assert_cast<const DefaultTokenExtractor &>(extractor);
-            forEachTokenImpl<is_padded>(default_extractor, data, length, callback);
+            const auto & split_by_non_alpha_extractor = assert_cast<const SplitByNonAlphaTokenExtractor &>(extractor);
+            forEachTokenImpl<is_padded>(split_by_non_alpha_extractor, data, length, callback);
             return;
         }
-        case ITokenExtractor::Type::Ngram:
+        case ITokenExtractor::Type::Ngrams:
         {
-            const auto & ngram_extractor = assert_cast<const NgramTokenExtractor &>(extractor);
+            const auto & ngrams_tokenizer = assert_cast<const NgramsTokenExtractor &>(extractor);
 
-            if (length < ngram_extractor.getN())
-            {
-                callback(data, length);
+            if (length < ngrams_tokenizer.getN())
                 return;
-            }
 
-            forEachTokenImpl<is_padded>(ngram_extractor, data, length, callback);
+            forEachTokenImpl<is_padded>(ngrams_tokenizer, data, length, callback);
             return;
         }
-        case ITokenExtractor::Type::Split:
+        case ITokenExtractor::Type::SplitByString:
         {
-            const auto & split_extractor = assert_cast<const SplitTokenExtractor &>(extractor);
-            forEachTokenImpl<is_padded>(split_extractor, data, length, callback);
+            const auto & split_by_string_extractor = assert_cast<const SplitByStringTokenExtractor &>(extractor);
+            forEachTokenImpl<is_padded>(split_by_string_extractor, data, length, callback);
             return;
         }
-        case ITokenExtractor::Type::NoOp:
+        case ITokenExtractor::Type::Array:
         {
             callback(data, length);
             return;
         }
-        case ITokenExtractor::Type::SparseGram:
+        case ITokenExtractor::Type::SparseGrams:
         {
-            const auto & sparse_gram_extractor = assert_cast<const SparseGramTokenExtractor &>(extractor);
-            forEachTokenImpl<is_padded>(sparse_gram_extractor, data, length, callback);
+            const auto & sparse_grams_extractor = assert_cast<const SparseGramsTokenExtractor &>(extractor);
+            forEachTokenImpl<is_padded>(sparse_grams_extractor, data, length, callback);
             return;
         }
     }

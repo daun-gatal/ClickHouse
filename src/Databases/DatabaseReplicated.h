@@ -5,11 +5,12 @@
 
 #include <Databases/DatabaseAtomic.h>
 #include <Databases/DatabaseReplicatedSettings.h>
-#include <QueryPipeline/BlockIO.h>
 #include <Interpreters/Context_fwd.h>
-#include <base/defines.h>
 #include <Interpreters/QueryFlags.h>
 #include <Parsers/SyncReplicaMode.h>
+#include <QueryPipeline/BlockIO.h>
+#include <base/defines.h>
+#include <Common/ZooKeeper/IKeeper.h>
 
 
 namespace zkutil
@@ -87,7 +88,7 @@ public:
 
     /// Try to execute DLL query on current host as initial query. If query is succeed,
     /// then it will be executed on all replicas.
-    BlockIO tryEnqueueReplicatedDDL(const ASTPtr & query, ContextPtr query_context, QueryFlags flags) override;
+    BlockIO tryEnqueueReplicatedDDL(const ASTPtr & query, ContextPtr query_context, QueryFlags flags, DDLGuardPtr && database_guard) override;
 
     bool canExecuteReplicatedMetadataAlter() const override;
 
@@ -125,7 +126,7 @@ public:
 
     static void dropReplica(DatabaseReplicated * database, const String & database_zookeeper_path, const String & shard, const String & replica, bool throw_if_noop);
 
-    void restoreDatabaseMetadataInKeeper(ContextPtr ctx);
+    void restoreDatabaseInKeeper(ContextPtr ctx);
 
     ReplicasInfo tryGetReplicasInfo(const ClusterPtr & cluster_) const;
 
@@ -147,6 +148,8 @@ protected:
 
 private:
     void tryConnectToZooKeeperAndInitDatabase(LoadingStrictnessLevel mode);
+    void initDatabaseReplica(const ZooKeeperPtr & current_zookeeper, LoadingStrictnessLevel mode);
+    Coordination::Requests buildDatabaseNodesInZooKeeper();
     bool createDatabaseNodesInZooKeeper(const ZooKeeperPtr & current_zookeeper);
     static bool looksLikeReplicatedDatabasePath(const ZooKeeperPtr & current_zookeeper, const String & path);
     void createReplicaNodesInZooKeeper(const ZooKeeperPtr & current_zookeeper);
@@ -207,18 +210,18 @@ private:
 
     void initDDLWorkerUnlocked() TSA_REQUIRES(ddl_worker_mutex);
 
-    void restoreTablesMetadataInKeeper();
-
+    void restoreDatabaseNodesInKeeper(const ZooKeeperPtr & zookeeper);
     void reinitializeDDLWorker();
 
     static BlockIO
-    getQueryStatus(const String & node_path, const String & replicas_path, ContextPtr context, const Strings & hosts_to_wait);
+    getQueryStatus(const String & node_path, const String & replicas_path, ContextPtr context, const Strings & hosts_to_wait, DDLGuardPtr && database_guard);
 
-    String zookeeper_path;
-    String shard_name;
-    String replica_name;
+    const String zookeeper_path;
+    const String shard_name;
+    const String replica_name;
+    const String replica_path;
+
     String replica_group_name;
-    String replica_path;
     DatabaseReplicatedSettings db_settings;
 
     ZooKeeperPtr getZooKeeper() const;

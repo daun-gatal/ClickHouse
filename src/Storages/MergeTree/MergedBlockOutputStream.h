@@ -16,6 +16,7 @@ class MergedBlockOutputStream final : public IMergedBlockOutputStream
 public:
     MergedBlockOutputStream(
         const MergeTreeMutableDataPartPtr & data_part,
+        MergeTreeSettingsPtr data_settings,
         const StorageMetadataPtr & metadata_snapshot_,
         const NamesAndTypesList & columns_list_,
         const MergeTreeIndices & skip_indices,
@@ -24,9 +25,10 @@ public:
         MergeTreeIndexGranularityPtr index_granularity_ptr,
         TransactionID tid,
         size_t part_uncompressed_bytes,
-        bool reset_columns_ = false,
-        bool blocks_are_granules_size = false,
-        const WriteSettings & write_settings = {});
+        bool reset_columns_,
+        bool blocks_are_granules_size,
+        const WriteSettings & write_settings,
+        WrittenOffsetSubstreams * written_offset_substreams);
 
     Block getHeader() const { return metadata_snapshot->getSampleBlock(); }
 
@@ -72,6 +74,8 @@ public:
         const NamesAndTypesList * total_columns_list = nullptr,
         MergeTreeData::DataPart::Checksums * additional_column_checksums = nullptr,
         ColumnsSubstreams * additional_columns_substreams = nullptr);
+
+    void finalizeIndexGranularity();
 
 private:
     /** If `permutation` is given, it rearranges the values in the columns when writing.

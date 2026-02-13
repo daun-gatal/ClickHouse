@@ -1,7 +1,7 @@
-personal_ws-1.1 en 3452
-aarch
+personal_ws-1.1 en 3534 
 AArch
 ACLs
+ADLS
 ALTERs
 AMPLab
 AMQP
@@ -179,6 +179,7 @@ ClickHouseClient
 ClickHouseMigrator
 ClickHouseNIO
 ClickHouseVapor
+ClickLens
 ClickPipes
 ClickVisual
 ClickableSquare
@@ -259,6 +260,7 @@ DataLakeCatalog
 DataLens
 DataPacket
 DataPup
+DataStoria
 DataTypes
 DataTypesMatching
 DatabaseCatalog
@@ -313,6 +315,7 @@ Doxygen
 Dresseler
 Durre
 ECMA
+EntryAndExit
 ETag
 EachRow
 Ecto
@@ -326,6 +329,7 @@ Encodings
 Enum
 Enums
 Eoan
+epilog
 EphemeralNode
 EscapingRule
 Ethereum
@@ -415,6 +419,8 @@ HNSW
 HSTS
 HTTPConnection
 HTTPThreads
+HTTPs
+HTTPSecureThreads
 HashedDictionary
 HashedDictionaryThreads
 HashedDictionaryThreadsActive
@@ -486,6 +492,7 @@ IntervalQuarter
 IntervalSecond
 IntervalWeek
 IntervalYear
+InterserverSecureThreads
 intExp
 intHash
 IntN
@@ -570,6 +577,7 @@ JSONExtractStringCaseInsensitive
 JSONExtractUInt
 JSONExtractUIntCaseInsensitive
 JSONHas
+JSONL
 JSONLength
 JSONLines
 JSONObjectEachRow
@@ -609,6 +617,8 @@ Keccak
 KeeperAliveConnections
 KeeperMap
 KeeperOutstandingRequests
+KeeperTCPSecureThreads
+KeeperTCPThreads
 Kerberos
 Khanna
 Kibana
@@ -657,6 +667,7 @@ LogQL
 LogQueriesType
 LogsLevel
 Logstash
+LongestRunningMerge
 LookML
 LoongArch
 LowCardinality
@@ -724,6 +735,7 @@ MergeTreePartsLoaderThreadsActive
 MergeTreeReadTaskRequestsSent
 MergeTreeSettings
 MergerMutator
+Mersenne
 MessagePack
 Metastore
 MetroHash
@@ -733,6 +745,7 @@ Milovidov
 MinHash
 MinIO
 MinMax
+MinMaxIndexPruned
 MindsDB
 Mongo
 Mongodb
@@ -787,6 +800,7 @@ NewSetting
 Noaa
 NodeJs
 NonMonotonic
+NotPruned
 NonZeroUInt
 NuRaft
 NumHexagons
@@ -899,6 +913,7 @@ ParquetMetadata
 ParquetVersion
 Parsers
 PartMutation
+PartitionPruned
 Partitioner
 PartsActive
 PartsCommitted
@@ -914,6 +929,7 @@ PeerDB
 PendingAsyncInsert
 Percona
 PerfEventInfo
+Perfetto
 PhpStorm
 PlantUML
 Poess
@@ -953,6 +969,7 @@ PrivatePreviewBadge
 ProfileEvents
 Profiler
 Proleptic
+prolog
 PromHouse
 PromQL
 Promql
@@ -964,7 +981,6 @@ ProxySQL
 Punycode
 PyArrow
 PyCharm
-QATlib
 QBit
 QEMU
 QTCreator
@@ -1160,6 +1176,7 @@ TAVG
 TCPConnection
 TCPHandler
 TCPThreads
+TCPSecureThreads
 TDigest
 TINYINT
 TLSv
@@ -1190,6 +1207,7 @@ TablesLoaderForegroundThreadsActive
 TablesToDropQueueSize
 TargetSpecific
 Tauri
+TcpExtListenOverflows
 Telegraf
 TemplateIgnoreSpaces
 TemporaryFilesForAggregation
@@ -1327,11 +1345,11 @@ YYYYMMDDhhmmssToDateTime
 Yandex
 Yasm
 ZCurve
-ZSTDQAT
 Zabbix
 Zipkin
 ZooKeeper
 ZooKeeper's
+ZooKeeperClientLastZXIDSeen
 ZooKeeperRequest
 ZooKeeperSession
 ZooKeeperWatch
@@ -1396,10 +1414,14 @@ appendTrailingCharIfAbsent
 approximative
 approxtopk
 approxtopsum
+areaCartesian
+areaSpherical
 argMax
 argMin
 argmax
 argmin
+argAndMax
+argAndMin
 arrayAUC
 arrayAUCPR
 arrayAll
@@ -1863,6 +1885,7 @@ dictGetAll
 dictGetChildren
 dictGetDescendant
 dictGetHierarchy
+dictGetKeys
 dictGetOrDefault
 dictGetOrNull
 dictGetUUID
@@ -1923,6 +1946,7 @@ enqueued
 enum
 enum's
 enums
+ephemerals
 erfc
 errorCodeToName
 estimateCompressionRatio
@@ -1988,6 +2012,8 @@ flamegraph
 flatbuffers
 flattenTuple
 flink
+Flink
+flipCoordinates
 fluentd
 fmtlib
 formatDateTime
@@ -2130,6 +2156,7 @@ gtid
 gunzip
 gzip
 gzipped
+GRPCThreads
 hackernews
 hadoop
 halfMD
@@ -2504,6 +2531,7 @@ multiline
 multilinestring
 multiplyDecimal
 multipolygon
+multipolygons
 multiquery
 multiread
 multisearchany
@@ -2672,6 +2700,8 @@ pclmulqdq
 pcre
 perf
 performant
+perimeterCartesian
+perimeterSpherical
 perkey
 perl
 persistency
@@ -2768,6 +2798,7 @@ proleptic
 prometheus
 prometheusQuery
 prometheusQueryRange
+PrometheusThreads
 proportionsZTest
 proto
 protobuf
@@ -2788,6 +2819,7 @@ pushdown
 pwrite
 py
 qbit
+qrencode
 qryn
 quantile
 quantileBFloat
@@ -2861,6 +2893,7 @@ readWKTMultiPolygon
 readWKTPoint
 readWKTPolygon
 readWKTRing
+readWkt
 readahead
 readline
 readme
@@ -3352,6 +3385,7 @@ topLevelDomain
 topLevelDomainRFC
 topk
 topkweighted
+totp
 tpcds
 tpch
 transactio
@@ -3533,6 +3567,8 @@ xeus
 xkcd
 xlarge
 xml
+XRay
+xray
 xxHash
 xz
 yaml
@@ -3548,3 +3584,8 @@ znode
 znodes
 zookeeperSessionUptime
 zstd
+zxid
+readWKT
+readWKB
+WKT
+WKB

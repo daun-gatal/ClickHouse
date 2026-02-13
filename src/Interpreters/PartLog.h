@@ -46,10 +46,12 @@ struct PartLogElement
         NOT_A_MERGE = 1,
         /// Just regular merge
         REGULAR_MERGE = 2,
-        /// Merge assigned to delete some data from parts (with TTLMergeSelector)
+        /// Merge assigned to delete rows from parts
         TTL_DELETE_MERGE = 3,
         /// Merge with recompression
         TTL_RECOMPRESS_MERGE = 4,
+        /// Merge assigned to delete parts completely
+        TTL_DROP_MERGE = 5,
     };
 
     String query_id;
@@ -90,6 +92,9 @@ struct PartLogElement
     /// Was the operation successful?
     UInt16 error = 0;
     String exception;
+
+    /// Mutation IDs for MUTATE_PART events (array of all mutation IDs applied)
+    Strings mutation_ids;
 
     std::shared_ptr<ProfileEvents::Counters::Snapshot> profile_counters;
 

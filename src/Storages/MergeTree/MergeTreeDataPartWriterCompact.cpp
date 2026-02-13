@@ -34,7 +34,8 @@ MergeTreeDataPartWriterCompact::MergeTreeDataPartWriterCompact(
         data_part_storage_, index_granularity_info_, storage_settings_,
         columns_list_, metadata_snapshot_, virtual_columns_,
         indices_to_recalc_, stats_to_recalc, marks_file_extension_,
-        default_codec_, settings_, std::move(index_granularity_))
+        default_codec_, settings_, std::move(index_granularity_),
+        static_cast<WrittenOffsetSubstreams *>(nullptr))
     , plain_file(getDataPartStorage().writeFile(
             MergeTreeDataPartCompact::DATA_FILE_NAME_WITH_EXTENSION,
             settings.max_compress_block_size,
@@ -271,7 +272,11 @@ void MergeTreeDataPartWriterCompact::writeDataBlock(const Block & block, const G
             {
                 String stream_name = ISerialization::getFileNameForStream(*name_and_type, substream_path, ISerialization::StreamFileNameSettings(*storage_settings));
 
-                auto & result_stream = compressed_streams[stream_name];
+                auto stream_it = compressed_streams.find(stream_name);
+                if (stream_it == compressed_streams.end())
+                    throw Exception(ErrorCodes::LOGICAL_ERROR, "Stream {} for column {} not found", stream_name, name_and_type->name);
+
+                auto & result_stream = stream_it->second;
                 /// Write one compressed block per column in granule for more optimal reading.
                 if (prev_stream && prev_stream != result_stream)
                 {
@@ -317,7 +322,7 @@ void MergeTreeDataPartWriterCompact::writeDataBlock(const Block & block, const G
     }
 }
 
-void MergeTreeDataPartWriterCompact::fillDataChecksums(MergeTreeDataPartChecksums & checksums)
+void MergeTreeDataPartWriterCompact::finalizeIndexGranularity()
 {
     if (columns_buffer.size() != 0)
     {
@@ -363,7 +368,10 @@ void MergeTreeDataPartWriterCompact::fillDataChecksums(MergeTreeDataPartChecksum
 
         writeBinaryLittleEndian(static_cast<UInt64>(0), marks_out);
     }
+}
 
+void MergeTreeDataPartWriterCompact::fillDataChecksums(MergeTreeDataPartChecksums & checksums)
+{
     for (const auto & [_, stream] : streams_by_codec)
     {
         stream->hashing_buf.finalize();
@@ -503,7 +511,11 @@ void MergeTreeDataPartWriterCompact::ColumnsBuffer::add(MutableColumns && column
     else
     {
         for (size_t i = 0; i < columns.size(); ++i)
+        {
+            /// Fix dynamic structure so it won't changed after insertion of new rows.
+            accumulated_columns[i]->fixDynamicStructure();
             accumulated_columns[i]->insertRangeFrom(*columns[i], 0, columns[i]->size());
+        }
     }
 }
 

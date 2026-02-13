@@ -9,6 +9,8 @@
 #include <base/types.h>
 #include <Common/Stopwatch.h>
 #include <Common/ThreadPool_fwd.h>
+#include <Interpreters/TableJoin.h>
+#include <atomic>
 
 namespace DB
 {
@@ -88,6 +90,8 @@ public:
         std::unique_ptr<HashJoin> data;
         bool space_was_preallocated = false;
     };
+
+    friend class NotJoinedHash;
 
 private:
     std::shared_ptr<TableJoin> table_join;

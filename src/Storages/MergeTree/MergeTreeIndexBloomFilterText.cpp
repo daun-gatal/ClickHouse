@@ -4,6 +4,7 @@
 #include <Common/OptimizedRegularExpression.h>
 #include <Common/quoteString.h>
 #include <Interpreters/ITokenExtractor.h>
+#include <Interpreters/TokenizerFactory.h>
 #include <Core/Defines.h>
 #include <DataTypes/DataTypeArray.h>
 #include <DataTypes/DataTypeLowCardinality.h>
@@ -26,9 +27,8 @@ namespace DB
 
 namespace ErrorCodes
 {
-    extern const int LOGICAL_ERROR;
-    extern const int INCORRECT_QUERY;
     extern const int BAD_ARGUMENTS;
+    extern const int LOGICAL_ERROR;
 }
 
 MergeTreeIndexGranuleBloomFilterText::MergeTreeIndexGranuleBloomFilterText(
@@ -125,7 +125,7 @@ void MergeTreeIndexAggregatorBloomFilterText::update(const Block & block, size_t
                 for (size_t row_num = 0; row_num < elements_size; ++row_num)
                 {
                     auto ref = column_key.getDataAt(element_start_row + row_num);
-                    token_extractor->stringPaddedToBloomFilter(ref.data, ref.size, granule->bloom_filters[col]);
+                    token_extractor->stringPaddedToBloomFilter(ref.data(), ref.size(), granule->bloom_filters[col]);
                 }
 
                 current_position += 1;
@@ -136,7 +136,7 @@ void MergeTreeIndexAggregatorBloomFilterText::update(const Block & block, size_t
             for (size_t i = 0; i < rows_read; ++i)
             {
                 auto ref = column->getDataAt(current_position + i);
-                token_extractor->stringPaddedToBloomFilter(ref.data, ref.size, granule->bloom_filters[col]);
+                token_extractor->stringPaddedToBloomFilter(ref.data(), ref.size(), granule->bloom_filters[col]);
             }
         }
     }
@@ -186,7 +186,7 @@ bool MergeTreeConditionBloomFilterText::alwaysUnknownOrTrue() const
 }
 
 /// Keep in-sync with MergeTreeIndexConditionGin::mayBeTrueOnGranuleInPart
-bool MergeTreeConditionBloomFilterText::mayBeTrueOnGranule(MergeTreeIndexGranulePtr idx_granule) const
+bool MergeTreeConditionBloomFilterText::mayBeTrueOnGranule(MergeTreeIndexGranulePtr idx_granule, const UpdatePartialDisjunctionResultFn & update_partial_disjunction_result_fn) const
 {
     std::shared_ptr<MergeTreeIndexGranuleBloomFilterText> granule
             = std::dynamic_pointer_cast<MergeTreeIndexGranuleBloomFilterText>(idx_granule);
@@ -195,6 +195,7 @@ bool MergeTreeConditionBloomFilterText::mayBeTrueOnGranule(MergeTreeIndexGranule
 
     /// Check like in KeyCondition.
     std::vector<BoolMask> rpn_stack;
+    size_t element_idx = 0;
     for (const auto & element : rpn)
     {
         switch (element.function)
@@ -292,6 +293,12 @@ bool MergeTreeConditionBloomFilterText::mayBeTrueOnGranule(MergeTreeIndexGranule
                 rpn_stack.emplace_back(true, false);
                 break;
             /// No `default:` to make the compiler warn if not all enum values are handled.
+        }
+
+        if (update_partial_disjunction_result_fn)
+        {
+            update_partial_disjunction_result_fn(element_idx, rpn_stack.back().can_be_true, element.function == RPNElement::FUNCTION_UNKNOWN);
+            ++element_idx;
         }
     }
 
@@ -741,7 +748,7 @@ bool MergeTreeConditionBloomFilterText::tryPrepareSetBloomFilter(
         {
             bloom_filters.back().emplace_back(params);
             auto ref = column->getDataAt(row);
-            token_extractor->stringPaddedToBloomFilter(ref.data, ref.size, bloom_filters.back().back());
+            token_extractor->stringPaddedToBloomFilter(ref.data(), ref.size(), bloom_filters.back().back());
         }
     }
 
@@ -756,7 +763,7 @@ MergeTreeIndexGranulePtr MergeTreeIndexBloomFilterText::createIndexGranule() con
     return std::make_shared<MergeTreeIndexGranuleBloomFilterText>(index.name, index.column_names.size(), params);
 }
 
-MergeTreeIndexAggregatorPtr MergeTreeIndexBloomFilterText::createIndexAggregator(const MergeTreeWriterSettings & /*settings*/) const
+MergeTreeIndexAggregatorPtr MergeTreeIndexBloomFilterText::createIndexAggregator() const
 {
     return std::make_shared<MergeTreeIndexAggregatorBloomFilterText>(index.column_names, index.name, params, token_extractor.get());
 }
@@ -767,65 +774,41 @@ MergeTreeIndexConditionPtr MergeTreeIndexBloomFilterText::createIndexCondition(
     return std::make_shared<MergeTreeConditionBloomFilterText>(predicate, context, index.sample_block, params, token_extractor.get());
 }
 
-MergeTreeIndexPtr bloomFilterIndexTextCreator(
-    const IndexDescription & index)
+MergeTreeIndexPtr bloomFilterIndexTextCreator(const IndexDescription & index)
 {
-    if (index.type == NgramTokenExtractor::getName())
+    static std::set<ITokenExtractor::Type> allowed_tokenizers =
     {
-        size_t n = index.arguments[0].safeGet<size_t>();
-        BloomFilterParameters params(
-            index.arguments[1].safeGet<size_t>(),
-            index.arguments[2].safeGet<size_t>(),
-            index.arguments[3].safeGet<size_t>());
+        ITokenExtractor::Type::Ngrams,
+        ITokenExtractor::Type::SplitByNonAlpha,
+        ITokenExtractor::Type::SparseGrams
+    };
 
-        auto tokenizer = std::make_unique<NgramTokenExtractor>(n);
+    FieldVector args = getFieldsFromIndexArgumentsAST(index.arguments);
 
-        return std::make_shared<MergeTreeIndexBloomFilterText>(index, params, std::move(tokenizer));
-    }
-    if (index.type == DefaultTokenExtractor::getName())
+    size_t num_tokenizer_params = 0;
+    /// Depending on tokenizer type, first n params are for tokenizer, then n, n+1, n+2 are for bloom filter
+    if (index.type == NgramsTokenExtractor::getName())
+        num_tokenizer_params = 1;
+    else if (index.type == SplitByNonAlphaTokenExtractor::getName())
+        num_tokenizer_params = 0;
+    else if (index.type == SparseGramsTokenExtractor::getBloomFilterIndexName())
     {
-        BloomFilterParameters params(
-            index.arguments[0].safeGet<size_t>(), index.arguments[1].safeGet<size_t>(), index.arguments[2].safeGet<size_t>());
-
-        auto tokenizer = std::make_unique<DefaultTokenExtractor>();
-
-        return std::make_shared<MergeTreeIndexBloomFilterText>(index, params, std::move(tokenizer));
-    }
-    if (index.type == SparseGramTokenExtractor::getBloomFilterIndexName())
-    {
-        if (index.arguments.size() == 5)
-        {
-            size_t min_ngram_length = index.arguments[0].safeGet<size_t>();
-            size_t max_ngram_length = index.arguments[1].safeGet<size_t>();
-
-            BloomFilterParameters params(
-                index.arguments[2].safeGet<size_t>(),
-                index.arguments[3].safeGet<size_t>(),
-                index.arguments[4].safeGet<size_t>());
-
-            auto tokenizer = std::make_unique<SparseGramTokenExtractor>(min_ngram_length, max_ngram_length);
-
-            return std::make_shared<MergeTreeIndexBloomFilterText>(index, params, std::move(tokenizer));
-        }
+        if (args.size() == 5)
+            num_tokenizer_params = 2;
         else
-        {
-            size_t min_ngram_length = index.arguments[0].safeGet<size_t>();
-            size_t max_ngram_length = index.arguments[1].safeGet<size_t>();
-            size_t min_cutoff_length = index.arguments[2].safeGet<size_t>();
-
-            BloomFilterParameters params(
-                index.arguments[3].safeGet<size_t>(),
-                index.arguments[4].safeGet<size_t>(),
-                index.arguments[5].safeGet<size_t>());
-
-            auto tokenizer = std::make_unique<SparseGramTokenExtractor>(min_ngram_length, max_ngram_length, min_cutoff_length);
-
-            return std::make_shared<MergeTreeIndexBloomFilterText>(index, params, std::move(tokenizer));
-
-        }
+            num_tokenizer_params = 3;
     }
 
-    throw Exception(ErrorCodes::LOGICAL_ERROR, "Unknown index type: {}", backQuote(index.name));
+    FieldVector tokenizer_args(args.begin(), args.begin() + num_tokenizer_params);
+    auto tokenizer = TokenizerFactory::instance().get(index.type, tokenizer_args, allowed_tokenizers);
+
+    size_t first_bf_param_idx = num_tokenizer_params;
+    BloomFilterParameters params(
+        args[first_bf_param_idx].safeGet<size_t>(),
+        args[first_bf_param_idx+1].safeGet<size_t>(),
+        args[first_bf_param_idx+2].safeGet<size_t>());
+
+    return std::make_shared<MergeTreeIndexBloomFilterText>(index, params, std::move(tokenizer));
 }
 
 void bloomFilterIndexTextValidator(const IndexDescription & index, bool /*attach*/)
@@ -846,41 +829,56 @@ void bloomFilterIndexTextValidator(const IndexDescription & index, bool /*attach
         }
 
         if (!data_type.isString() && !data_type.isFixedString() && !data_type.isIPv6())
-            throw Exception(ErrorCodes::INCORRECT_QUERY,
+            throw Exception(ErrorCodes::BAD_ARGUMENTS,
                 "Ngram and token bloom filter indexes can only be used with column types `String`, `FixedString`, `LowCardinality(String)`, `LowCardinality(FixedString)`, `Array(String)` or `Array(FixedString)`");
     }
 
-    if (index.type == NgramTokenExtractor::getName())
+    FieldVector args = getFieldsFromIndexArgumentsAST(index.arguments);
+
+    size_t first_bf_param_idx = 0;
+
+    if (index.type == NgramsTokenExtractor::getName())
     {
-        if (index.arguments.size() != 4)
-            throw Exception(ErrorCodes::INCORRECT_QUERY, "`ngrambf` index must have exactly 4 arguments.");
+        if (args.size() != 4)
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "`ngrambf` index must have exactly 4 arguments");
+
+        UInt64 ngram_length = args[0].safeGet<UInt64>();
+        if (ngram_length < 1)
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "ngram length must be at least 1");
+
+        first_bf_param_idx = 1;
     }
-    else if (index.type == DefaultTokenExtractor::getName())
+    else if (index.type == SplitByNonAlphaTokenExtractor::getName())
     {
-        if (index.arguments.size() != 3)
-            throw Exception(ErrorCodes::INCORRECT_QUERY, "`tokenbf` index must have exactly 3 arguments.");
+        if (args.size() != 3)
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "`tokenbf` index must have exactly 3 arguments");
+
+        first_bf_param_idx = 0;
     }
-    else if (index.type == SparseGramTokenExtractor::getBloomFilterIndexName())
+    else if (index.type == SparseGramsTokenExtractor::getBloomFilterIndexName())
     {
-        if (index.arguments.size() != 5 && index.arguments.size() != 6)
-            throw Exception(ErrorCodes::INCORRECT_QUERY, "`sparseGrams` index must have exactly 5 or 6 arguments.");
+        if (args.size() != 5 && args.size() != 6)
+            throw Exception(ErrorCodes::BAD_ARGUMENTS, "`sparseGrams` index must have exactly 5 or 6 arguments");
+
+        if (args.size() == 5)
+            first_bf_param_idx = 2;
+        else
+            first_bf_param_idx = 3;
     }
     else
     {
         throw Exception(ErrorCodes::LOGICAL_ERROR, "Unknown index type: {}", backQuote(index.name));
     }
 
-    assert(index.arguments.size() >= 3);
-
-    for (const auto & arg : index.arguments)
+    for (const auto & arg : args)
         if (arg.getType() != Field::Types::UInt64)
             throw Exception(ErrorCodes::BAD_ARGUMENTS, "All parameters to *bf_v1 index must be unsigned integers");
 
-    /// Just validate
+    /// Just for validation
     BloomFilterParameters params(
-        index.arguments[0].safeGet<size_t>(),
-        index.arguments[1].safeGet<size_t>(),
-        index.arguments[2].safeGet<size_t>());
+        args[first_bf_param_idx].safeGet<size_t>(),
+        args[first_bf_param_idx+1].safeGet<size_t>(),
+        args[first_bf_param_idx+2].safeGet<size_t>());
 }
 
 }
