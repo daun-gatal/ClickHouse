@@ -1,4 +1,5 @@
 #pragma once
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/Serializations/SerializationWrapper.h>
 
@@ -22,14 +23,19 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & name_, SubstreamType substream_type_)
     {
         auto ptr = SerializationPtr(new SerializationNamed(nested_, name_, substream_type_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationNamed() override;
 
-    String getName() const override
+    UInt128 getHash() const override
     {
-        return "Named(" + nested_serialization->getName() + ", " + name + ", " + std::to_string(static_cast<int>(substream_type)) + ")";
+        SipHash hash;
+        hash.update("Named");
+        hash.update(nested_serialization->getHash());
+        hash.update(name);
+        hash.update(static_cast<int>(substream_type));
+        return hash.get128();
     }
 
     const String & getElementName() const { return name; }

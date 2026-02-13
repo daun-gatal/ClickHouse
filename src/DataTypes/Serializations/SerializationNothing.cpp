@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationNothing.h>
 #include <Columns/ColumnNothing.h>
 #include <Common/Exception.h>
@@ -12,15 +13,14 @@ namespace ErrorCodes
 extern const int NOT_IMPLEMENTED;
 }
 
-String SerializationNothing::getName() const
+UInt128 SerializationNothing::getHash() const
 {
-    return "Nothing";
+    SipHash hash;
+    hash.update("Nothing");
+    return hash.get128();
 }
 
-SerializationNothing::~SerializationNothing()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationNothing::~SerializationNothing() = default;
 
 void SerializationNothing::throwNoSerialization()
 {

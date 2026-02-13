@@ -1,18 +1,23 @@
 #pragma once
 
 #include <DataTypes/Serializations/ISerialization.h>
+#include <Common/CacheBase.h>
+#include <Common/HashTable/Hash.h>
 
-#include <mutex>
-#include <unordered_map>
+namespace CurrentMetrics
+{
+    extern const Metric SerializationCacheBytes;
+    extern const Metric SerializationCacheCount;
+}
 
 namespace DB
 {
 
-/// Pool for constant serialization objects.
+/// Cache for constant serialization objects.
 /// Deduplicates identical serializations so that concurrent users of the
-/// same type share one object. Uses weak_ptr so entries expire automatically
-/// when all external holders release their references — no remove() or
-/// destructor interaction needed.
+/// same type share one object. Uses CacheBase (LRU) under the hood;
+/// objects in active use are kept alive by external shared_ptr holders
+/// even after the cache evicts them.
 class SerializationObjectPool
 {
 public:
@@ -22,48 +27,26 @@ public:
         return pool;
     }
 
-    SerializationPtr getOrCreate(const String & key, SerializationPtr && serialization)
+    SerializationPtr getOrCreate(UInt128 key, SerializationPtr && serialization)
     {
-        std::lock_guard lock(mutex);
-
-        auto it = cache.find(key);
-        if (it != cache.end())
-        {
-            if (auto existing = it->second.lock())
-                return existing;
-            /// Expired — replace with the new one.
-            it->second = serialization;
-        }
-        else
-        {
-            cache.emplace(key, serialization);
-        }
-
-        /// Lazy cleanup: sweep expired entries when the map gets large.
-        if (cache.size() > cleanup_threshold)
-            removeExpiredEntries();
-
-        return std::move(serialization);
+        auto [result, _] = cache.getOrSet(key, [&]() { return std::move(serialization); });
+        return result;
     }
-
-    /// No-op kept for backward compatibility with existing destructors.
-    /// With weak_ptr storage, entries expire on their own.
-    void remove(const String & /*key*/) {}
 
 private:
-    SerializationObjectPool() = default;
+    static constexpr size_t max_cache_size = 1000;
 
-    void removeExpiredEntries()
+    SerializationObjectPool()
+        : cache("LRU",
+                CurrentMetrics::SerializationCacheBytes,
+                CurrentMetrics::SerializationCacheCount,
+                /*max_size_in_bytes=*/0,
+                /*max_count=*/max_cache_size,
+                /*size_ratio=*/ 0)
     {
-        std::erase_if(cache, [](const auto & pair) { return pair.second.expired(); });
     }
 
-    static constexpr size_t cleanup_threshold = 1000;
-
-    /// Recursive mutex: SerializationLowCardinality's constructor creates
-    /// inner serializations that also go through the pool.
-    mutable std::recursive_mutex mutex;
-    std::unordered_map<String, std::weak_ptr<const ISerialization>> cache;
+    CacheBase<UInt128, const ISerialization, UInt128Hash> cache;
 };
 
 }

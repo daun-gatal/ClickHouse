@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObjectSharedData.h>
 #include <DataTypes/Serializations/SerializationObjectHelpers.h>
 #include <DataTypes/Serializations/SerializationArray.h>
@@ -34,17 +35,19 @@ SerializationObjectSharedData::SerializationObjectSharedData(SerializationVersio
 SerializationPtr SerializationObjectSharedData::create(SerializationVersion serialization_version_, const DataTypePtr & dynamic_type_, size_t buckets_)
 {
     auto ptr = SerializationPtr(new SerializationObjectSharedData(serialization_version_, dynamic_type_, buckets_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
 }
 
-SerializationObjectSharedData::~SerializationObjectSharedData()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationObjectSharedData::~SerializationObjectSharedData() = default;
 
-String SerializationObjectSharedData::getName() const
+UInt128 SerializationObjectSharedData::getHash() const
 {
-    return "ObjectSharedData(" + std::to_string(static_cast<int>(serialization_version.value)) + ", " + dynamic_type->getName() + ", " + std::to_string(buckets) + ")";
+    SipHash hash;
+    hash.update("ObjectSharedData");
+    hash.update(static_cast<int>(serialization_version.value));
+    hash.update(dynamic_type->getName());
+    hash.update(buckets);
+    return hash.get128();
 }
 
 SerializationObjectSharedData::SerializationVersion::SerializationVersion(UInt64 version) : value(static_cast<Value>(version))

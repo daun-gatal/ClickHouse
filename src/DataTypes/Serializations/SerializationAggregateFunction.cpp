@@ -2,6 +2,7 @@
 #include <Columns/ColumnAggregateFunction.h>
 #include <DataTypes/DataTypeTuple.h>
 #include <DataTypes/IDataType.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationAggregateFunction.h>
 #include <Formats/FormatFactory.h>
 #include <Formats/FormatSettings.h>
@@ -24,14 +25,16 @@ namespace ErrorCodes
     extern const int BAD_ARGUMENTS;
 }
 
-SerializationAggregateFunction::~SerializationAggregateFunction()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationAggregateFunction::~SerializationAggregateFunction() = default;
 
-String SerializationAggregateFunction::getName() const
+UInt128 SerializationAggregateFunction::getHash() const
 {
-    return "AggregateFunction(" + function->getName() + ", " + type_name + ", " + std::to_string(version) + ")";
+    SipHash hash;
+    hash.update("AggregateFunction");
+    hash.update(function->getName());
+    hash.update(type_name);
+    hash.update(version);
+    return hash.get128();
 }
 
 void SerializationAggregateFunction::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const

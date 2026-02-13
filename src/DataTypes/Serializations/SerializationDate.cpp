@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDate.h>
 
 #include <IO/ReadHelpers.h>
@@ -10,15 +11,14 @@
 namespace DB
 {
 
-String SerializationDate::getName() const
+UInt128 SerializationDate::getHash() const
 {
-    return "Date";
+    SipHash hash;
+    hash.update("Date");
+    return hash.get128();
 }
 
-SerializationDate::~SerializationDate()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationDate::~SerializationDate() = default;
 
 void SerializationDate::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const
 {

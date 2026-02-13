@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationBool.h>
 
 #include <Columns/ColumnsNumber.h>
@@ -19,15 +20,14 @@ namespace ErrorCodes
     extern const int CANNOT_PARSE_BOOL;
 }
 
-String SerializationBool::getName() const
+UInt128 SerializationBool::getHash() const
 {
-    return "Bool";
+    SipHash hash;
+    hash.update("Bool");
+    return hash.get128();
 }
 
-SerializationBool::~SerializationBool()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationBool::~SerializationBool() = default;
 
 namespace
 {

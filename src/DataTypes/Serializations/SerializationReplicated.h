@@ -19,12 +19,12 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_)
     {
         auto ptr = SerializationPtr(new SerializationReplicated(nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationReplicated() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     KindStack getKindStack() const override;
 

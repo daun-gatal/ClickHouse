@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDecimal.h>
 
 #include <Columns/ColumnVector.h>
@@ -130,16 +131,18 @@ bool SerializationDecimal<T>::tryDeserializeTextJSON(IColumn & column, ReadBuffe
 
 
 template <typename T>
-String SerializationDecimal<T>::getName() const
+UInt128 SerializationDecimal<T>::getHash() const
 {
-    return "Decimal(" + std::to_string(this->precision) + ", " + std::to_string(this->scale) + ")";
+    SipHash hash;
+    hash.update("Decimal");
+    hash.update(typeid(T).name(), strlen(typeid(T).name()));
+    hash.update(this->precision);
+    hash.update(this->scale);
+    return hash.get128();
 }
 
 template <typename T>
-SerializationDecimal<T>::~SerializationDecimal()
-{
-    SerializationObjectPool::instance().remove(this->getName());
-}
+SerializationDecimal<T>::~SerializationDecimal() = default;
 
 template class SerializationDecimal<Decimal32>;
 template class SerializationDecimal<Decimal64>;

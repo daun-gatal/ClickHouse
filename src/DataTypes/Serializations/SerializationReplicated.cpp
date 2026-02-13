@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationReplicated.h>
 #include <DataTypes/DataTypesNumber.h>
 #include <Columns/IColumn.h>
@@ -21,14 +22,14 @@ SerializationReplicated::SerializationReplicated(const SerializationPtr & nested
 {
 }
 
-SerializationReplicated::~SerializationReplicated()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationReplicated::~SerializationReplicated() = default;
 
-String SerializationReplicated::getName() const
+UInt128 SerializationReplicated::getHash() const
 {
-    return "Replicated(" + nested->getName() + ")";
+    SipHash hash;
+    hash.update("Replicated");
+    hash.update(nested->getHash());
+    return hash.get128();
 }
 
 ISerialization::KindStack SerializationReplicated::getKindStack() const

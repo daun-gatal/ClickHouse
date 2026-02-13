@@ -25,15 +25,16 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-String SerializationNullable::getName() const
+UInt128 SerializationNullable::getHash() const
 {
-    return "Nullable(" + nested->getName() + ", " + std::to_string(use_default_null_map) + ")";
+    SipHash hash;
+    hash.update("Nullable");
+    hash.update(nested->getHash());
+    hash.update(use_default_null_map);
+    return hash.get128();
 }
 
-SerializationNullable::~SerializationNullable()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationNullable::~SerializationNullable() = default;
 
 void SerializationNullable::enumerateStreams(
     EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & data) const

@@ -25,12 +25,11 @@ public:
     static SerializationPtr create(const AggregateFunctionPtr & function_, String type_name_, size_t version_)
     {
         auto ptr = SerializationPtr(new SerializationAggregateFunction(function_, type_name_, version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationAggregateFunction() override;
-
-    String getName() const override;
+    UInt128 getHash() const override;
 
     /// NOTE These two functions for serializing single values are incompatible with the functions below.
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;

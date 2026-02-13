@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/Serializations/SerializationWrapper.h>
 
@@ -29,14 +30,20 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & dynamic_element_name_, const String & nested_subcolumn_, bool is_null_map_subcolumn_ = false)
     {
         auto ptr = SerializationPtr(new SerializationDynamicElement(nested_, dynamic_element_name_, nested_subcolumn_, is_null_map_subcolumn_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationDynamicElement() override;
 
-    String getName() const override
+    UInt128 getHash() const override
     {
-        return "DynamicElement(" + nested_serialization->getName() + ", " + dynamic_element_name + ", " + nested_subcolumn + ", " + std::to_string(is_null_map_subcolumn) + ")";
+        SipHash hash;
+        hash.update("DynamicElement");
+        hash.update(nested_serialization->getHash());
+        hash.update(dynamic_element_name);
+        hash.update(nested_subcolumn);
+        hash.update(is_null_map_subcolumn);
+        return hash.get128();
     }
 
     void enumerateStreams(

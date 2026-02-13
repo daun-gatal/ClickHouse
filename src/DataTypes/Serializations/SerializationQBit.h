@@ -58,12 +58,12 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, size_t element_size_, size_t dimension_)
     {
         auto ptr = SerializationPtr(new SerializationQBit(nested_, element_size_, dimension_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationQBit() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;
 

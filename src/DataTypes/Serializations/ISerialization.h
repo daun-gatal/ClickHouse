@@ -2,6 +2,7 @@
 
 #include <Columns/IColumn_fwd.h>
 #include <Core/MergeTreeSerializationEnums.h>
+#include <Core/Types.h>
 #include <Core/Types_fwd.h>
 #include <base/demangle.h>
 #include <Common/typeid_cast.h>
@@ -61,11 +62,11 @@ protected:
     ISerialization() = default;
 
 public:
-    /// Must be overridden in the "leaf" derivatives. The following line must be called:
-    /// SerializationObjectPool::instance().remove(getName());
     virtual ~ISerialization() noexcept(false) = 0;
 
-    virtual String getName() const = 0;
+    /// Returns a hash that uniquely identifies this serialization object.
+    /// Used as the key in SerializationObjectPool for deduplication.
+    virtual UInt128 getHash() const = 0;
 
     enum class Kind : UInt8
     {

@@ -33,12 +33,12 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_)
     {
         auto ptr = SerializationPtr(new SerializationSparse(nested_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationSparse() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     KindStack getKindStack() const override;
 
@@ -154,12 +154,12 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationSparseNullMap());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationSparseNullMap() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeBinaryBulkStatePrefix(
         const IColumn & column,

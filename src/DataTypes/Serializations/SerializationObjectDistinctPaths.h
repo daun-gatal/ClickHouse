@@ -23,13 +23,12 @@ private:
 public:
     static SerializationPtr create(const std::vector<String> & typed_paths_)
     {
-        auto ptr = SerializationPtr(new SerializationObjectDistinctPaths(typed_paths_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        /// We don't pool instances of this type, because the hash implementation is error-prone.
+        return SerializationPtr(new SerializationObjectDistinctPaths(typed_paths_));
     }
 
     ~SerializationObjectDistinctPaths() override;
-
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

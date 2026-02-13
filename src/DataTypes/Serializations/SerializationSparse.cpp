@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationSparse.h>
 
 #include <Columns/ColumnConst.h>
@@ -22,24 +23,23 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-SerializationSparse::~SerializationSparse()
+SerializationSparse::~SerializationSparse() = default;
+
+UInt128 SerializationSparse::getHash() const
 {
-    SerializationObjectPool::instance().remove(getName());
+    SipHash hash;
+    hash.update("Sparse");
+    hash.update(nested->getHash());
+    return hash.get128();
 }
 
-String SerializationSparse::getName() const
-{
-    return "Sparse(" + nested->getName() + ")";
-}
+SerializationSparseNullMap::~SerializationSparseNullMap() = default;
 
-SerializationSparseNullMap::~SerializationSparseNullMap()
+UInt128 SerializationSparseNullMap::getHash() const
 {
-    SerializationObjectPool::instance().remove(getName());
-}
-
-String SerializationSparseNullMap::getName() const
-{
-    return "SparseNullMap";
+    SipHash hash;
+    hash.update("SparseNullMap");
+    return hash.get128();
 }
 
 namespace

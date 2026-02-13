@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDetached.h>
 
 #include <Columns/ColumnBLOB.h>
@@ -19,14 +20,14 @@ SerializationDetached::SerializationDetached(const SerializationPtr & nested_) :
 {
 }
 
-SerializationDetached::~SerializationDetached()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationDetached::~SerializationDetached() = default;
 
-String SerializationDetached::getName() const
+UInt128 SerializationDetached::getHash() const
 {
-    return "Detached(" + nested->getName() + ")";
+    SipHash hash;
+    hash.update("Detached");
+    hash.update(nested->getHash());
+    return hash.get128();
 }
 
 ISerialization::KindStack SerializationDetached::getKindStack() const

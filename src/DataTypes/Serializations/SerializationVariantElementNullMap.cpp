@@ -36,9 +36,15 @@ struct DeserializeBinaryBulkStateVariantElementNullMap : public ISerialization::
     }
 };
 
-SerializationVariantElementNullMap::~SerializationVariantElementNullMap()
+SerializationVariantElementNullMap::~SerializationVariantElementNullMap() = default;
+
+UInt128 SerializationVariantElementNullMap::getHash() const
 {
-    SerializationObjectPool::instance().remove(getName());
+    SipHash hash;
+    hash.update("VariantElementNullMap");
+    hash.update(variant_element_name);
+    hash.update(variant_discriminator);
+    return hash.get128();
 }
 
 void SerializationVariantElementNullMap::enumerateStreams(

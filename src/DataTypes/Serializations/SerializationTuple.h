@@ -23,12 +23,11 @@ public:
     static SerializationPtr create(const ElementSerializations & elems_, bool has_explicit_names_)
     {
         auto ptr = SerializationPtr(new SerializationTuple(elems_, has_explicit_names_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationTuple() override;
-
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeBinary(Field & field, ReadBuffer & istr, const FormatSettings & settings) const override;

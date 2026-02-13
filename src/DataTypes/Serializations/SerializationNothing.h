@@ -16,12 +16,12 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationNothing());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationNothing() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeBinary(const Field &, WriteBuffer &, const FormatSettings &) const override                       { throwNoSerialization(); }
     void deserializeBinary(Field &, ReadBuffer &, const FormatSettings &) const override                            { throwNoSerialization(); }

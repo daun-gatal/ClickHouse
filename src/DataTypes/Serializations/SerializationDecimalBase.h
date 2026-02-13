@@ -1,6 +1,7 @@
 #pragma once
 
 #include <typeinfo>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
 #include <Columns/ColumnDecimal.h>
 
@@ -21,9 +22,13 @@ public:
     SerializationDecimalBase(UInt32 precision_, UInt32 scale_)
         : precision(precision_), scale(scale_) {}
 
-    String getName() const override
+    UInt128 getHash() const override
     {
-        return String(typeid(T).name()) + "_Decimal(" + std::to_string(precision) + ", " + std::to_string(scale) + ")";
+        SipHash hash;
+        hash.update(typeid(T).name(), strlen(typeid(T).name()));
+        hash.update(precision);
+        hash.update(scale);
+        return hash.get128();
     }
 
     void serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const override;

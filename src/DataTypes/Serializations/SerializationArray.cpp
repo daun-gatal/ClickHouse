@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationArray.h>
 #include <DataTypes/Serializations/SerializationNullable.h>
 #include <DataTypes/Serializations/SerializationNumber.h>
@@ -29,15 +30,15 @@ namespace ErrorCodes
     extern const int INCORRECT_DATA;
 }
 
-String SerializationArray::getName() const
+UInt128 SerializationArray::getHash() const
 {
-    return "Array(" + nested->getName() + ")";
+    SipHash hash;
+    hash.update("Array");
+    hash.update(nested->getHash());
+    return hash.get128();
 }
 
-SerializationArray::~SerializationArray()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationArray::~SerializationArray() = default;
 
 static constexpr size_t MAX_ARRAY_SIZE = 1ULL << 30;
 static constexpr size_t MAX_ARRAYS_SIZE = 1ULL << 40;

@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDateTime64.h>
 
 #include <Columns/ColumnVector.h>
@@ -25,15 +26,16 @@ SerializationDateTime64::SerializationDateTime64(
 {
 }
 
-String SerializationDateTime64::getName() const
+UInt128 SerializationDateTime64::getHash() const
 {
-    return "DateTime64(" + std::to_string(scale) + ", " + time_zone.getTimeZone() + ")";
+    SipHash hash;
+    hash.update("DateTime64");
+    hash.update(scale);
+    hash.update(time_zone.getTimeZone());
+    return hash.get128();
 }
 
-SerializationDateTime64::~SerializationDateTime64()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationDateTime64::~SerializationDateTime64() = default;
 
 void SerializationDateTime64::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {

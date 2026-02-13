@@ -2,6 +2,7 @@
 
 #include <IO/ReadHelpers.h>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <base/TypeName.h>
 
@@ -18,12 +19,17 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationIP<IPv>());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationIP() override;
 
-    String getName() const override { return String(TypeName<IPv>); }
+    UInt128 getHash() const override
+    {
+        SipHash hash;
+        hash.update(TypeName<IPv>);
+        return hash.get128();
+    }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings, bool whole) const override;

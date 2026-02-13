@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationSubObjectSharedData.h>
 #include <DataTypes/Serializations/SerializationObjectHelpers.h>
 #include <DataTypes/DataTypeObject.h>
@@ -34,17 +35,19 @@ SerializationPtr SerializationSubObjectSharedData::create(
     const DataTypePtr & dynamic_type_)
 {
     auto ptr = SerializationPtr(new SerializationSubObjectSharedData(serialization_version_, buckets_, paths_prefix_, dynamic_type_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
 }
 
-SerializationSubObjectSharedData::~SerializationSubObjectSharedData()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationSubObjectSharedData::~SerializationSubObjectSharedData() = default;
 
-String SerializationSubObjectSharedData::getName() const
+UInt128 SerializationSubObjectSharedData::getHash() const
 {
-    return "SubObjectSharedData(" + std::to_string(static_cast<int>(serialization_version.value)) + ", " + std::to_string(buckets) + ", " + paths_prefix + ")";
+    SipHash hash;
+    hash.update("SubObjectSharedData");
+    hash.update(static_cast<int>(serialization_version.value));
+    hash.update(buckets);
+    hash.update(paths_prefix);
+    return hash.get128();
 }
 
 struct DeserializeBinaryBulkStateSubObjectSharedData : public ISerialization::DeserializeBinaryBulkState

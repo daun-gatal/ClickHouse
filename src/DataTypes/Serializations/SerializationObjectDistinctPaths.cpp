@@ -10,6 +10,7 @@ namespace DB
 namespace ErrorCodes
 {
     extern const int NOT_IMPLEMENTED;
+    extern const int LOGICAL_ERROR;
 }
 
 SerializationObjectDistinctPaths::SerializationObjectDistinctPaths(const std::vector<String> & typed_paths_)
@@ -19,22 +20,11 @@ SerializationObjectDistinctPaths::SerializationObjectDistinctPaths(const std::ve
     shared_data_paths_serialization = shared_data_type->getSubcolumnSerialization("paths", shared_data_type->getDefaultSerialization());
 }
 
-SerializationObjectDistinctPaths::~SerializationObjectDistinctPaths()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationObjectDistinctPaths::~SerializationObjectDistinctPaths() = default;
 
-String SerializationObjectDistinctPaths::getName() const
+UInt128 SerializationObjectDistinctPaths::getHash() const
 {
-    String result = "ObjectDistinctPaths(";
-    for (size_t i = 0; i < typed_paths.size(); ++i)
-    {
-        if (i > 0)
-            result += ", ";
-        result += typed_paths[i];
-    }
-    result += ")";
-    return result;
+    throw Exception(ErrorCodes::LOGICAL_ERROR, "getHash is not implemented for SerializationObjectDistinctPaths");
 }
 
 struct DeserializeBinaryBulkStateObjectDistinctPaths : public ISerialization::DeserializeBinaryBulkState

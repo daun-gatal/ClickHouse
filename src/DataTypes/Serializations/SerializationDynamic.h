@@ -21,12 +21,12 @@ public:
     static SerializationPtr create(size_t max_dynamic_types_ = DataTypeDynamic::DEFAULT_MAX_DYNAMIC_TYPES)
     {
         auto ptr = SerializationPtr(new SerializationDynamic(max_dynamic_types_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationDynamic() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     struct SerializationVersion
     {

@@ -25,12 +25,12 @@ public:
     static SerializationPtr create(const String & paths_prefix_, const std::unordered_map<String, SerializationPtr> & typed_paths_serializations_, const DataTypePtr & dynamic_type)
     {
         auto ptr = SerializationPtr(new SerializationSubObject(paths_prefix_, typed_paths_serializations_, dynamic_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationSubObject() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

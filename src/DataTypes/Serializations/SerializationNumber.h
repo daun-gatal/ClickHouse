@@ -1,6 +1,7 @@
 #pragma once
 
 #include <typeinfo>
+#include <Common/SipHash.h>
 #include <Core/Types.h>
 #include <DataTypes/Serializations/SimpleTextSerialization.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
@@ -27,12 +28,17 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationNumber<T>());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationNumber() override;
 
-    String getName() const override { return String(TypeName<T>); }
+    UInt128 getHash() const override
+    {
+        SipHash hash;
+        hash.update(TypeName<T>);
+        return hash.get128();
+    }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings, bool whole) const override;

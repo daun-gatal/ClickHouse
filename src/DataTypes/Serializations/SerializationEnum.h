@@ -2,9 +2,8 @@
 
 #include <memory>
 #include <typeinfo>
-#include <fmt/format.h>
-#include <fmt/ranges.h>
 #include <DataTypes/Serializations/SerializationNumber.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObjectPool.h>
 #include <DataTypes/EnumValues.h>
 #include <DataTypes/DataTypeEnum.h>
@@ -39,24 +38,23 @@ public:
     static SerializationPtr create(const std::shared_ptr<const DataTypeEnum<Type>> & enum_type)
     {
         auto ptr = SerializationPtr(new SerializationEnum(enum_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     static SerializationPtr create(const Values & values_)
     {
         auto ptr = SerializationPtr(new SerializationEnum(values_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationEnum() override;
 
-    String getName() const override
+    UInt128 getHash() const override
     {
-        const auto & vals = ref_enum_values.getValues();
-        std::vector<String> parts(vals.size());
-        for (size_t i = 0; i < vals.size(); ++i)
-            parts[i] = fmt::format("{}={}", vals[i].first, static_cast<int>(vals[i].second));
-        return fmt::format("{}_Enum({})", typeid(Type).name(), fmt::join(parts, ","));
+        SipHash hash;
+        hash.update("Enum");
+        hash.update(typeid(Type).name(), strlen(typeid(Type).name()));
+        return hash.get128();
     }
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;

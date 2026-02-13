@@ -15,12 +15,12 @@ public:
     static SerializationPtr create(const DateLUTImpl & time_zone_ = DateLUT::instance())
     {
         auto ptr = SerializationPtr(new SerializationDate32(time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationDate32() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeWholeText(IColumn & column, ReadBuffer & istr, const FormatSettings &) const override;

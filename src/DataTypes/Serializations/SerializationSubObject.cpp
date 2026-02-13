@@ -1,6 +1,7 @@
 #include <DataTypes/DataTypeFactory.h>
 #include <DataTypes/DataTypeObject.h>
 #include <DataTypes/DataTypeVariant.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObject.h>
 #include <DataTypes/Serializations/SerializationSubObject.h>
 #include <DataTypes/Serializations/SerializationSubObjectSharedData.h>
@@ -22,14 +23,15 @@ SerializationSubObject::SerializationSubObject(
 {
 }
 
-SerializationSubObject::~SerializationSubObject()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationSubObject::~SerializationSubObject() = default;
 
-String SerializationSubObject::getName() const
+UInt128 SerializationSubObject::getHash() const
 {
-    return "SubObject(" + paths_prefix + ", " + dynamic_type->getName() + ")";
+    SipHash hash;
+    hash.update("SubObject");
+    hash.update(paths_prefix);
+    hash.update(dynamic_type->getName());
+    return hash.get128();
 }
 
 struct DeserializeBinaryBulkStateSubObject : public ISerialization::DeserializeBinaryBulkState

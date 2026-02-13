@@ -42,14 +42,14 @@ SerializationInterval::SerializationInterval(IntervalKind interval_kind_) : inte
 {
 }
 
-SerializationInterval::~SerializationInterval()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationInterval::~SerializationInterval() = default;
 
-String SerializationInterval::getName() const
+UInt128 SerializationInterval::getHash() const
 {
-    return "Interval" + std::string(interval_kind.toString());
+    SipHash hash;
+    hash.update("Interval");
+    hash.update(interval_kind.toString());
+    return hash.get128();
 }
 
 void SerializationInterval::serializeText(const IColumn & column, size_t row, WriteBuffer & ostr, const FormatSettings & settings) const

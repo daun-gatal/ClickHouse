@@ -25,7 +25,7 @@ public:
 
     ~SerializationSubObjectSharedData() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

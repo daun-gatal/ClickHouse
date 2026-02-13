@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationString.h>
 
 #include <Columns/ColumnString.h>
@@ -29,15 +30,15 @@ namespace ErrorCodes
     extern const int TOO_LARGE_STRING_SIZE;
 }
 
-String SerializationString::getName() const
+UInt128 SerializationString::getHash() const
 {
-    return "String(" + std::to_string(static_cast<int>(version)) + ")";
+    SipHash hash;
+    hash.update("String");
+    hash.update(static_cast<int>(version));
+    return hash.get128();
 }
 
-SerializationString::~SerializationString()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationString::~SerializationString() = default;
 
 void SerializationString::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings & settings) const
 {

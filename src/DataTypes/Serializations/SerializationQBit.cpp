@@ -4,6 +4,7 @@
 
 #include <DataTypes/DataTypeFixedString.h>
 #include <DataTypes/DataTypeQBit.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationQBit.h>
 
 #include <IO/ReadBuffer.h>
@@ -31,14 +32,16 @@ extern const int SIZES_OF_COLUMNS_IN_TUPLE_DOESNT_MATCH;
 extern const int TOO_LARGE_ARRAY_SIZE;
 }
 
-SerializationQBit::~SerializationQBit()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationQBit::~SerializationQBit() = default;
 
-String SerializationQBit::getName() const
+UInt128 SerializationQBit::getHash() const
 {
-    return "QBit(" + nested->getName() + ", " + std::to_string(element_size) + ", " + std::to_string(dimension) + ")";
+    SipHash hash;
+    hash.update("QBit");
+    hash.update(nested->getHash());
+    hash.update(element_size);
+    hash.update(dimension);
+    return hash.get128();
 }
 
 static const ColumnTuple & extractNestedColumn(const IColumn & column)

@@ -16,12 +16,12 @@ public:
     static SerializationPtr create()
     {
         auto ptr = SerializationPtr(new SerializationArrayOffsets());
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationArrayOffsets() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void deserializeBinaryBulkWithMultipleStreams(
     ColumnPtr & column,

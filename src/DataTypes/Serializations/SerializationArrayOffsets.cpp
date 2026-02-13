@@ -1,17 +1,17 @@
 #include <Columns/ColumnsNumber.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationArrayOffsets.h>
 
 namespace DB
 {
 
-SerializationArrayOffsets::~SerializationArrayOffsets()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationArrayOffsets::~SerializationArrayOffsets() = default;
 
-String SerializationArrayOffsets::getName() const
+UInt128 SerializationArrayOffsets::getHash() const
 {
-    return "ArrayOffsets";
+    SipHash hash;
+    hash.update("ArrayOffsets");
+    return hash.get128();
 }
 
 void SerializationArrayOffsets::deserializeBinaryBulkWithMultipleStreams(

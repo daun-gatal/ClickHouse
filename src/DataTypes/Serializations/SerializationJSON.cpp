@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationJSON.h>
 #include <IO/WriteHelpers.h>
 #include <IO/ReadHelpers.h>
@@ -373,32 +374,15 @@ void SerializationJSON<Parser>::deserializeTextJSON(IColumn & column, ReadBuffer
 }
 
 template <typename Parser>
-String SerializationJSON<Parser>::getName() const
+UInt128 SerializationJSON<Parser>::getHash() const
 {
-    std::vector<String> paths;
-    paths.reserve(typed_paths_types.size());
-    for (const auto & [path, type] : typed_paths_types)
-        paths.push_back(path + " " + type->getName());
-    std::sort(paths.begin(), paths.end());
-
-    String name = "JSON(";
-    for (size_t i = 0; i < paths.size(); ++i)
-    {
-        if (i > 0)
-            name += ",";
-        name += paths[i];
-    }
-    if (dynamic_type)
-        name += ";dyn=" + dynamic_type->getName();
-    name += ")";
-    return name;
+    SipHash hash;
+    hash.update("JSON");
+    return hash.get128();
 }
 
 template <typename Parser>
-SerializationJSON<Parser>::~SerializationJSON()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationJSON<Parser>::~SerializationJSON() = default;
 
 #if USE_SIMDJSON
 template class SerializationJSON<SimdJSONParser>;

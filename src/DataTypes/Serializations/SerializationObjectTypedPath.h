@@ -22,12 +22,12 @@ public:
     static SerializationPtr create(const SerializationPtr & nested_, const String & path_)
     {
         auto ptr = SerializationPtr(new SerializationObjectTypedPath(nested_, path_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationObjectTypedPath() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

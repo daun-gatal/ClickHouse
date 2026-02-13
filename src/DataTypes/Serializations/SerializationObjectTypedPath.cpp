@@ -1,6 +1,7 @@
 #include <Columns/ColumnDynamic.h>
 #include <DataTypes/DataTypeFactory.h>
 #include <DataTypes/DataTypeVariant.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationObject.h>
 #include <DataTypes/Serializations/SerializationObjectTypedPath.h>
 #include <IO/ReadHelpers.h>
@@ -14,15 +15,16 @@ namespace ErrorCodes
 }
 
 
-String SerializationObjectTypedPath::getName() const
+UInt128 SerializationObjectTypedPath::getHash() const
 {
-    return "ObjectTypedPath(" + nested_serialization->getName() + ", " + path + ")";
+    SipHash hash;
+    hash.update("ObjectTypedPath");
+    hash.update(nested_serialization->getHash());
+    hash.update(path);
+    return hash.get128();
 }
 
-SerializationObjectTypedPath::~SerializationObjectTypedPath()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationObjectTypedPath::~SerializationObjectTypedPath() = default;
 
 void SerializationObjectTypedPath::enumerateStreams(
     DB::ISerialization::EnumerateStreamsSettings & settings,

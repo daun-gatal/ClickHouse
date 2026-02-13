@@ -1,4 +1,5 @@
 #include <Columns/ColumnsNumber.h>
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationUUID.h>
 #include <IO/ReadBufferFromString.h>
 #include <IO/ReadHelpers.h>
@@ -10,15 +11,14 @@
 namespace DB
 {
 
-String SerializationUUID::getName() const
+UInt128 SerializationUUID::getHash() const
 {
-    return "UUID";
+    SipHash hash;
+    hash.update("UUID");
+    return hash.get128();
 }
 
-SerializationUUID::~SerializationUUID()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationUUID::~SerializationUUID() = default;
 
 void SerializationUUID::serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const
 {

@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationTime64.h>
 
 #include <Columns/ColumnVector.h>
@@ -30,14 +31,14 @@ SerializationTime64::SerializationTime64(UInt32 scale_, const DataTypeTime64 & /
 {
 }
 
-SerializationTime64::~SerializationTime64()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationTime64::~SerializationTime64() = default;
 
-String SerializationTime64::getName() const
+UInt128 SerializationTime64::getHash() const
 {
-    return "Time64(" + std::to_string(scale) + ")";
+    SipHash hash;
+    hash.update("Time64");
+    hash.update(scale);
+    return hash.get128();
 }
 
 void SerializationTime64::serializeText(

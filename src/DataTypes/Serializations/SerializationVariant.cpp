@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationVariant.h>
 #include <DataTypes/Serializations/SerializationVariantElement.h>
 #include <DataTypes/Serializations/SerializationVariantElementNullMap.h>
@@ -31,14 +32,14 @@ namespace ErrorCodes
     extern const int INCORRECT_DATA;
 }
 
-SerializationVariant::~SerializationVariant()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationVariant::~SerializationVariant() = default;
 
-String SerializationVariant::getName() const
+UInt128 SerializationVariant::getHash() const
 {
-    return variant_name;
+    SipHash hash;
+    hash.update("Variant");
+    hash.update(variant_name);
+    return hash.get128();
 }
 
 struct SerializeBinaryBulkStateVariant : public ISerialization::SerializeBinaryBulkState
@@ -70,7 +71,7 @@ struct DeserializeBinaryBulkStateVariant : public ISerialization::DeserializeBin
 SerializationPtr SerializationVariant::create(const DataTypes & variant_types_, const String & variant_name_)
 {
     auto ptr = SerializationPtr(new SerializationVariant(variant_types_, variant_name_));
-    return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+    return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
 }
 
 SerializationVariant::SerializationVariant(const DataTypes & variant_types_, const String & variant_name_) : variant_types(variant_types_), deserialize_text_order(getVariantsDeserializeTextOrder(variant_types_)), variant_name(variant_name_)

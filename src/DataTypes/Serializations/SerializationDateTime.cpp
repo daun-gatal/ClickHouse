@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDateTime.h>
 
 #include <Columns/ColumnVector.h>
@@ -19,25 +20,24 @@ namespace ErrorCodes
 extern const int UNEXPECTED_DATA_AFTER_PARSED_VALUE;
 }
 
-String SerializationDateTime::getName() const
+UInt128 SerializationDateTime::getHash() const
 {
-    return "DateTime(" + time_zone.getTimeZone() + ")";
+    SipHash hash;
+    hash.update("DateTime");
+    hash.update(time_zone.getTimeZone());
+    return hash.get128();
 }
 
-SerializationDateTime::~SerializationDateTime()
+SerializationDateTime::~SerializationDateTime() = default;
+
+UInt128 SerializationTime::getHash() const
 {
-    SerializationObjectPool::instance().remove(getName());
+    SipHash hash;
+    hash.update("Time");
+    return hash.get128();
 }
 
-String SerializationTime::getName() const
-{
-    return "Time";
-}
-
-SerializationTime::~SerializationTime()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationTime::~SerializationTime() = default;
 
 namespace
 {

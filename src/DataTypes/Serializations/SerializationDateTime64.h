@@ -16,12 +16,12 @@ public:
     static SerializationPtr create(UInt32 scale_, const TimezoneMixin & time_zone_)
     {
         auto ptr = SerializationPtr(new SerializationDateTime64(scale_, time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationDateTime64() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings, bool whole) const override;

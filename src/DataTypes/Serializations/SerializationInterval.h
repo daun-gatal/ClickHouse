@@ -20,12 +20,12 @@ public:
     static SerializationPtr create(IntervalKind kind_)
     {
         auto ptr = SerializationPtr(new SerializationInterval(kind_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationInterval() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeText(const IColumn & column, size_t row, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void serializeTextJSON(const IColumn & column, size_t row, WriteBuffer & ostr, const FormatSettings & settings) const override;

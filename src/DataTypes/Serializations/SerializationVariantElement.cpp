@@ -39,10 +39,7 @@ struct SerializationVariantElement::DeserializeBinaryBulkStateVariantElement : p
     }
 };
 
-SerializationVariantElement::~SerializationVariantElement()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationVariantElement::~SerializationVariantElement() = default;
 
 void SerializationVariantElement::enumerateStreams(
     DB::ISerialization::EnumerateStreamsSettings & settings,

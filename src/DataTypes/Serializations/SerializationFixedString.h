@@ -18,12 +18,12 @@ public:
     static SerializationPtr create(size_t n_)
     {
         auto ptr = SerializationPtr(new SerializationFixedString(n_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationFixedString() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     size_t getN() const { return n; }
 

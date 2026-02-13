@@ -221,10 +221,7 @@ void SerializationEnum<Type>::serializeTextMarkdown(
 }
 
 template <typename Type>
-SerializationEnum<Type>::~SerializationEnum()
-{
-    SerializationObjectPool::instance().remove(this->getName());
-}
+SerializationEnum<Type>::~SerializationEnum() = default;
 
 template class SerializationEnum<Int8>;
 template class SerializationEnum<Int16>;

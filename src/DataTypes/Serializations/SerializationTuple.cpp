@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationTuple.h>
 #include <DataTypes/Serializations/SerializationNullable.h>
 #include <DataTypes/Serializations/SerializationInfoTuple.h>
@@ -33,25 +34,21 @@ static inline const IColumn & extractElementColumn(const IColumn & column, size_
     return assert_cast<const ColumnTuple &>(column).getColumn(idx);
 }
 
-String SerializationTuple::getName() const
+UInt128 SerializationTuple::getHash() const
 {
-    String result = "Tuple(";
-    for (size_t i = 0; i < elems.size(); ++i)
-    {
-        if (i > 0)
-            result += ", ";
+    SipHash hash;
+    hash.update("Tuple");
+    hash.update(has_explicit_names);
+    for (const auto & elem : elems)
+    {   
         if (has_explicit_names)
-            result += elems[i]->getElementName() + " ";
-        result += elems[i]->getNested()->getName();
+            hash.update(elem->getElementName());
+        hash.update(elem->getNested()->getHash());
     }
-    result += ")";
-    return result;
+    return hash.get128();
 }
 
-SerializationTuple::~SerializationTuple()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationTuple::~SerializationTuple() = default;
 
 void SerializationTuple::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings & settings) const
 {

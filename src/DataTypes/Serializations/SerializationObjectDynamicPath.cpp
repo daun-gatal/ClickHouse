@@ -12,6 +12,7 @@ namespace DB
 namespace ErrorCodes
 {
     extern const int NOT_IMPLEMENTED;
+    extern const int LOGICAL_ERROR;
 }
 
 SerializationObjectDynamicPath::SerializationObjectDynamicPath(
@@ -43,9 +44,11 @@ struct DeserializeBinaryBulkStateObjectDynamicPath : public ISerialization::Dese
     }
 };
 
-SerializationObjectDynamicPath::~SerializationObjectDynamicPath()
+SerializationObjectDynamicPath::~SerializationObjectDynamicPath() = default;
+
+UInt128 SerializationObjectDynamicPath::getHash() const
 {
-    SerializationObjectPool::instance().remove(getName());
+    throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method getHash is not implemented for SerializationObjectDynamicPath");
 }
 
 void SerializationObjectDynamicPath::enumerateStreams(

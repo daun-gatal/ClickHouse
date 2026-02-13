@@ -17,12 +17,11 @@ public:
     static SerializationPtr create(MergeTreeStringSerializationVersion version_)
     {
         auto ptr = SerializationPtr(new SerializationStringSize(version_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationStringSize() override;
-
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void enumerateStreams(
         EnumerateStreamsSettings & settings,

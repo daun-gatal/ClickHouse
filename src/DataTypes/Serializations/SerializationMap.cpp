@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationMap.h>
 #include <DataTypes/Serializations/SerializationNullable.h>
 #include <DataTypes/DataTypeMap.h>
@@ -25,15 +26,17 @@ namespace ErrorCodes
     extern const int TOO_LARGE_ARRAY_SIZE;
 }
 
-String SerializationMap::getName() const
+UInt128 SerializationMap::getHash() const
 {
-    return "Map(" + key->getName() + ", " + value->getName() + ", " + nested->getName() + ")";
+    SipHash hash;
+    hash.update("Map");
+    hash.update(key->getHash());
+    hash.update(value->getHash());
+    hash.update(nested->getHash());
+    return hash.get128();
 }
 
-SerializationMap::~SerializationMap()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationMap::~SerializationMap() = default;
 
 SerializationMap::SerializationMap(const SerializationPtr & key_, const SerializationPtr & value_, const SerializationPtr & nested_)
     : key(key_), value(value_), nested(nested_)

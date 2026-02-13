@@ -17,12 +17,12 @@ public:
     static SerializationPtr create(const TimezoneMixin & time_zone_)
     {
         auto ptr = SerializationPtr(new SerializationDateTime(time_zone_));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationDateTime() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeWholeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override;
@@ -50,12 +50,12 @@ public:
     static SerializationPtr create(const DataTypeTime & time_type)
     {
         auto ptr = SerializationPtr(new SerializationTime(time_type));
-        return SerializationObjectPool::instance().getOrCreate(ptr->getName(), std::move(ptr));
+        return SerializationObjectPool::instance().getOrCreate(ptr->getHash(), std::move(ptr));
     }
 
     ~SerializationTime() override;
 
-    String getName() const override;
+    UInt128 getHash() const override;
 
     void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings &) const override;
     void deserializeWholeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override;

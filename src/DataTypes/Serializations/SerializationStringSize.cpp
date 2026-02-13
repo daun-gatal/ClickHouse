@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationStringSize.h>
 
 #include <Columns/ColumnString.h>
@@ -12,14 +13,14 @@ SerializationStringSize::SerializationStringSize(MergeTreeStringSerializationVer
 {
 }
 
-SerializationStringSize::~SerializationStringSize()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationStringSize::~SerializationStringSize() = default;
 
-String SerializationStringSize::getName() const
+UInt128 SerializationStringSize::getHash() const
 {
-    return "StringSize(" + std::to_string(static_cast<int>(version)) + ")";
+    SipHash hash;
+    hash.update("StringSize");
+    hash.update(static_cast<int>(version));
+    return hash.get128();
 }
 
 void SerializationStringSize::enumerateStreams(

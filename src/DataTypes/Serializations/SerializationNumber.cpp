@@ -228,10 +228,7 @@ void SerializationNumber<T>::deserializeBinaryBulk(IColumn & column, ReadBuffer 
 }
 
 template <typename T>
-SerializationNumber<T>::~SerializationNumber()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationNumber<T>::~SerializationNumber() = default;
 
 template class SerializationNumber<UInt8>;
 template class SerializationNumber<UInt16>;

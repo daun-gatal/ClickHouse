@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationFixedString.h>
 
 #include <Columns/ColumnFixedString.h>
@@ -26,15 +27,15 @@ namespace ErrorCodes
 
 static constexpr size_t MAX_STRINGS_SIZE = 1ULL << 30;
 
-String SerializationFixedString::getName() const
+UInt128 SerializationFixedString::getHash() const
 {
-    return "FixedString(" + std::to_string(n) + ")";
+    SipHash hash;
+    hash.update("FixedString");
+    hash.update(n);
+    return hash.get128();
 }
 
-SerializationFixedString::~SerializationFixedString()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationFixedString::~SerializationFixedString() = default;
 
 void SerializationFixedString::serializeBinary(const Field & field, WriteBuffer & ostr, const FormatSettings &) const
 {

@@ -1,3 +1,4 @@
+#include <Common/SipHash.h>
 #include <DataTypes/Serializations/SerializationDynamic.h>
 #include <DataTypes/Serializations/SerializationVariant.h>
 #include <DataTypes/Serializations/SerializationDynamicHelpers.h>
@@ -24,15 +25,15 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-String SerializationDynamic::getName() const
+UInt128 SerializationDynamic::getHash() const
 {
-    return "Dynamic(" + std::to_string(max_dynamic_types) + ")";
+    SipHash hash;
+    hash.update("Dynamic");
+    hash.update(max_dynamic_types);
+    return hash.get128();
 }
 
-SerializationDynamic::~SerializationDynamic()
-{
-    SerializationObjectPool::instance().remove(getName());
-}
+SerializationDynamic::~SerializationDynamic() = default;
 
 struct SerializeBinaryBulkStateDynamic : public ISerialization::SerializeBinaryBulkState
 {
