@@ -62,6 +62,7 @@ workflow = Workflow.Config(
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
             for job in JobConfigs.special_build_jobs
         ],
+        *JobConfigs.build_llvm_coverage_job,
         JobConfigs.smoke_tests_macos,
         # TODO: stabilize new jobs and remove set_allow_merge_on_failure
         JobConfigs.lightweight_functional_tests_job,
@@ -83,6 +84,7 @@ workflow = Workflow.Config(
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
             for job in JobConfigs.functional_tests_jobs_azure
         ],
+        *JobConfigs.functional_test_llvm_coverage_jobs,
         *[
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
             for job in JobConfigs.integration_test_jobs_required[:]
@@ -91,7 +93,9 @@ workflow = Workflow.Config(
             job.set_dependency(FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES)
             for job in JobConfigs.integration_test_jobs_non_required
         ],
+        *JobConfigs.integration_test_llvm_coverage_jobs,
         *JobConfigs.unittest_jobs,
+        *JobConfigs.unittest_llvm_coverage_job,
         JobConfigs.docker_server.set_dependency(
             FUNCTIONAL_TESTS_PARALLEL_BLOCKING_JOB_NAMES
         ),
@@ -135,6 +139,8 @@ workflow = Workflow.Config(
             )
             for job in JobConfigs.macos_smoke_test_jobs
         ],
+        JobConfigs.llvm_coverage_merge_job,
+
     ],
     artifacts=[
         *ArtifactConfigs.unittests_binaries,
@@ -145,6 +151,9 @@ workflow = Workflow.Config(
         ArtifactConfigs.fuzzers,
         ArtifactConfigs.fuzzers_corpus,
         ArtifactConfigs.parser_memory_profiler,
+        *ArtifactConfigs.llvm_profdata_file,
+        ArtifactConfigs.llvm_coverage_html_report,
+        ArtifactConfigs.llvm_coverage_info_file
     ],
     dockers=DOCKERS,
     enable_dockers_manifest_merge=True,
