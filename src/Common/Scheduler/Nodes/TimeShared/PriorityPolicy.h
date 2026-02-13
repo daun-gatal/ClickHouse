@@ -129,8 +129,12 @@ public:
             if (items.empty())
                 return {nullptr, false};
 
+            // Capture child info before potentially removing from heap
+            ITimeSharedNode * front_child = items.front().child;
+            Priority front_priority = items.front().priority;
+
             // Recursively pull request from child
-            auto [request, child_active] = items.front().child->dequeueRequest();
+            auto [request, child_active] = front_child->dequeueRequest();
 
             // Deactivate child if it is empty
             if (!child_active)
@@ -144,7 +148,7 @@ public:
             if (request)
             {
                 SCHED_DBG("{} -- dequeue(child={}, cost={}, priority={})",
-                    getPath(), items.front().child->basename, request->cost, items.front().priority.value);
+                    getPath(), front_child->basename, request->cost, front_priority.value);
                 incrementDequeued(request->cost);
                 return {request, isActive()};
             }
