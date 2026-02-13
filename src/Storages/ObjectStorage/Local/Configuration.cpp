@@ -42,7 +42,8 @@ void LocalStorageParsedArguments::fromDisk(DiskPtr disk, ASTs & args, ContextPtr
     path_suffix = parsing_result.path_suffix;
 }
 
-ObjectStoragePtr StorageLocalConfiguration::createObjectStorage(ContextPtr context, bool readonly)
+ObjectStoragePtr StorageLocalConfiguration::createObjectStorage(
+    ContextPtr context, bool readonly, CredentialsConfigurationCallback /*refresh_credentials_callback*/)
 {
     const auto path_prefix = context->getUserFilesPath();
     return std::make_shared<LocalObjectStorage>(LocalObjectStorageSettings(disk_name, path_prefix, readonly));

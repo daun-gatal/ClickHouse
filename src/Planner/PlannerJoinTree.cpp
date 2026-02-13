@@ -563,7 +563,7 @@ std::optional<FilterDAGInfo> buildRowPolicyFilterIfNeeded(const StoragePtr & sto
     const auto & query_context = planner_context->getQueryContext();
 
     auto row_policy_filter = query_context->getRowPolicyFilter(storage_id.getDatabaseName(), storage_id.getTableName(), RowPolicyFilterType::SELECT_FILTER);
-    if (!row_policy_filter || row_policy_filter->empty())
+    if (!row_policy_filter || row_policy_filter->isAlwaysTrue())
         return {};
 
     for (const auto & row_policy : row_policy_filter->policies)
@@ -2317,6 +2317,14 @@ JoinTreeQueryPlan buildQueryPlanForJoinNodeLegacy(
         planner_context,
         select_query_info,
         max_step_description_length);
+
+    /// For filled joins (StorageJoin), the right-side columns come directly from the storage
+    /// with their original types. The pre-join cast on right_plan (line "Cast JOIN USING columns")
+    /// is ineffective because filled joins don't use right_plan data.
+    /// We need to add a post-join type conversion step for USING columns whose types differ
+    /// between the right table and the common super type.
+    if (join_algorithm->isFilled() && !right_plan_column_name_to_cast_type.empty())
+        join_cast_plan_output_nodes(result_plan, right_plan_column_name_to_cast_type);
 
     for (const auto & right_join_tree_query_plan_row_policy : right_join_tree_query_plan.used_row_policies)
         left_join_tree_query_plan.used_row_policies.insert(right_join_tree_query_plan_row_policy);
