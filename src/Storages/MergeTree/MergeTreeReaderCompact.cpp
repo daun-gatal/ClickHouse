@@ -177,7 +177,7 @@ void MergeTreeReaderCompact::readData(
     size_t from_mark,
     size_t column_size_before_reading,
     MergeTreeReaderStream & stream,
-    std::unordered_map<String, ColumnPtr> & columns_cache,
+    std::unordered_map<String, ColumnPtr> & output_columns_cache,
     std::unordered_map<String, ColumnPtr> * columns_cache_for_subcolumns,
     ISerialization::SubstreamsCache * substreams_cache)
 {
@@ -239,8 +239,8 @@ void MergeTreeReaderCompact::readData(
             };
         }
 
-        auto it = columns_cache.find(name);
-        if (it != columns_cache.end() && it->second != nullptr)
+        auto it = output_columns_cache.find(name);
+        if (it != output_columns_cache.end() && it->second != nullptr)
         {
             column = it->second;
             return;
@@ -285,7 +285,7 @@ void MergeTreeReaderCompact::readData(
             serialization->deserializeBinaryBulkWithMultipleStreams(column, rows_offset, rows_to_read, deserialize_settings, deserialize_binary_bulk_state_map[name], substreams_cache);
         }
 
-        columns_cache[name] = column;
+        output_columns_cache[name] = column;
 
         size_t read_rows_in_column = column->size() - column_size_before_reading;
         if (read_rows_in_column != rows_to_read)
