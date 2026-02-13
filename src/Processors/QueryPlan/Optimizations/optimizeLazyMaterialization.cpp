@@ -152,28 +152,28 @@ struct SplitExpressionStepResult
 
 /// Split if ActionsDAG can produce unused pair of input/output which only changes the order.
 /// Remove them from the DAG.
-// void removeDanglingNodes(ActionsDAG & dag)
-// {
-//     std::unordered_set<const ActionsDAG::Node *> used_nodes;
-//     for (const auto & node : dag.getNodes())
-//         for (const auto * child : node.children)
-//             used_nodes.insert(child);
+void removeDanglingNodes(ActionsDAG & dag)
+{
+    std::unordered_set<const ActionsDAG::Node *> used_nodes;
+    for (const auto & node : dag.getNodes())
+        for (const auto * child : node.children)
+            used_nodes.insert(child);
 
-//     std::unordered_set<const ActionsDAG::Node *> inputs;
-//     for (const auto & input : dag.getInputs())
-//         inputs.insert(input);
+    std::unordered_set<const ActionsDAG::Node *> inputs;
+    for (const auto & input : dag.getInputs())
+        inputs.insert(input);
 
-//     auto & outputs = dag.getOutputs();
-//     size_t next_pos = 0;
-//     for (size_t i = 0; i < outputs.size(); ++i)
-//     {
-//         bool is_dangling = inputs.contains(outputs[i]) && !used_nodes.contains(outputs[i]);
-//         if (!is_dangling)
-//             outputs[next_pos++] = outputs[i];
-//     }
-//     outputs.resize(next_pos);
-//     dag.removeUnusedActions();
-// }
+    auto & outputs = dag.getOutputs();
+    size_t next_pos = 0;
+    for (size_t i = 0; i < outputs.size(); ++i)
+    {
+        bool is_dangling = inputs.contains(outputs[i]) && !used_nodes.contains(outputs[i]);
+        if (!is_dangling)
+            outputs[next_pos++] = outputs[i];
+    }
+    outputs.resize(next_pos);
+    dag.removeUnusedActions();
+}
 
 void addRequiredInputDependenciesIntoNodesSet(const ActionsDAG & dag, std::unordered_set<const ActionsDAG::Node *> & nodes)
 {
@@ -292,8 +292,10 @@ SplitFilterResult splitFilterStep(const FilterStep & filter_step, const std::vec
     const auto & outputs = expression.getOutputs();
 
     const auto & header = *filter_step.getInputHeaders().front();
-    chassert(header.columns() == required_inputs.size());
-    chassert(outputs.size() == required_outputs.size());
+    if (header.columns() != required_inputs.size())
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Header columns count does not match required inputs count");
+    if (outputs.size() != required_outputs.size())
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Outputs size does not match required outputs size");
 
     const auto [header_positions, non_mapped] = mapInputsToHeaderPositions(inputs, header);
 
@@ -311,7 +313,7 @@ SplitFilterResult splitFilterStep(const FilterStep & filter_step, const std::vec
 
     auto split_result = expression.split(split_nodes, true, true);
 
-    std::vector<bool> new_required_inputs(filter_step.getOutputHeader()->columns(), false);
+    std::vector<bool> new_required_inputs(filter_step.getOutputHeader()->columns() + (filter_step.removesFilterColumn() ? 1 : 0), false);
     for (size_t ps = 0; ps < outputs.size(); ++ps)
         if (split_nodes.contains(outputs[ps]))
             new_required_inputs[ps] = true;
@@ -322,7 +324,19 @@ SplitFilterResult splitFilterStep(const FilterStep & filter_step, const std::vec
         if (required_inputs[non_mapped[i]])
             new_required_inputs[num_outputs + i] = true;
 
-    updateRequiredColumnsForFilterDAG(new_required_inputs, filter_step);
+    // updateRequiredColumnsForFilterDAG(new_required_inputs, filter_step);
+    if (filter_step.removesFilterColumn())
+    {
+        const auto & node = expression.findInOutputs(name);
+        for (size_t i = 0; i < outputs.size(); ++i)
+        {
+            if (outputs[i] == &node)
+            {
+                new_required_inputs.erase(new_required_inputs.begin() + i);
+                break;
+            }
+        }
+    }
 
     // auto required_input_positions = getRequiredHeaderPositions(expression, *filter_step.getInputHeaders().front(), std::move(required_output_positions));
 
@@ -625,8 +639,8 @@ bool optimizeLazyMaterialization2(QueryPlan::Node & root, QueryPlan & query_plan
         auto dag = std::move(lazy_steps.front());
         lazy_steps.pop_front();
         /// Remove dangling nodes from the DAG. Some of them may not exist anymore (e.g. filter column)
-        // if (!lazy_steps.empty())
-        //     removeDanglingNodes(dag);
+        if (!lazy_steps.empty())
+            removeDanglingNodes(dag);
         result_plan.addStep(std::make_unique<ExpressionStep>(result_plan.getCurrentHeader(), std::move(dag)));
     }
 
