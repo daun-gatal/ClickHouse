@@ -241,7 +241,7 @@ void MinMaxRuntimeFilter::merge(const IRuntimeFilter * source)
 
             /// Insert values in set to update min/max in case they are outside of source min/max range
             insert(getValuesColumn());
-            /// Finish convertion to minmax mode and release exact values as they are not needed anymore
+            /// Finish conversion to minmax mode and release exact values as they are not needed anymore
             releaseExactValues();
         }
         else
