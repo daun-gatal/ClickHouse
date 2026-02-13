@@ -347,6 +347,7 @@ class JobNames:
     SQL_TEST = "SQLTest"
     SQLANCER = "SQLancer"
     LLVM_COVERAGE_MERGE = "LLVM Coverage Merge"
+    LLVM_COVERAGE_CHECK = "LLVM Coverage Check"
     INSTALL_TEST = "Install packages"
     ASTFUZZER = "AST fuzzer"
     BUZZHOUSE = "BuzzHouse"
@@ -376,6 +377,9 @@ class ArtifactNames:
     LLVM_COVERAGE_FILE = "LLVM_COVERAGE_FILE"  # .profdata file
     LLVM_COVERAGE_HTML_REPORT = (
         "LLVM_COVERAGE_HTML_REPORT"  # .tar.gz file with html report
+    )
+    LLVM_COVERAGE_DIFF_HTML_REPORT = (
+        "LLVM_COVERAGE_DIFF_HTML_REPORT"  # .tar.gz file with diff html report
     )
     LLVM_COVERAGE_INFO_FILE = "LLVM_COVERAGE_INFO_FILE"  # .info file generated from .profdata, used for debugging coverage results
     CH_AMD_RELEASE = "CH_AMD_RELEASE"
@@ -512,6 +516,11 @@ class ArtifactConfigs:
         name=ArtifactNames.LLVM_COVERAGE_INFO_FILE,
         type=Artifact.Type.S3,
         path=f"{TEMP_DIR}/llvm_coverage.info",
+    )
+    llvm_coverage_diff_html_report = Artifact.Config(
+        name=ArtifactNames.LLVM_COVERAGE_DIFF_HTML_REPORT,
+        type=Artifact.Type.S3,
+        path=f"{TEMP_DIR}/llvm_coverage_diff_html_report.tar.gz",
     )
     clickhouse_debians = Artifact.Config(
         name="*",

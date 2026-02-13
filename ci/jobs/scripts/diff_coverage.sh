@@ -1,49 +1,116 @@
+# Debug: List available llvm tools
+echo "Available LLVM tools:"
+command -v llvm-profdata-21 || echo "llvm-profdata-21: not found"
+command -v llvm-cov-21 || echo "llvm-cov-21: not found"
+command -v llvm-profdata || echo "llvm-profdata: not found"
+command -v llvm-cov || echo "llvm-cov: not found"
 
-
-CURRENT_COMMIT=$(git rev-parse HEAD)
-BASE_COMMIT=$(git merge-base HEAD master)
-
-# Try to find .info file from S3, checking up to 10 ancestor commits
-FOUND=0
-ATTEMPT=0
-MAX_ATTEMPTS=10
-
-while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if [ $ATTEMPT -eq 0 ]; then
-        TEST_COMMIT="${BASE_COMMIT}"
-    else
-        TEST_COMMIT=$(git rev-parse "${BASE_COMMIT}~${ATTEMPT}" 2>/dev/null || echo "")
-        if [ -z "${TEST_COMMIT}" ]; then
-            echo "Cannot get ancestor commit at depth ${ATTEMPT}"
-            break
-        fi
+# Auto-detect available LLVM tools
+if [ -z "$LLVM_PROFDATA" ]; then
+  for ver in 21 20 19 18 17 16 ""; do
+    if command -v "llvm-profdata${ver:+-$ver}" &> /dev/null; then
+      LLVM_PROFDATA="llvm-profdata${ver:+-$ver}"
+      break
     fi
-    
-    COVERAGE_URL="https://clickhouse-builds.s3.amazonaws.com/REFs/master/7${TEST_COMMIT}/llvm_coverage_merge/llvm_coverage.info"
-    echo "Checking coverage file for commit ${TEST_COMMIT} (attempt $((ATTEMPT + 1))/${MAX_ATTEMPTS})..."
-    
-    if wget --spider "${COVERAGE_URL}" 2>&1 | grep -q '200 OK'; then
-        echo "Found coverage file at ${COVERAGE_URL}"
-        wget "${COVERAGE_URL}" -O base_llvm_coverage.info
-        BASE_COMMIT="${TEST_COMMIT}"
-        FOUND=1
-        break
-    fi
-    
-    ATTEMPT=$((ATTEMPT + 1))
-done
-
-if [ $FOUND -eq 0 ]; then
-    echo "Warning: Could not find coverage file after checking ${ATTEMPT} commits"
-    echo "Skipping differential coverage analysis"
-    exit 0
+  done
 fi
 
-# get diff between current commit and base commit
-git diff ${BASE_COMMIT}..${CURRENT_COMMIT} --unified=3 > changes.diff
+if [ -z "$LLVM_COV" ]; then
+  for ver in 21 20 19 18 17 16 ""; do
+    if command -v "llvm-cov${ver:+-$ver}" &> /dev/null; then
+      LLVM_COV="llvm-cov${ver:+-$ver}"
+      break
+    fi
+  done
+fi
 
-genhtml current_llvm_coverage.info \
-  --baseline-file base_llvm_coverage.info \
-  --diff-file changes.diff \
-  --output-directory diff-html \
-  --legend
+echo "Using LLVM tools: LLVM_PROFDATA=$LLVM_PROFDATA, LLVM_COV=$LLVM_COV"
+
+# Check if tools were found
+if [ -z "$LLVM_PROFDATA" ]; then
+  echo "ERROR: llvm-profdata not found in PATH"
+  exit 1
+fi
+
+if [ -z "$LLVM_COV" ]; then
+  echo "ERROR: llvm-cov not found in PATH"
+  exit 1
+fi
+
+
+
+# CURRENT_COMMIT=$(git rev-parse HEAD)
+# BASE_COMMIT=$(git merge-base HEAD master)
+
+# # Try to find .info file from S3, checking up to 10 ancestor commits
+# FOUND=0
+# ATTEMPT=0
+# MAX_ATTEMPTS=10
+
+# while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+#     if [ $ATTEMPT -eq 0 ]; then
+#         TEST_COMMIT="${BASE_COMMIT}"
+#     else
+#         TEST_COMMIT=$(git rev-parse "${BASE_COMMIT}~${ATTEMPT}" 2>/dev/null || echo "")
+#         if [ -z "${TEST_COMMIT}" ]; then
+#             echo "Cannot get ancestor commit at depth ${ATTEMPT}"
+#             break
+#         fi
+#     fi
+    
+#     COVERAGE_URL="https://clickhouse-builds.s3.amazonaws.com/REFs/master/7${TEST_COMMIT}/llvm_coverage_merge/llvm_coverage.info"
+#     echo "Checking coverage file for commit ${TEST_COMMIT} (attempt $((ATTEMPT + 1))/${MAX_ATTEMPTS})..."
+    
+#     if wget --spider "${COVERAGE_URL}" 2>&1 | grep -q '200 OK'; then
+#         echo "Found coverage file at ${COVERAGE_URL}"
+#         wget "${COVERAGE_URL}" -O base_llvm_coverage.info
+#         BASE_COMMIT="${TEST_COMMIT}"
+#         FOUND=1
+#         break
+#     fi
+    
+#     ATTEMPT=$((ATTEMPT + 1))
+# done
+
+# if [ $FOUND -eq 0 ]; then
+#     echo "Warning: Could not find coverage file after checking ${ATTEMPT} commits"
+#     echo "Skipping differential coverage analysis"
+#     exit 0
+# fi
+
+# # get diff between current commit and base commit
+# git diff ${BASE_COMMIT}..${CURRENT_COMMIT} --unified=3 > changes.diff
+
+# genhtml current_llvm_coverage.info \
+#   --baseline-file base_llvm_coverage.info \
+#   --diff-file changes.diff \
+#   --output-directory diff-html \
+#   --legend
+
+cd ci/tmp
+
+lcov --version
+lcov --summary base_llvm_coverage.info
+lcov --summary current_llvm_coverage.info
+# base_line_coverage=$(lcov --summary base_llvm_coverage.info | awk '/^  lines\.*:/{gsub(/%/,"",$2); print $2}')
+# curr_line_coverage=$(lcov --summary current_llvm_coverage.info  | awk '/^  lines\.*:/{gsub(/%/,"",$2); print $2}')
+
+# python3 - <<PY
+# import sys
+
+# base = float("${base_line_coverage}")
+# current = float("${curr_line_coverage}")
+
+# delta = current - base
+
+# print(f"Baseline coverage : {base:.2f}%")
+# print(f"Current coverage  : {current:.2f}%")
+# print(f"Delta             : {delta:+.2f}%")
+
+# if current < base:
+#     print("Coverage degraded.")
+#     sys.exit(1)
+# else:
+#     print("Coverage did not degrade.")
+#     sys.exit(0)
+# PY

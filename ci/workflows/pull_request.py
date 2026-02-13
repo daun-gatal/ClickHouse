@@ -140,7 +140,7 @@ workflow = Workflow.Config(
             for job in JobConfigs.macos_smoke_test_jobs
         ],
         JobConfigs.llvm_coverage_merge_job,
-
+        JobConfigs.llvm_coverage_check_job,
     ],
     artifacts=[
         *ArtifactConfigs.unittests_binaries,
@@ -153,7 +153,8 @@ workflow = Workflow.Config(
         ArtifactConfigs.parser_memory_profiler,
         *ArtifactConfigs.llvm_profdata_file,
         ArtifactConfigs.llvm_coverage_html_report,
-        ArtifactConfigs.llvm_coverage_info_file
+        ArtifactConfigs.llvm_coverage_info_file,
+        ArtifactConfigs.llvm_coverage_diff_html_report,
     ],
     dockers=DOCKERS,
     enable_dockers_manifest_merge=True,

@@ -1190,6 +1190,20 @@ class JobConfigs:
         ),
         timeout=3600,
     )
+    llvm_coverage_check_job = Job.Config(
+        name=JobNames.LLVM_COVERAGE_CHECK,
+        runs_on=RunnerLabels.AMD_MEDIUM,
+        run_in_docker="clickhouse/test-base",
+        requires=[
+            ArtifactNames.LLVM_COVERAGE_INFO_FILE,
+        ],
+        provides=[ArtifactNames.LLVM_COVERAGE_DIFF_HTML_REPORT],
+        command="python3 ./ci/jobs/check_llvm_coverage.py",
+        digest_config=Job.CacheDigestConfig(
+            include_paths=["./ci/jobs/check_llvm_coverage.py"],
+        ),
+        timeout=3600,
+    )
     # macOS smoke tests - run on GitHub-hosted macOS runners (no Docker)
     # No `requires` here because artifact download from S3 needs AWS credentials
     # which are not available on GitHub-hosted macOS runners.
