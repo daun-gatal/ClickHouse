@@ -1,4 +1,4 @@
--- Tags: no-random-settings
+-- Tags: no-parallel, no-random-settings
 SET use_columns_cache = 0;
 SET enable_reads_from_columns_cache = 0;
 SET enable_writes_to_columns_cache = 0;

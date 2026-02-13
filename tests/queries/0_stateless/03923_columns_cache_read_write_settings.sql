@@ -1,5 +1,5 @@
 -- Test columns cache read/write settings validation
--- Tags: no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 
 DROP TABLE IF EXISTS t_cache_settings;
 

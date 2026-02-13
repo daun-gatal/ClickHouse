@@ -1,6 +1,6 @@
 -- Test columns cache with partial granule reads and edge cases
 -- Specifically tests the bug fix for granule counting with append reads
--- Tags: no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;

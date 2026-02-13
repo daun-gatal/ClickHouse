@@ -1,5 +1,5 @@
 -- Test system.columns_cache table and SYSTEM commands
--- Tags: no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 
 -- Ensure cache is empty at start
 SYSTEM DROP COLUMNS CACHE;
