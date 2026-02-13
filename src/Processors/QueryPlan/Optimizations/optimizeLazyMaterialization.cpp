@@ -179,7 +179,7 @@ void removeDanglingNodes(ActionsDAG & dag)
     dag.removeUnusedActions();
 }
 
-/// This function transitively adds ActionsDAG::Node into the set, if all the arguments are alreay in set (or constants).
+/// This function transitively adds ActionsDAG::Node into the set, if all the arguments are already in set (or constants).
 /// It's useful because the main branch of lazy materialization can return more columns than actually required.
 /// As an example, for the query `select a from table prewhere b > 0 order by c limit 1`, only columns `c` is required for ORDER BY,
 /// but the column `a` is returned as well (it's need for PREWHERE).
