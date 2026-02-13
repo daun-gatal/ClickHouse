@@ -17,3 +17,5 @@ ${CLICKHOUSE_CLIENT} --enable_time_time64_type=1 --session_timezone="UTC"  -q "S
 ${CLICKHOUSE_CLIENT} --enable_time_time64_type=1 --session_timezone="UTC"  -q "select '===';"
 
 ${CLICKHOUSE_CLIENT} --enable_time_time64_type=1 --session_timezone="UTC"  -q "SELECT count(1) FROM paimonLocal('${USER_FILES_PATH}/data_minio/paimon_no_partition');"
+
+${CLICKHOUSE_CLIENT} --enable_time_time64_type=1 --session_timezone="UTC"  -q "SELECT count(1) FROM paimonLocal('${CUR_DIR}/data_minio/paimon_no_partition');" 2>&1 | grep -q 'PATH_ACCESS_DENIED' && echo "GOT ACCESS DENIED ERROR"
