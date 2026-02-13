@@ -1,6 +1,7 @@
 #include <Disks/DiskType.h>
 #include <Storages/PartitionCommands.h>
 #include <Storages/MergeTree/MergeTreeData.h>
+#include <Storages/MergeTree/ColumnsCache.h>
 
 #include <Access/AccessControl.h>
 #include <AggregateFunctions/AggregateFunctionCount.h>
@@ -5171,6 +5172,10 @@ void MergeTreeData::removePartsFromWorkingSet(MergeTreeTransaction * txn, const 
             removePartContributionToColumnAndSecondaryIndexSizes(part);
             removePartContributionToUncompressedBytesInPatches(part);
             removePartContributionToDataVolume(part);
+
+            /// Remove part from columns cache
+            if (auto columns_cache = getContext()->getColumnsCache())
+                columns_cache->removePart(part->uuid, part->name);
         }
 
         if (part->getState() == MergeTreeDataPartState::Active || clear_without_timeout)

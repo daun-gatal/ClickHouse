@@ -36,12 +36,17 @@ ColumnsCache::getIntersecting(
 
     std::lock_guard lock(interval_index_mutex);
 
-    ColumnIdentifier id{table_uuid, part_name, column_name};
-    auto it = interval_index.find(id);
-    if (it == interval_index.end())
+    PartIdentifier part_id{table_uuid, part_name};
+    auto part_it = interval_index.find(part_id);
+    if (part_it == interval_index.end())
         return result;
 
-    const auto & intervals = it->second;
+    const auto & columns_map = part_it->second;
+    auto column_it = columns_map.find(column_name);
+    if (column_it == columns_map.end())
+        return result;
+
+    const auto & intervals = column_it->second;
 
     /// Find the first interval that could potentially intersect
     /// (last interval with row_begin <= row_end)
@@ -78,6 +83,30 @@ ColumnsCache::getIntersecting(
     }
 
     return result;
+}
+
+void ColumnsCache::removePart(const UUID & table_uuid, const String & part_name)
+{
+    std::lock_guard lock(interval_index_mutex);
+
+    PartIdentifier part_id{table_uuid, part_name};
+    auto part_it = interval_index.find(part_id);
+    if (part_it == interval_index.end())
+        return;
+
+    /// Remove all cache entries for this part
+    const auto & columns_map = part_it->second;
+    for (const auto & [column_name, intervals] : columns_map)
+    {
+        for (const auto & [row_begin, key] : intervals)
+        {
+            /// Remove from the underlying cache
+            Base::remove(key);
+        }
+    }
+
+    /// Remove the part from the interval index
+    interval_index.erase(part_it);
 }
 
 }

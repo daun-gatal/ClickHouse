@@ -89,31 +89,32 @@ class ColumnsCache : public CacheBase<ColumnsCacheKey, ColumnsCacheEntry, Column
 private:
     using Base = CacheBase<ColumnsCacheKey, ColumnsCacheEntry, ColumnsCacheKeyHash, ColumnsCacheWeightFunction>;
 
-    /// Interval index: (UUID, part, column) -> sorted map of (row_begin -> key)
-    /// Allows efficient lookup of intersecting row ranges
-    struct ColumnIdentifier
+    /// Interval index organized by part, then column, then row ranges
+    /// This structure makes cleanup efficient when parts are removed
+    struct PartIdentifier
     {
         UUID table_uuid;
         String part_name;
-        String column_name;
 
-        bool operator==(const ColumnIdentifier & other) const = default;
+        bool operator==(const PartIdentifier & other) const = default;
     };
 
-    struct ColumnIdentifierHash
+    struct PartIdentifierHash
     {
-        size_t operator()(const ColumnIdentifier & id) const
+        size_t operator()(const PartIdentifier & id) const
         {
             SipHash hash;
             hash.update(id.table_uuid);
             hash.update(id.part_name);
-            hash.update(id.column_name);
             return hash.get64();
         }
     };
 
     using IntervalMap = std::map<size_t, ColumnsCacheKey>;
-    std::unordered_map<ColumnIdentifier, IntervalMap, ColumnIdentifierHash> interval_index;
+    using ColumnIntervalsMap = std::unordered_map<String, IntervalMap>;
+    using PartIndexMap = std::unordered_map<PartIdentifier, ColumnIntervalsMap, PartIdentifierHash>;
+
+    PartIndexMap interval_index;
     mutable std::mutex interval_index_mutex;
 
 public:
@@ -152,9 +153,13 @@ public:
 
         /// Update interval index
         std::lock_guard lock(interval_index_mutex);
-        ColumnIdentifier id{key.table_uuid, key.part_name, key.column_name};
-        interval_index[id][key.row_begin] = key;
+        PartIdentifier part_id{key.table_uuid, key.part_name};
+        interval_index[part_id][key.column_name][key.row_begin] = key;
     }
+
+    /// Remove all cached entries for a specific data part.
+    /// Should be called when a part is dropped, merged, or mutated.
+    void removePart(const UUID & table_uuid, const String & part_name);
 
 private:
     void onEntryRemoval(size_t weight_loss, const MappedPtr &) override
