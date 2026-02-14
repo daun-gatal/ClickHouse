@@ -292,7 +292,9 @@ size_t MergeTreeReaderWide::readRows(
                 }
                 else
                 {
-                    auto mutable_col = res_columns[pos]->assumeMutable();
+                    /// Use mutate() instead of assumeMutable() to properly handle shared columns
+                    /// If the column is shared with cache (use_count > 1), this will clone it
+                    auto mutable_col = IColumn::mutate(std::move(res_columns[pos]));
                     mutable_col->insertRangeFrom(*cut_column, 0, cut_column->size());
                     res_columns[pos] = std::move(mutable_col);
                 }
