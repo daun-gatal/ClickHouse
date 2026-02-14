@@ -408,19 +408,15 @@ size_t MergeTreeReaderWide::readRows(
                         size_t rows_just_read = res_columns[pos]->size() - column_sizes_before[pos];
                         if (rows_just_read > 0)
                         {
-                            /// Always create an independent copy for the cache.
-                            /// The caller may later modify the result column via assumeMutable()
-                            /// (which bypasses COW checks). A shared pointer would cause
-                            /// the cached data to be corrupted.
                             ColumnPtr column_to_cache;
                             if (column_sizes_before[pos] == 0)
                             {
-                                /// No appending, clone the whole column for the cache
-                                column_to_cache = res_columns[pos]->cloneResized(res_columns[pos]->size());
+                                /// No appending, can cache the whole column
+                                column_to_cache = res_columns[pos];
                             }
                             else
                             {
-                                /// Column was appended to, extract just the new portion (cut already clones)
+                                /// Column was appended to, extract just the new portion
                                 column_to_cache = res_columns[pos]->cut(column_sizes_before[pos], rows_just_read);
                             }
 
