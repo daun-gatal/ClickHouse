@@ -292,9 +292,7 @@ size_t MergeTreeReaderWide::readRows(
                 }
                 else
                 {
-                    /// Use mutate() instead of assumeMutable() to properly handle shared columns
-                    /// If the column is shared with cache (use_count > 1), this will clone it
-                    auto mutable_col = IColumn::mutate(std::move(res_columns[pos]));
+                    auto mutable_col = res_columns[pos]->assumeMutable();
                     mutable_col->insertRangeFrom(*cut_column, 0, cut_column->size());
                     res_columns[pos] = std::move(mutable_col);
                 }
@@ -379,15 +377,12 @@ size_t MergeTreeReaderWide::readRows(
                             ColumnPtr column_to_cache;
                             if (column_sizes_before[pos] == 0)
                             {
-                                /// No appending, clone the column to ensure cache independence
-                                /// We must clone because res_columns[pos] is returned to caller
-                                /// and if they reuse it across readRows() calls, mutations would corrupt cache
-                                column_to_cache = res_columns[pos]->cloneResized(res_columns[pos]->size());
+                                /// No appending, can cache the whole column
+                                column_to_cache = res_columns[pos];
                             }
                             else
                             {
                                 /// Column was appended to, extract just the new portion
-                                /// cut() already creates a new column, so no need to clone
                                 column_to_cache = res_columns[pos]->cut(column_sizes_before[pos], rows_just_read);
                             }
 
