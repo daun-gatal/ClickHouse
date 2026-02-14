@@ -255,8 +255,9 @@ void ThreadGroup::attachInternalProfileEventsQueue(const InternalProfileEventsQu
     shared_data.profile_queue_ptr = profile_queue;
 }
 
-ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, ProfileEvents::CountersPtr counters_scope, bool allow_existing_group) noexcept
+ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, ProfileEvents::CountersPtr counters_scope_, bool allow_existing_group) noexcept
     : thread_group(std::move(thread_group_))
+    , counters_scope(std::move(counters_scope_))
 {
     try
     {
@@ -265,6 +266,7 @@ ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadNam
 
         prev_thread = current_thread;
         prev_thread_group = CurrentThread::getGroup();
+        prev_counters_scope = CurrentThread::getCountersScope();
         if (prev_thread_group)
         {
             if (prev_thread_group == thread_group)
@@ -284,10 +286,8 @@ ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadNam
 
         LockMemoryExceptionInThread lock_memory_tracker(VariableContext::Global);
 
-        if (counters_scope)
-            CurrentThread::attachToCountersScope(counters_scope);
-
         CurrentThread::attachToGroup(thread_group);
+        CurrentThread::attachToCountersScope(counters_scope);
         setThreadName(thread_name);
     }
     catch (...)
@@ -314,6 +314,7 @@ ThreadGroupSwitcher::~ThreadGroupSwitcher()
             throw Exception(ErrorCodes::LOGICAL_ERROR, "ThreadGroupSwitcher-s are not properly nested: current thread group changed between scope start (master_thread_id {}) and end ({})", thread_group->master_thread_id, cur_thread_group ? "master_thread_id " + std::to_string(cur_thread_group->master_thread_id) : "nullptr");
         thread_group.reset();
 
+        CurrentThread::attachToCountersScope(prev_counters_scope);
         CurrentThread::detachFromGroupIfNotDetached();
 
         if (prev_thread_group)
