@@ -1,6 +1,6 @@
 -- Tags: no-fasttest
 
-DROP TABLE IF EXISTS test SYNC;
+DROP TABLE IF EXISTS part_profile_events SYNC;
 
 CREATE TABLE part_profile_events (key UInt32, value String) Engine=MergeTree ORDER BY key SETTINGS disk = 's3_disk';
 INSERT INTO part_profile_events SELECT number, toString(number) FROM numbers(100);

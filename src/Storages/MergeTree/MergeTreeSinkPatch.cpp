@@ -32,8 +32,7 @@ void MergeTreeSinkPatch::finishDelayedChunk()
 
     for (auto & partition : delayed_chunk->partitions)
     {
-        auto part_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = part_scope->startCollecting();
+        auto switch_guard = partition.part_counters->startCollecting();
 
         auto & part = partition.temp_part->part;
 
