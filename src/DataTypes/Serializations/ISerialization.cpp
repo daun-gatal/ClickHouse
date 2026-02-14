@@ -236,21 +236,11 @@ void ISerialization::deserializeBinaryBulkWithMultipleStreams(
     else if (ReadBuffer * stream = settings.getter(settings.path))
     {
         size_t prev_size = column->size();
-        auto mutable_column = IColumn::mutate(std::move(column));
+        auto mutable_column = column->assumeMutable();
         double avg_value_size_hint = 0.0;
         if (settings.get_avg_value_size_hint_callback)
             avg_value_size_hint = settings.get_avg_value_size_hint_callback(settings.path);
-        try
-        {
-            deserializeBinaryBulk(*mutable_column, *stream, rows_offset, limit, avg_value_size_hint);
-        }
-        catch (...)
-        {
-            /// Restore column so the caller's reference remains valid on exception
-            column = std::move(mutable_column);
-            throw;
-        }
-        column = std::move(mutable_column);
+        deserializeBinaryBulk(*mutable_column, *stream, rows_offset, limit, avg_value_size_hint);
         addColumnWithNumReadRowsToSubstreamsCache(cache, settings.path, column, column->size() - prev_size);
         if (settings.update_avg_value_size_hint_callback)
             settings.update_avg_value_size_hint_callback(settings.path, *column);
