@@ -377,8 +377,8 @@ size_t MergeTreeReaderWide::readRows(
                             ColumnPtr column_to_cache;
                             if (column_sizes_before[pos] == 0)
                             {
-                                /// No appending, clone the column to ensure cache independence
-                                column_to_cache = res_columns[pos]->cloneResized(res_columns[pos]->size());
+                                /// No appending, can cache the whole column
+                                column_to_cache = res_columns[pos];
                             }
                             else
                             {
