@@ -1,4 +1,4 @@
--- Tags: no-parallel
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Test for the columns cache feature.
 -- The columns cache stores deserialized columns so that subsequent reads
 -- of the same mark ranges do not need to decompress and deserialize again.
