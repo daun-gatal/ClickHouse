@@ -3300,7 +3300,7 @@ message ColumnDef {
 enum IndexType {
     IDX_set = 1;
     IDX_minmax = 2;
-    IDX_hypothesis = 3;
+    reserved 3;
     IDX_bloom_filter = 4;
     IDX_vector_similarity = 5;
     IDX_ngrambf_v1 = 6;
