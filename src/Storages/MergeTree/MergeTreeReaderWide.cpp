@@ -266,28 +266,9 @@ size_t MergeTreeReaderWide::readRows(
                     }
                     else
                     {
-                        /// Check if the cached block covers the full task range
-                        bool cache_covers_full_range = true;
-                        for (const auto & [key, col] : cached_columns)
-                        {
-                            if (key.row_end < row_end_max)
-                            {
-                                cache_covers_full_range = false;
-                                break;
-                            }
-                        }
-
-                        if (cache_covers_full_range)
-                        {
-                            serving_from_cache = true;
-                            LOG_TEST(log, "Serving from cache: cached blocks cover full task range");
-                        }
-                        else
-                        {
-                            LOG_TEST(log, "Skipping cache: cached blocks don't cover full task range "
-                                "[{}, {}), continuation reads would have wrong stream position",
-                                row_end_query, row_end_max);
-                        }
+                        LOG_TEST(log, "Skipping cache: max_rows_to_read ({}) < task rows ({}), "
+                            "continuation reads would have wrong stream position",
+                            max_rows_to_read, row_end_max - row_begin);
                     }
                 }
             }
@@ -440,7 +421,8 @@ size_t MergeTreeReaderWide::readRows(
 
                     for (size_t pos = 0; pos < num_columns; ++pos)
                     {
-                        if (res_columns[pos] && !res_columns[pos]->empty())
+                        if (res_columns[pos] && !res_columns[pos]->empty()
+                            && !partially_read_columns.contains(columns_to_read[pos].name))
                         {
                             size_t rows_to_cache = res_columns[pos]->size() - cache_column_sizes_at_task_start[pos];
                             if (rows_to_cache > 0)
