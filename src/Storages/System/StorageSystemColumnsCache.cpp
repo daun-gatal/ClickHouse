@@ -77,6 +77,11 @@ public:
 protected:
     Chunk generate() override
     {
+        if (done)
+            return {};
+
+        done = true;
+
         auto columns_cache = getContext()->getColumnsCache();
         if (!columns_cache)
             return {};
@@ -140,6 +145,7 @@ protected:
 
 private:
     const UInt64 max_block_size;
+    bool done = false;
 };
 
 }

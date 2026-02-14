@@ -249,8 +249,42 @@ size_t MergeTreeReaderWide::readRows(
 
                 if (consistent)
                 {
-                    serving_from_cache = true;
-                    LOG_TEST(log, "Serving from cache: all columns have consistent cached blocks");
+                    /// Only serve from cache if the cached block covers the ENTIRE task range.
+                    /// When readRows is called with max_rows_to_read < total rows in task,
+                    /// a subsequent continuation read (continue_reading=true) will follow.
+                    /// Since serving from cache does not advance the file stream position,
+                    /// the continuation read would start from the wrong position.
+                    /// To avoid this, only serve from cache when no continuation is needed.
+                    if (row_end_query >= row_end_max)
+                    {
+                        serving_from_cache = true;
+                        LOG_TEST(log, "Serving from cache: all columns have consistent cached blocks");
+                    }
+                    else
+                    {
+                        /// Check if the cached block covers the full task range
+                        bool cache_covers_full_range = true;
+                        for (const auto & [key, col] : cached_columns)
+                        {
+                            if (key.row_end < row_end_max)
+                            {
+                                cache_covers_full_range = false;
+                                break;
+                            }
+                        }
+
+                        if (cache_covers_full_range)
+                        {
+                            serving_from_cache = true;
+                            LOG_TEST(log, "Serving from cache: cached blocks cover full task range");
+                        }
+                        else
+                        {
+                            LOG_TEST(log, "Skipping cache: cached blocks don't cover full task range "
+                                "[{}, {}), continuation reads would have wrong stream position",
+                                row_end_query, row_end_max);
+                        }
+                    }
                 }
             }
         }

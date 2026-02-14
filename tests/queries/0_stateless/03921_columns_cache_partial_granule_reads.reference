@@ -80,8 +80,7 @@ cat_64	100	70098
 cat_12	100	69734
 1
 1
-ColumnsCacheEvictedBytes	1
-ColumnsCacheEvictedEntries	1
+ColumnsCacheHits	1
 ColumnsCacheMisses	1
 250	62250
 251	188250

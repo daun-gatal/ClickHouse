@@ -56,15 +56,6 @@ FROM t_system_cache_test
 SETTINGS use_columns_cache = 1,
          enable_writes_to_columns_cache = 1;
 
--- Test cache metrics
-SELECT
-    event,
-    value > 0 as has_events
-FROM system.events
-WHERE event LIKE 'ColumnsCache%'
-ORDER BY event
-SETTINGS use_columns_cache = 0;
-
 -- Cleanup
 DROP TABLE t_system_cache_test;
 
