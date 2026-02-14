@@ -292,7 +292,7 @@ size_t MergeTreeReaderWide::readRows(
                 }
                 else
                 {
-                    auto mutable_col = res_columns[pos]->assumeMutable();
+                    auto mutable_col = IColumn::mutate(std::move(res_columns[pos]));
                     mutable_col->insertRangeFrom(*cut_column, 0, cut_column->size());
                     res_columns[pos] = std::move(mutable_col);
                 }
