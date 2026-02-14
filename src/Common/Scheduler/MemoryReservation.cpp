@@ -38,14 +38,22 @@ MemoryReservation::MemoryReservation(ResourceLink link, const String & id_, Reso
     , approved_increment(CurrentMetrics::MemoryReservationApproved, 0)
     , demand_increment(CurrentMetrics::MemoryReservationDemand, 0)
 {
-    std::unique_lock lock(mutex);
     chassert(link.allocation_queue);
     actual_size = reserved_size;
-    queue.insertAllocation(*this, reserved_size);
+
     if (reserved_size > 0)
     {
+        // Scheduler may call increaseApproved() immediately after insert, so set state beforehand
         increase_enqueued = true;
         demand_increment.add(reserved_size);
+    }
+
+    // Lock ordering requires queue.mutex before allocation.mutex, so do not hold mutex here
+    queue.insertAllocation(*this, reserved_size);
+
+    if (reserved_size > 0)
+    {
+        std::unique_lock lock(mutex);
         auto admit_timer = CurrentThread::getProfileEvents().timer(ProfileEvents::MemoryReservationAdmitMicroseconds);
         cv.wait(lock, [this] { return kill_reason || fail_reason || actual_size <= allocated_size; });
         throwIfNeeded();
