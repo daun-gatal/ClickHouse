@@ -379,12 +379,15 @@ size_t MergeTreeReaderWide::readRows(
                             ColumnPtr column_to_cache;
                             if (column_sizes_before[pos] == 0)
                             {
-                                /// No appending, can cache the whole column
-                                column_to_cache = res_columns[pos];
+                                /// No appending, clone the column to ensure cache independence
+                                /// We must clone because res_columns[pos] is returned to caller
+                                /// and if they reuse it across readRows() calls, mutations would corrupt cache
+                                column_to_cache = res_columns[pos]->cloneResized(res_columns[pos]->size());
                             }
                             else
                             {
                                 /// Column was appended to, extract just the new portion
+                                /// cut() already creates a new column, so no need to clone
                                 column_to_cache = res_columns[pos]->cut(column_sizes_before[pos], rows_just_read);
                             }
 
