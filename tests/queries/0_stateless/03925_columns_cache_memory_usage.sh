@@ -48,7 +48,7 @@ SETTINGS
     max_block_size = 8192;
 "
 
-$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS;"
+$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS query_log;"
 
 # Get baseline memory
 BASELINE_MEMORY=$($CLICKHOUSE_CLIENT --query "
@@ -75,7 +75,7 @@ SETTINGS
     max_block_size = 8192;
 "
 
-$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS;"
+$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS query_log;"
 
 # Get cold cache memory
 COLD_CACHE_MEMORY=$($CLICKHOUSE_CLIENT --query "
@@ -102,7 +102,7 @@ SETTINGS
     max_block_size = 8192;
 "
 
-$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS;"
+$CLICKHOUSE_CLIENT --query "SYSTEM FLUSH LOGS query_log;"
 
 # Get warm cache memory
 WARM_CACHE_MEMORY=$($CLICKHOUSE_CLIENT --query "
