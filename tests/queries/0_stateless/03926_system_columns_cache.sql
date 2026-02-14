@@ -36,7 +36,8 @@ SELECT
     rows,
     bytes > 0 as has_bytes
 FROM system.columns_cache
-WHERE part LIKE '%t_system_cache_test%'
+WHERE database = currentDatabase()
+  AND part LIKE '%t_system_cache_test%'
 ORDER BY column, row_begin
 FORMAT Null;
 
@@ -46,7 +47,8 @@ SYSTEM DROP COLUMNS CACHE;
 -- Verify cache is empty after drop
 SELECT count(*) as cache_entries
 FROM system.columns_cache
-WHERE part LIKE '%t_system_cache_test%';
+WHERE database = currentDatabase()
+  AND part LIKE '%t_system_cache_test%';
 
 -- Read again to repopulate
 SELECT count(*)

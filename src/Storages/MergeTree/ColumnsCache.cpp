@@ -4,8 +4,6 @@ namespace ProfileEvents
 {
     extern const Event ColumnsCacheHits;
     extern const Event ColumnsCacheMisses;
-    extern const Event ColumnsCacheEvictedBytes;
-    extern const Event ColumnsCacheEvictedEntries;
 }
 
 namespace DB

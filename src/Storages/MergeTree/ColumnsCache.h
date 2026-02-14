@@ -9,8 +9,6 @@
 #include <Core/UUID.h>
 #include <Storages/MergeTree/MarkRange.h>
 
-
-
 namespace ProfileEvents
 {
     extern const Event ColumnsCacheHits;
