@@ -186,6 +186,7 @@ namespace ProfileEvents
 
         static const Event num_counters;
     };
+    using CountersPtr = std::shared_ptr<Counters>;
 
     enum class ValueType : uint8_t
     {

@@ -42,7 +42,7 @@ void ReplicatedMergeMutateTaskBase::onCompleted()
 bool ReplicatedMergeMutateTaskBase::executeStep()
 {
     /// Metrics will be saved in the local profile_counters.
-    ProfileEventsScope profile_events_scope(&profile_counters);
+    auto switch_guard = profile_counters->startCollecting();
 
     std::exception_ptr saved_exception;
 
@@ -144,7 +144,7 @@ bool ReplicatedMergeMutateTaskBase::executeImpl()
 {
     std::optional<ThreadGroupSwitcher> switcher;
     if (merge_mutate_entry)
-        switcher.emplace((*merge_mutate_entry)->thread_group, ThreadName::MERGE_MUTATE, /*allow_existing_group*/ true);
+        switcher.emplace((*merge_mutate_entry)->thread_group, ThreadName::MERGE_MUTATE, nullptr, /*allow_existing_group*/ true);
 
     auto remove_processed_entry = [&] () -> bool
     {

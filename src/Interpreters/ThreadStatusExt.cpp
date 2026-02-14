@@ -255,7 +255,7 @@ void ThreadGroup::attachInternalProfileEventsQueue(const InternalProfileEventsQu
     shared_data.profile_queue_ptr = profile_queue;
 }
 
-ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, bool allow_existing_group) noexcept
+ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, ProfileEvents::CountersPtr counters_scope, bool allow_existing_group) noexcept
     : thread_group(std::move(thread_group_))
 {
     try
@@ -283,6 +283,9 @@ ThreadGroupSwitcher::ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadNam
             throw Exception(ErrorCodes::LOGICAL_ERROR, "Tried to attach thread ({}) to a group, but the ThreadStatus is not initialized", thread_name);
 
         LockMemoryExceptionInThread lock_memory_tracker(VariableContext::Global);
+
+        if (counters_scope)
+            CurrentThread::attachToCountersScope(counters_scope);
 
         CurrentThread::attachToGroup(thread_group);
         setThreadName(thread_name);
@@ -474,21 +477,29 @@ void ThreadStatus::attachToGroup(const ThreadGroupPtr & thread_group_, bool chec
     attachToGroupImpl(thread_group_);
 }
 
-ProfileEvents::Counters * ThreadStatus::attachProfileCountersScope(ProfileEvents::Counters * performance_counters_scope)
+ProfileEvents::CountersPtr ThreadStatus::attachProfileCountersScope(ProfileEvents::CountersPtr performance_counters_scope)
 {
-    ProfileEvents::Counters * prev_counters = current_performance_counters;
+    auto prev_counters = current_performance_counters;
 
-    if (current_performance_counters == performance_counters_scope)
+    if (current_performance_counters.get() == performance_counters_scope.get())
         /// Allow to attach the same scope multiple times
         return prev_counters;
 
-    /// Avoid cycles when exiting local scope and attaching back to current thread counters
-    if (performance_counters_scope != &performance_counters)
+    if (performance_counters_scope)
         performance_counters_scope->setParent(&performance_counters);
 
     current_performance_counters = performance_counters_scope;
 
     return prev_counters;
+}
+
+ProfileEvents::CountersPtr ThreadStatus::getProfileCountersScope() const
+{
+    /// Check if there is no specified profile counters scope.
+    if (likely(!current_performance_counters))
+        return nullptr;
+
+    return current_performance_counters;
 }
 
 void ThreadStatus::TimePoint::setUp()
@@ -758,6 +769,20 @@ void CurrentThread::attachToGroupIfDetached(const ThreadGroupPtr & thread_group)
     if (unlikely(!current_thread))
         return;
     current_thread->attachToGroup(thread_group, false);
+}
+
+void CurrentThread::attachToCountersScope(ProfileEvents::CountersPtr profile_counters_scope)
+{
+    if (unlikely(!current_thread))
+        return;
+    current_thread->attachProfileCountersScope(profile_counters_scope);
+}
+
+ProfileEvents::CountersPtr CurrentThread::getCountersScope()
+{
+    if (unlikely(!current_thread))
+        return nullptr;
+    return current_thread->getProfileCountersScope();
 }
 
 void CurrentThread::finalizePerformanceCounters()

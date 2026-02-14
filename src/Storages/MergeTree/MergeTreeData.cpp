@@ -9446,7 +9446,8 @@ MovePartsOutcome MergeTreeData::moveParts(const CurrentlyMovingPartsTaggerPtr & 
     {
         Stopwatch stopwatch;
         MergeTreePartsMover::TemporaryClonedPart cloned_part;
-        ProfileEventsScope profile_events_scope;
+        auto profile_events_scope = std::make_shared<ProfileEventsScope>();
+        auto switch_guard = profile_events_scope->startCollecting();
 
         auto write_part_log = [&](const ExecutionStatus & execution_status)
         {
@@ -9458,7 +9459,7 @@ MovePartsOutcome MergeTreeData::moveParts(const CurrentlyMovingPartsTaggerPtr & 
                 cloned_part.part,
                 {moving_part.part},
                 nullptr,
-                profile_events_scope.getSnapshot());
+                profile_events_scope->getSnapshot());
         };
 
         // Register in global moves list (StorageSystemMoves)

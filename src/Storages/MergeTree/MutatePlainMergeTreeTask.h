@@ -9,6 +9,7 @@
 #include <Storages/MutationCommands.h>
 #include <Storages/MergeTree/MergeMutateSelectedEntry.h>
 
+#include <Common/ProfileEventsScope.h>
 
 namespace DB
 {
@@ -34,6 +35,7 @@ public:
         , merge_mutate_entry(std::move(merge_mutate_entry_))
         , table_lock_holder(std::move(table_lock_holder_))
         , task_result_callback(task_result_callback_)
+        , profile_counters(std::make_shared<ProfileEventsScope>())
     {
         for (auto & part : merge_mutate_entry->future_part->parts)
             priority.value += part->getBytesOnDisk();
@@ -79,7 +81,7 @@ private:
     IExecutableTask::TaskResultCallback task_result_callback;
     MutateTaskPtr mutate_task;
 
-    ProfileEvents::Counters profile_counters;
+    ProfileEventsScopePtr profile_counters;
 
     ContextMutablePtr task_context;
 

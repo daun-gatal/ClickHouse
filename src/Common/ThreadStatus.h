@@ -174,7 +174,8 @@ public:
     ///    Use this when running a task in a thread pool.
     ///  * If true, remembers the current group and restores it in destructor.
     /// If thread_name is not empty, calls setThreadName along the way; should be at most 15 bytes long.
-    ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, bool allow_existing_group = false) noexcept;
+    /// If counters_scope is empty - additional maybe configured profile events will not be populated by switched thread.
+    ThreadGroupSwitcher(ThreadGroupPtr thread_group_, ThreadName thread_name, ProfileEvents::CountersPtr counters_scope, bool allow_existing_group = false) noexcept;
     ~ThreadGroupSwitcher();
 
 private:
@@ -211,7 +212,7 @@ public:
     ProfileEvents::Counters performance_counters{VariableContext::Thread};
     /// Points to performance_counters by default.
     /// Could be changed to point to another object to calculate performance counters for some narrow scope.
-    ProfileEvents::Counters * current_performance_counters{&performance_counters};
+    ProfileEvents::CountersPtr current_performance_counters;
 
     MemoryTracker memory_tracker{VariableContext::Thread};
     /// Small amount of untracked memory (per thread atomic-less counter)
@@ -304,7 +305,8 @@ public:
 
     /// Returns pointer to the current profile counters to restore them back.
     /// Note: consequent call with new scope will detach previous scope.
-    ProfileEvents::Counters * attachProfileCountersScope(ProfileEvents::Counters * performance_counters_scope);
+    ProfileEvents::CountersPtr attachProfileCountersScope(ProfileEvents::CountersPtr performance_counters_scope);
+    ProfileEvents::CountersPtr getProfileCountersScope() const;
 
     void attachInternalTextLogsQueue(const InternalTextLogsQueuePtr & logs_queue,
                                      LogsLevel client_logs_level);

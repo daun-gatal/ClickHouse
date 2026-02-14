@@ -1194,7 +1194,7 @@ arrow::Status ArrowFlightHandler::evaluatePollDescriptor(const String & poll_des
         return *info->status;
     }
 
-    ThreadGroupSwitcher thread_group_switcher{poll_session->getThreadGroup(), ThreadName::ARROW_FLIGHT};
+    ThreadGroupSwitcher thread_group_switcher{poll_session->getThreadGroup(), ThreadName::ARROW_FLIGHT, nullptr};
     auto ch_to_arrow_converter = poll_session->getCHToArrowConverter();
     bool last = false;
 

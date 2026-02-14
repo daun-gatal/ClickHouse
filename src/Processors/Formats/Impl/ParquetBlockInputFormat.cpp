@@ -982,11 +982,11 @@ void ParquetBlockInputFormat::scheduleRowGroup(size_t row_group_batch_idx)
     status = RowGroupBatchState::Status::Running;
 
     pool->scheduleOrThrowOnError(
-        [this, row_group_batch_idx, thread_group = CurrentThread::getGroup()]()
+        [this, row_group_batch_idx, thread_group = CurrentThread::getGroup(), profile_counters_scope = CurrentThread::getCountersScope()]()
         {
             try
             {
-                ThreadGroupSwitcher switcher(thread_group, ThreadName::PARQUET_DECODER);
+                ThreadGroupSwitcher switcher(thread_group, ThreadName::PARQUET_DECODER, profile_counters_scope);
                 threadFunction(row_group_batch_idx);
             }
             catch (...)

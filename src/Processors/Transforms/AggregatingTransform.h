@@ -108,9 +108,9 @@ struct ManyAggregatedData
                 if (variant->aggregator)
                 {
                     pool->scheduleOrThrowOnError(
-                        [my_variant = std::move(variant), thread_group = CurrentThread::getGroup()]() mutable
+                        [my_variant = std::move(variant), thread_group = CurrentThread::getGroup(), profile_counters_scope = CurrentThread::getCountersScope()]() mutable
                         {
-                            ThreadGroupSwitcher switcher(thread_group, ThreadName::AGGREGATOR_DESTRUCTION);
+                            ThreadGroupSwitcher switcher(thread_group, ThreadName::AGGREGATOR_DESTRUCTION, profile_counters_scope);
                             my_variant.reset();
                         });
                 }

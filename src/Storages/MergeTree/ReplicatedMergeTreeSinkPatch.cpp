@@ -39,7 +39,7 @@ void ReplicatedMergeTreeSinkPatch::finishDelayed(const ZooKeeperWithFaultInjecti
     for (auto & partition : delayed_parts)
     {
         partition.temp_part->finalize();
-        ProfileEventsScope profile_events_scope;
+        auto switch_guard = partition.part_counters->startCollecting();
 
         auto & part = partition.temp_part->part;
         if (!part->info.isPatch())
@@ -53,13 +53,13 @@ void ReplicatedMergeTreeSinkPatch::finishDelayed(const ZooKeeperWithFaultInjecti
             if (!conflicts.empty())
                 throw Exception(ErrorCodes::LOGICAL_ERROR, "Patch part {} was deduplicated. It's a bug", part->name);
 
-            auto counters_snapshot = std::make_shared<ProfileEvents::Counters::Snapshot>(partition.part_counters.getPartiallyAtomicSnapshot());
+            auto counters_snapshot = partition.part_counters->getSnapshot();
             PartLog::addNewPart(storage.getContext(), PartLog::PartLogEntry(part, partition.elapsed_ns, counters_snapshot), deduplication_blocks_ids, ExecutionStatus(0));
             StorageReplicatedMergeTree::incrementInsertedPartsProfileEvent(part->getType());
         }
         catch (...)
         {
-            auto counters_snapshot = std::make_shared<ProfileEvents::Counters::Snapshot>(partition.part_counters.getPartiallyAtomicSnapshot());
+            auto counters_snapshot = partition.part_counters->getSnapshot();
             PartLog::addNewPart(storage.getContext(), PartLog::PartLogEntry(part, partition.elapsed_ns, counters_snapshot), deduplication_blocks_ids, ExecutionStatus::fromCurrentException(__PRETTY_FUNCTION__));
             throw;
         }

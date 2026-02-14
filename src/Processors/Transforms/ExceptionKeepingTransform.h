@@ -1,6 +1,10 @@
 #pragma once
+
 #include <Processors/IProcessor.h>
 #include <Processors/Port.h>
+
+#include <Common/ProfileEvents.h>
+
 #include <memory>
 
 namespace DB
@@ -68,10 +72,11 @@ public:
     InputPort & getInputPort() { return input; }
     OutputPort & getOutputPort() { return output; }
 
-    void setRuntimeData(ThreadGroupPtr thread_group_);
+    void setRuntimeData(ThreadGroupPtr thread_group_, ProfileEvents::CountersPtr profile_counters_scope_);
 
 private:
     ThreadGroupPtr thread_group = nullptr;
+    ProfileEvents::CountersPtr profile_counters_scope = nullptr;
 };
 
 }
