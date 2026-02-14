@@ -77,7 +77,7 @@ public:
         queue_cost += request->cost;
         bool was_empty = requests.empty();
         requests.push_back(*request);
-        SCHED_DBG("{} -- enqueue(cost={}, queued={})", getPath(), request->cost, requests.size());
+        SCHED_DBG("{} -- enqueue(cost={}, queued={})", basename, request->cost, requests.size());
         if (was_empty)
             scheduleActivation();
     }
@@ -115,7 +115,7 @@ public:
             if (requests.empty())
                 throw Exception(ErrorCodes::LOGICAL_ERROR,
                 "trying to cancel request (linked into another queue) from empty queue: {}",
-                getPath());
+                basename);
 
             requests.erase(requests.iterator_to(*request));
 

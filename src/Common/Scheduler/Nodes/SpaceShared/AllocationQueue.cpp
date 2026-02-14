@@ -69,7 +69,7 @@ void AllocationQueue::insertAllocation(ResourceAllocation & allocation, Resource
         allocation.increase.prepare(initial_size, IncreaseRequest::Kind::Pending);
         pending_allocations.push_back(allocation);
         pending_allocations_size += initial_size;
-        SCHED_DBG("{} -- insert(id={}, size={}, pending={})", getPath(), allocation.unique_id, initial_size, pending_allocations.size());
+        SCHED_DBG("{} -- insert(id={}, size={}, pending={})", basename, allocation.unique_id, initial_size, pending_allocations.size());
         if (&allocation == &*pending_allocations.begin() && increasing_allocations.empty()) // Only if it should be processed next
             scheduleActivation();
     }

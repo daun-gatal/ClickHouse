@@ -131,7 +131,9 @@ public:
     /// Get attached child by name (for tests only)
     virtual ISchedulerNode * getChild(const String & child_name) = 0;
 
-    /// Returns full path string using names of every parent
+    /// Returns full path string using names of every parent.
+    /// WARNING: Not thread-safe - only call from scheduler thread.
+    /// For logging outside scheduler thread, use `basename` instead.
     String getPath() const;
 
     /// Attach to a parent (used by attachChild)

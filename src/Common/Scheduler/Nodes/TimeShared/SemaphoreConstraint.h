@@ -119,7 +119,7 @@ public:
         requests--;
         cost -= request->cost;
         SCHED_DBG("{} -- released(cost={}, requests={}/{}, cost={}/{})",
-            getPath(), request->cost, requests, max_requests, cost, max_cost);
+            basename, request->cost, requests, max_requests, cost, max_cost);
 
         // Schedule activation on transition from inactive state
         if (!was_active && active())
