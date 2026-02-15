@@ -420,7 +420,7 @@ profiles:
         )
 
         # set profile file for the server
-        os.environ["LLVM_PROFILE_FILE"] = f"ft-server-%m.profraw"
+        os.environ["LLVM_PROFILE_FILE"] = f"ft-server-%p-%m.profraw"
 
         env = os.environ.copy()
         env["TSAN_OPTIONS"] = " ".join(
