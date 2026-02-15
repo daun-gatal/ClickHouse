@@ -1219,6 +1219,18 @@ static BlockIO executeQueryImpl(
 
                 chassert(ast2);
 
+                if (out_ast->getTreeHash(false) != ast2->getTreeHash(false))
+                {
+                    WriteBufferFromOwnString ast_tree1;
+                    WriteBufferFromOwnString ast_tree2;
+                    out_ast->dumpTree(ast_tree1);
+                    ast2->dumpTree(ast_tree2);
+
+                    throw Exception(ErrorCodes::LOGICAL_ERROR,
+                        "Inconsistent AST formatting: the original AST:\n{}\n differs from the result of parsing back formatted AST:\n{}\n",
+                        ast_tree1.str(), ast_tree2.str());
+                }
+
                 String formatted2 = format_ast(ast2);
 
                 if (formatted1 != formatted2)

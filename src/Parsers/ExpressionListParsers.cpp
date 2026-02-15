@@ -215,9 +215,6 @@ static bool modifyAST(ASTPtr ast, SubqueryFunctionType type)
     select_exp_list->children.push_back(aggregate_function);
 
     auto select_query = make_intrusive<ASTSelectQuery>();
-    select_query->children.push_back(select_exp_list);
-    select_query->children.push_back(tables_in_select);
-
     select_query->setExpression(ASTSelectQuery::Expression::SELECT, select_exp_list);
     select_query->setExpression(ASTSelectQuery::Expression::TABLES, tables_in_select);
 
