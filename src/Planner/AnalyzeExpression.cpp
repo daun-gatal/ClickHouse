@@ -53,10 +53,13 @@ ActionsDAG analyzeExpressionToActionsDAG(
 
     /// Collect AST column names to use for output renaming, so that callers
     /// that rely on ast->getColumnName() (e.g. findInOutputs) work correctly.
+    /// When add_aliases is true, use getAliasOrColumnName() to match the old
+    /// ExpressionAnalyzer behavior — the output column name should be the alias
+    /// if one is set (e.g. for ALIAS columns resolved via addTypeConversionToAST).
     std::vector<String> ast_column_names;
     ast_column_names.reserve(ast_children.size());
     for (const auto & child : ast_children)
-        ast_column_names.push_back(child->getColumnName());
+        ast_column_names.push_back(add_aliases ? child->getAliasOrColumnName() : child->getColumnName());
 
     auto execution_context = Context::createCopy(context);
 
