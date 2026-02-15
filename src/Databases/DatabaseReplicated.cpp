@@ -528,15 +528,19 @@ ReplicasInfo DatabaseReplicated::tryGetReplicasInfo(const ClusterPtr & cluster_)
                 auto replica_log_ptr = zk_res[2 * global_replica_index + 2];
 
                 UInt64 recovery_time = 0;
+                std::shared_ptr<DatabaseReplicatedDDLWorker> ddl_worker_local;
                 {
                     std::lock_guard lock(ddl_worker_mutex);
                     if (replica.is_local && ddl_worker)
-                        recovery_time = ddl_worker->getCurrentInitializationDurationMs();
+                    {
+                        ddl_worker_local = ddl_worker;
+                        recovery_time = ddl_worker_local->getCurrentInitializationDurationMs();
+                    }
                 }
 
                 replicas_info[global_replica_index] = ReplicaInfo{
                     .is_active = replica_active.error == Coordination::Error::ZOK,
-                    .unsynced_after_recovery = ddl_worker && ddl_worker->isUnsyncedAfterRecovery(),
+                    .unsynced_after_recovery = ddl_worker_local && ddl_worker_local->isUnsyncedAfterRecovery(),
                     .replication_lag = replica_log_ptr.error != Coordination::Error::ZNONODE ? std::optional(max_log_ptr - parse<UInt32>(replica_log_ptr.data)) : std::nullopt,
                     .recovery_time = recovery_time,
                 };
@@ -791,14 +795,16 @@ void DatabaseReplicated::createEmptyLogEntry(const ZooKeeperPtr & current_zookee
 bool DatabaseReplicated::waitForReplicaToProcessAllEntries(UInt64 timeout_ms, SyncReplicaMode mode)
 {
     chassert(mode == SyncReplicaMode::DEFAULT || mode == SyncReplicaMode::STRICT);
+    std::shared_ptr<DatabaseReplicatedDDLWorker> ddl_worker_local;
     {
         std::lock_guard lock{ddl_worker_mutex};
         if (!ddl_worker || is_probably_dropped)
             return false;
+        ddl_worker_local = ddl_worker;
     }
 
     if (mode == SyncReplicaMode::DEFAULT)
-        return ddl_worker->waitForReplicaToProcessAllEntries(timeout_ms);
+        return ddl_worker_local->waitForReplicaToProcessAllEntries(timeout_ms);
 
     Stopwatch elapsed;
     while (true)
@@ -807,10 +813,10 @@ bool DatabaseReplicated::waitForReplicaToProcessAllEntries(UInt64 timeout_ms, Sy
         if (elapsed_ms > timeout_ms)
             return false;
 
-        if (ddl_worker->waitForReplicaToProcessAllEntries(timeout_ms - elapsed_ms))
+        if (ddl_worker_local->waitForReplicaToProcessAllEntries(timeout_ms - elapsed_ms))
             return true;
 
-        UInt32 our_log_ptr = ddl_worker->getLogPointer();
+        UInt32 our_log_ptr = ddl_worker_local->getLogPointer();
         UInt32 max_log_ptr = parse<UInt32>(getZooKeeper()->get(fs::path(zookeeper_path) / "max_log_ptr"));
         bool became_synced = our_log_ptr + db_settings[DatabaseReplicatedSetting::max_replication_lag_to_enqueue] >= max_log_ptr;
         if (became_synced)
@@ -986,7 +992,7 @@ void DatabaseReplicated::initDDLWorkerUnlocked()
     chassert(!is_probably_dropped.load());
     chassert(!ddl_worker_initialized.load());
 
-    ddl_worker = std::make_unique<DatabaseReplicatedDDLWorker>(this, getContext());
+    ddl_worker = std::make_shared<DatabaseReplicatedDDLWorker>(this, getContext());
     ddl_worker->startup();
     ddl_worker_initialized = true;
 }
@@ -1270,7 +1276,12 @@ bool DatabaseReplicated::checkDigestValid(const ContextPtr & local_context) cons
     LOG_TEST(log, "Current in-memory metadata digest: {}", tables_metadata_digest);
 
     /// Database is probably being dropped
-    if (!local_context->getZooKeeperMetadataTransaction() && (!ddl_worker || !ddl_worker->isCurrentlyActive()))
+    std::shared_ptr<DatabaseReplicatedDDLWorker> ddl_worker_local;
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        ddl_worker_local = ddl_worker;
+    }
+    if (!local_context->getZooKeeperMetadataTransaction() && (!ddl_worker_local || !ddl_worker_local->isCurrentlyActive()))
         return true;
 
     /// SYSTEM RESTART REPLICA temporarily removes a table from the in-memory tables map
@@ -1374,13 +1385,15 @@ BlockIO DatabaseReplicated::tryEnqueueReplicatedDDL(const ASTPtr & query, Contex
     if (is_readonly)
         throw Exception(ErrorCodes::NO_ZOOKEEPER, "Database is in readonly mode, because it cannot connect to ZooKeeper");
 
-    String host_fqdn_id;
+    std::shared_ptr<DatabaseReplicatedDDLWorker> ddl_worker_local;
     {
         std::lock_guard lock{ddl_worker_mutex};
         if (!ddl_worker || is_probably_dropped)
             throw Exception(ErrorCodes::DATABASE_REPLICATION_FAILED, "Database is not initialized or is being dropped");
-        host_fqdn_id = ddl_worker->getCommonHostID();
+        ddl_worker_local = ddl_worker;
     }
+
+    String host_fqdn_id = ddl_worker_local->getCommonHostID();
 
     if (!flags.internal && (query_context->getClientInfo().query_kind != ClientInfo::QueryKind::INITIAL_QUERY))
         throw Exception(ErrorCodes::INCORRECT_QUERY, "It's not initial query. ON CLUSTER is not allowed for Replicated database.");
@@ -1394,7 +1407,7 @@ BlockIO DatabaseReplicated::tryEnqueueReplicatedDDL(const ASTPtr & query, Contex
     entry.setSettingsIfRequired(query_context);
     entry.tracing_context = OpenTelemetry::CurrentContext();
     entry.is_backup_restore = flags.distributed_backup_restore;
-    String node_path = ddl_worker->tryEnqueueAndExecuteEntry(entry, query_context, flags.internal);
+    String node_path = ddl_worker_local->tryEnqueueAndExecuteEntry(entry, query_context, flags.internal);
 
     Strings hosts_to_wait;
     Strings unfiltered_hosts = getZooKeeper()->getChildren(zookeeper_path + "/replicas");
@@ -2125,7 +2138,10 @@ void DatabaseReplicated::dropTable(ContextPtr local_context, const String & tabl
     waitDatabaseStarted();
 
     auto txn = local_context->getZooKeeperMetadataTransaction();
-    assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn || startsWith(table_name, ".inner_id.") || startsWith(table_name, ".tmp.inner_id."));
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn || startsWith(table_name, ".inner_id.") || startsWith(table_name, ".tmp.inner_id."));
+    }
     if (txn && txn->isInitialQuery() && !txn->isCreateOrReplaceQuery())
     {
         String metadata_zk_path = zookeeper_path + "/metadata/" + escapeForFileName(table_name);
@@ -2234,7 +2250,10 @@ void DatabaseReplicated::commitCreateTable(const ASTCreateQuery & query, const S
                        ContextPtr query_context)
 {
     auto txn = query_context->getZooKeeperMetadataTransaction();
-    assert(!ddl_worker->isCurrentlyActive() || txn);
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn);
+    }
 
     String statement = getObjectDefinitionFromCreateQuery(query.clone());
     if (txn && txn->isInitialQuery() && !txn->isCreateOrReplaceQuery())
@@ -2262,7 +2281,10 @@ void DatabaseReplicated::commitAlterTable(const StorageID & table_id,
                                           const String & statement, ContextPtr query_context)
 {
     auto txn = query_context->getZooKeeperMetadataTransaction();
-    assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn);
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn);
+    }
     if (txn && txn->isInitialQuery())
     {
         String metadata_zk_path = zookeeper_path + "/metadata/" + escapeForFileName(table_id.table_name);
@@ -2302,7 +2324,10 @@ void DatabaseReplicated::detachTablePermanently(ContextPtr local_context, const 
         throw Exception(ErrorCodes::SUPPORT_IS_DISABLED, "Support for DETACH TABLE PERMANENTLY is disabled");
 
     auto txn = local_context->getZooKeeperMetadataTransaction();
-    assert(!ddl_worker->isCurrentlyActive() || txn);
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn);
+    }
     if (txn && txn->isInitialQuery())
     {
         /// We have to remove metadata from zookeeper, because we do not distinguish permanently detached tables
@@ -2327,7 +2352,10 @@ void DatabaseReplicated::removeDetachedPermanentlyFlag(ContextPtr local_context,
     waitDatabaseStarted();
 
     auto txn = local_context->getZooKeeperMetadataTransaction();
-    assert(!ddl_worker->isCurrentlyActive() || txn);
+    {
+        std::lock_guard lock{ddl_worker_mutex};
+        assert(!ddl_worker || !ddl_worker->isCurrentlyActive() || txn);
+    }
     if (txn && txn->isInitialQuery() && attach)
     {
         String metadata_zk_path = zookeeper_path + "/metadata/" + escapeForFileName(table_name);
