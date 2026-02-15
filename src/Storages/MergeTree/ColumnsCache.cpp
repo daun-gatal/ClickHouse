@@ -53,10 +53,8 @@ ColumnsCache::getIntersecting(
         /// An interval [a, b) intersects if a < row_end AND b > row_begin.
         /// Since the map is sorted by row_begin (a), we iterate from the start
         /// and stop once a >= row_end (all subsequent entries also have a >= row_end).
-        for (auto interval_it = intervals.begin(); interval_it != intervals.end(); ++interval_it)
+        for (const auto & [interval_row_begin, key] : intervals)
         {
-            const auto & key = interval_it->second;
-
             /// Stop if we've gone past the query range
             if (key.row_begin >= row_end)
                 break;
