@@ -1,5 +1,5 @@
 -- Test columns cache with various intersecting ranges and String subcolumn optimization
--- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings, no-replicated-database
 
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;

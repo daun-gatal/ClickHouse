@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test system.columns_cache table and SYSTEM commands
-# Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
+# Tags: no-parallel, no-random-settings, no-random-merge-tree-settings, no-replicated-database
 
 CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=../shell_config.sh

@@ -1,5 +1,5 @@
 -- Test columns cache with complex composite types and partial reads
--- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings, no-replicated-database
 
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;

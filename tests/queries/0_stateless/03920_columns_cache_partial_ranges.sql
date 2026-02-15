@@ -1,5 +1,5 @@
 -- Test columns cache with partial range reads
--- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings, no-replicated-database
 
 SET max_threads = 1; -- Ensure deterministic read order for cache testing
 SET use_columns_cache = 1;

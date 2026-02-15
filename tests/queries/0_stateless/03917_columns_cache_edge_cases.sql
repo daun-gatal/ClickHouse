@@ -1,4 +1,4 @@
--- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
+-- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings, no-replicated-database
 -- Edge cases and stress tests for columns cache
 
 SET max_threads = 1; -- Ensure deterministic read order for cache testing
