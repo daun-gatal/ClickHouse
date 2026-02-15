@@ -1,7 +1,7 @@
 -- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 -- Edge cases and stress tests for columns cache
 
-SET max_threads = 1;
+SET max_threads = 1; -- Ensure deterministic read order for cache testing
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;
 SET enable_writes_to_columns_cache = 1;
@@ -66,12 +66,12 @@ INSERT INTO t_cache_order_limit SELECT number, (number * 7919) % 1000, toString(
 SYSTEM DROP COLUMNS CACHE;
 
 -- Query with ORDER BY and LIMIT
-SELECT id, value FROM t_cache_order_limit ORDER BY value LIMIT 10 SETTINGS use_columns_cache = 1;
-SELECT id, value FROM t_cache_order_limit ORDER BY value LIMIT 10 SETTINGS use_columns_cache = 1;
+SELECT id, value FROM t_cache_order_limit ORDER BY value, id LIMIT 10 SETTINGS use_columns_cache = 1;
+SELECT id, value FROM t_cache_order_limit ORDER BY value, id LIMIT 10 SETTINGS use_columns_cache = 1;
 
 -- Query with different LIMIT
-SELECT id, value FROM t_cache_order_limit ORDER BY value LIMIT 100 SETTINGS use_columns_cache = 1;
-SELECT id, value FROM t_cache_order_limit ORDER BY value LIMIT 100 SETTINGS use_columns_cache = 1;
+SELECT id, value FROM t_cache_order_limit ORDER BY value, id LIMIT 100 SETTINGS use_columns_cache = 1;
+SELECT id, value FROM t_cache_order_limit ORDER BY value, id LIMIT 100 SETTINGS use_columns_cache = 1;
 
 DROP TABLE t_cache_order_limit;
 

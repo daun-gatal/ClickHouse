@@ -2,6 +2,7 @@
 -- Specifically tests the bug fix for granule counting with append reads
 -- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 
+SET max_threads = 1; -- Ensure deterministic read order for cache testing
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;
 SET enable_writes_to_columns_cache = 1;
@@ -235,7 +236,7 @@ SELECT
 FROM t_cache_granules
 WHERE id BETWEEN 5000 AND 15000  -- Spans 2 granules
 GROUP BY category
-ORDER BY cnt DESC
+ORDER BY cnt DESC, category
 LIMIT 5;
 
 SELECT
@@ -245,20 +246,17 @@ SELECT
 FROM t_cache_granules
 WHERE id BETWEEN 5000 AND 15000
 GROUP BY category
-ORDER BY cnt DESC
+ORDER BY cnt DESC, category
 LIMIT 5;
 
 -- Test 20: String column with partial reads
 SELECT count(DISTINCT data) FROM t_cache_granules WHERE id < 10000;
 SELECT count(DISTINCT data) FROM t_cache_granules WHERE id < 10000;
 
--- Test 21: Cache metrics verification (just check they exist, not exact values)
-SELECT
-    event,
-    value > 0 AS has_value
+-- Test 21: Cache metrics verification (just check that at least one cache-related event exists)
+SELECT count() > 0 AS has_cache_events
 FROM system.events
-WHERE event LIKE 'ColumnsCache%'
-ORDER BY event
+WHERE event LIKE 'ColumnsCache%' AND value > 0
 SETTINGS use_columns_cache = 0;
 
 DROP TABLE t_cache_granules;

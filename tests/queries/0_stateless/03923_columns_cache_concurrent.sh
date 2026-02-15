@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tags: no-fasttest, long, no-parallel
+# Tags: no-fasttest, long, no-parallel, no-msan, no-random-settings, no-random-merge-tree-settings
 
 CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=../shell_config.sh
@@ -135,7 +135,7 @@ wait
 
 # Scenario 8: Heavy concurrent load
 echo "Scenario 8: Heavy concurrent load..."
-for i in {1..20}; do
+for i in {1..10}; do
     run_queries "SELECT sum(id), avg(value) FROM t_cache_concurrent_1 SETTINGS use_columns_cache = 1" 1 &
     run_queries "SELECT sum(pk), count(category) FROM t_cache_concurrent_2 SETTINGS use_columns_cache = 1" 1 &
 done

@@ -1,6 +1,7 @@
 -- Test columns cache with JSON column type
 -- Tags: no-parallel, no-random-settings, no-random-merge-tree-settings
 
+SET max_threads = 1; -- Ensure deterministic read order for cache testing
 SET use_columns_cache = 1;
 SET enable_reads_from_columns_cache = 1;
 SET enable_writes_to_columns_cache = 1;
@@ -64,14 +65,14 @@ SELECT 'Test 3: JSON with partial range reads';
 SYSTEM DROP COLUMNS CACHE;
 
 -- Read range [2000, 4000) - marks 4-8
-SELECT count(), any(data.name) FROM t_cache_json WHERE id >= 2000 AND id < 4000;
+SELECT count(), min(CAST(data.name AS String)) FROM t_cache_json WHERE id >= 2000 AND id < 4000;
 
 -- Read subset [2500, 3500) - should use cache for marks 5-7
-SELECT count(), any(data.city) FROM t_cache_json WHERE id >= 2500 AND id < 3500;
+SELECT count(), min(CAST(data.city AS String)) FROM t_cache_json WHERE id >= 2500 AND id < 3500;
 
 -- Verify both ranges cached
-SELECT count(), any(data.name) FROM t_cache_json WHERE id >= 2000 AND id < 4000;
-SELECT count(), any(data.city) FROM t_cache_json WHERE id >= 2500 AND id < 3500;
+SELECT count(), min(CAST(data.name AS String)) FROM t_cache_json WHERE id >= 2000 AND id < 4000;
+SELECT count(), min(CAST(data.city AS String)) FROM t_cache_json WHERE id >= 2500 AND id < 3500;
 
 -- =============================================================================
 -- Test 4: JSON string field access and caching
@@ -82,10 +83,10 @@ SELECT 'Test 4: JSON string field access';
 SYSTEM DROP COLUMNS CACHE;
 
 -- Access JSON string field
-SELECT count(), any(CAST(data.name AS String)) FROM t_cache_json WHERE id < 2000;
+SELECT count(), min(CAST(data.name AS String)) FROM t_cache_json WHERE id < 2000;
 
 -- Cached read
-SELECT count(), any(CAST(data.name AS String)) FROM t_cache_json WHERE id < 2000;
+SELECT count(), min(CAST(data.name AS String)) FROM t_cache_json WHERE id < 2000;
 
 -- =============================================================================
 -- Test 5: Complex JSON queries with cache
@@ -104,7 +105,7 @@ SELECT
 FROM t_cache_json
 WHERE id < 3000
 GROUP BY city
-ORDER BY cnt DESC
+ORDER BY cnt DESC, city
 LIMIT 5;
 
 -- Same query from cache
@@ -116,7 +117,7 @@ SELECT
 FROM t_cache_json
 WHERE id < 3000
 GROUP BY city
-ORDER BY cnt DESC
+ORDER BY cnt DESC, city
 LIMIT 5;
 
 -- =============================================================================
