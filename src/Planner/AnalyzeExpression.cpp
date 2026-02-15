@@ -6,9 +6,11 @@
 #include <Analyzer/Resolve/QueryAnalyzer.h>
 #include <Analyzer/TableNode.h>
 #include <Interpreters/Context.h>
+#include <Interpreters/PreparedSets.h>
 #include <Parsers/ASTExpressionList.h>
 #include <Planner/CollectSets.h>
 #include <Planner/CollectTableExpressionData.h>
+#include <Planner/Planner.h>
 #include <Planner/PlannerContext.h>
 #include <Planner/Utils.h>
 #include <DataTypes/DataTypesNumber.h>
@@ -83,6 +85,30 @@ ActionsDAG analyzeExpressionToActionsDAG(
     collectSourceColumns(expression_list, planner_context, false);
     collectSets(expression_list, *planner_context);
 
+    /// Build any subquery sets in place.  Unlike the normal query pipeline where
+    /// CreatingSetStep runs before other steps, standalone expression compilation
+    /// must execute subqueries immediately so that FutureSetFromSubquery sets are
+    /// ready when the expression is later evaluated (e.g. during TTL or constraint checks).
+    /// We must first build a QueryPlan from each subquery's query tree (collectSets only
+    /// stores the QueryTreeNodePtr, not a plan), then call buildSetInplace to execute it.
+    for (auto & subquery_set : planner_context->getPreparedSets().getSubqueries())
+    {
+        auto subquery_tree = subquery_set->detachQueryTree();
+        if (subquery_tree)
+        {
+            auto subquery_options = SelectQueryOptions{}.subquery();
+            subquery_options.ignore_limits = false;
+            Planner subquery_planner(
+                subquery_tree,
+                subquery_options,
+                std::make_shared<GlobalPlannerContext>(nullptr, nullptr, FiltersForTableExpressionMap{}));
+            subquery_planner.buildQueryPlanIfNeeded();
+            auto subquery_plan = std::move(subquery_planner).extractQueryPlan();
+            subquery_set->setQueryPlan(std::make_unique<QueryPlan>(std::move(subquery_plan)));
+        }
+        subquery_set->buildSetInplace(execution_context);
+    }
+
     ColumnNodePtrWithHashSet empty_correlated_columns_set;
     auto [actions, _] = buildActionsDAGFromExpressionNode(
         expression_list,
@@ -105,13 +131,15 @@ ActionsDAG analyzeExpressionToActionsDAG(
     }
     else
     {
-        /// Rename expression outputs to match AST column names, so that callers
-        /// using ast->getColumnName() can find them in the DAG.
+        /// Rename expression outputs in place to match AST column names, so that callers
+        /// using ast->getColumnName() can find them in the DAG.  We modify result_name
+        /// directly rather than wrapping in ALIAS nodes to preserve the original node type
+        /// (e.g. FUNCTION), which validators like MergeTreeIndexTextPreprocessor check.
         auto & outputs = actions.getOutputs();
         for (size_t i = 0; i < outputs.size(); ++i)
         {
             if (outputs[i]->result_name != ast_column_names[i])
-                outputs[i] = &actions.addAlias(*outputs[i], ast_column_names[i]);
+                const_cast<ActionsDAG::Node *>(outputs[i])->result_name = ast_column_names[i];
         }
 
         /// Add source columns to outputs to match ExpressionAnalyzer::getActions(false) behavior.
