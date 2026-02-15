@@ -16,6 +16,7 @@ from ci.praktika.utils import ContextManager, Shell, Utils
 repo_dir = Utils.cwd()
 temp_path = f"{repo_dir}/ci/tmp"
 
+
 BUGFIX_BUILD_TYPES = ["amd_asan", "amd_tsan", "amd_msan", "amd_ubsan", "amd_debug"]
 
 
@@ -36,8 +37,6 @@ def find_master_builds():
                 for bt in BUGFIX_BUILD_TYPES
             }
     return None
-
-
 MAX_FAILS_BEFORE_DROP = 5
 OOM_IN_DMESG_TEST_NAME = "OOM in dmesg"
 ncpu = Utils.cpu_count()
