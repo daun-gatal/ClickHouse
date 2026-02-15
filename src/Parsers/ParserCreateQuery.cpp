@@ -983,6 +983,9 @@ bool ParserCreateTableQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expe
         /// Remove from columns_list: ASTColumns::formatImpl does not output primary_key,
         /// so keeping it causes AST inconsistency after format+reparse.
         query->columns_list->reset(query->columns_list->primary_key);
+        /// Normalize children order: `set()` always appends, but the canonical order
+        /// (used by clone/format) expects primary_key before order_by.
+        query->storage->normalizeChildrenOrder();
     }
 
     if (query->columns_list && (query->columns_list->primary_key_from_columns))
@@ -996,6 +999,7 @@ bool ParserCreateTableQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expe
         query->storage->set(query->storage->primary_key, query->columns_list->primary_key_from_columns->ptr());
         /// Remove from columns_list for the same reason as above.
         query->columns_list->reset(query->columns_list->primary_key_from_columns);
+        query->storage->normalizeChildrenOrder();
     }
 
     tryGetIdentifierNameInto(as_database, query->as_database);
@@ -1682,6 +1686,7 @@ bool ParserCreateViewQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expec
         /// Remove from columns_list: ASTColumns::formatImpl does not output primary_key,
         /// so keeping it causes AST inconsistency after format+reparse.
         query->columns_list->reset(query->columns_list->primary_key);
+        storage_ref.normalizeChildrenOrder();
     }
 
     if (query->columns_list && (query->columns_list->primary_key_from_columns))
@@ -1695,6 +1700,7 @@ bool ParserCreateViewQuery::parseImpl(Pos & pos, ASTPtr & node, Expected & expec
         storage_ref.set(storage_ref.primary_key, query->columns_list->primary_key_from_columns->ptr());
         /// Remove from columns_list for the same reason as above.
         query->columns_list->reset(query->columns_list->primary_key_from_columns);
+        storage_ref.normalizeChildrenOrder();
     }
 
     boost::intrusive_ptr<ASTViewTargets> targets;
