@@ -298,6 +298,41 @@ size_t MergeTreeReaderWide::readRows(
             size_t offset_in_cache = row_begin - cached_row_begin;
             size_t rows_to_serve = std::min(row_end_query - row_begin, cached_row_end - row_begin);
 
+            /// Validate all cached columns have sufficient data before modifying res_columns.
+            /// The cache key's row range may not match the actual column size
+            /// if columns had different row counts when cached.
+            for (size_t pos = 0; pos < num_columns; ++pos)
+            {
+                const auto & cached_col = cached_columns[pos].second;
+                if (offset_in_cache + rows_to_serve > cached_col->size())
+                {
+                    LOG_WARNING(log, "Cache entry size mismatch for column {}: "
+                        "need offset {} + rows {} = {} but cached column has {} rows, "
+                        "falling back to disk read",
+                        columns_to_read[pos].name, offset_in_cache, rows_to_serve,
+                        offset_in_cache + rows_to_serve, cached_col->size());
+                    serving_from_cache = false;
+                    break;
+                }
+            }
+        }
+
+        if (serving_from_cache)
+        {
+            /// All cached columns validated - serve from cache
+            const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
+            size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t row_end_max = (current_task_last_mark < index_granularity.getMarksCount())
+                ? index_granularity.getMarkStartingRow(current_task_last_mark)
+                : data_part_info_for_read->getRowCount();
+            size_t row_end_query = std::min(row_begin + max_rows_to_read, row_end_max);
+
+            const auto & cached_row_begin = cached_columns[0].first.row_begin;
+            const auto & cached_row_end = cached_columns[0].first.row_end;
+
+            size_t offset_in_cache = row_begin - cached_row_begin;
+            size_t rows_to_serve = std::min(row_end_query - row_begin, cached_row_end - row_begin);
+
             for (size_t pos = 0; pos < num_columns; ++pos)
             {
                 const auto & column_to_read = columns_to_read[pos];
@@ -305,10 +340,8 @@ size_t MergeTreeReaderWide::readRows(
                 if (!append)
                     res_columns[pos] = column_to_read.type->createColumn(*serializations[pos]);
 
-                /// Find the cached column for this position
-                const auto & cached_col = cached_columns[pos].second;
-
                 /// Extract the needed subset from the cached block
+                const auto & cached_col = cached_columns[pos].second;
                 auto cut_column = cached_col->cut(offset_in_cache, rows_to_serve);
 
                 if (!append)
@@ -444,12 +477,17 @@ size_t MergeTreeReaderWide::readRows(
                                 ColumnPtr column_to_cache = res_columns[pos]->cut(
                                     cache_column_sizes_at_task_start[pos], rows_to_cache);
 
+                                /// Use per-column row_end based on actual rows in this column,
+                                /// not the shared total_rows_for_task which may be larger if
+                                /// other columns had more rows (e.g. for Nested or complex types).
+                                size_t column_row_end = cache_row_begin + rows_to_cache;
+
                                 ColumnsCacheKey cache_key{
                                     data_part_info_for_read->getTableUUID(),
                                     data_part_info_for_read->getPartName(),
                                     columns_to_read[pos].name,
                                     cache_row_begin,
-                                    row_end};
+                                    column_row_end};
 
                                 /// Check if this exact range is already in cache to avoid redundant writes.
                                 auto existing = columns_cache->get(cache_key);
@@ -460,7 +498,7 @@ size_t MergeTreeReaderWide::readRows(
                                     columns_cache->set(cache_key, entry);
 
                                     LOG_TEST(log, "Cached column: {}, row_begin={}, row_end={}, rows={}",
-                                        columns_to_read[pos].name, cache_row_begin, row_end, rows_to_cache);
+                                        columns_to_read[pos].name, cache_row_begin, column_row_end, rows_to_cache);
                                 }
                             }
                         }
