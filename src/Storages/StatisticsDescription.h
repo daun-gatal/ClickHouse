@@ -71,6 +71,5 @@ struct ColumnStatisticsDescription
 };
 
 StatisticsType stringToStatisticsType(String type);
-String statisticsTypeToString(StatisticsType type);
 
 }

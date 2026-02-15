@@ -20,6 +20,7 @@ public:
         const StorageMetadataPtr & metadata_snapshot_,
         const NamesAndTypesList & columns_list_,
         const MergeTreeIndices & skip_indices,
+        const ColumnsStatistics & statistics,
         CompressionCodecPtr default_codec_,
         MergeTreeIndexGranularityPtr index_granularity_ptr,
         TransactionID tid,
@@ -62,15 +63,17 @@ public:
     /// If part is new and contains projections, they should be added before invoking this method.
     Finalizer finalizePartAsync(
         const MergeTreeMutableDataPartPtr & new_part,
-        const GatheredData & gathered_data,
         bool sync,
-        const NamesAndTypesList * total_columns_list = nullptr);
+        const NamesAndTypesList * total_columns_list = nullptr,
+        MergeTreeData::DataPart::Checksums * additional_column_checksums = nullptr,
+        ColumnsSubstreams * additional_columns_substreams = nullptr);
 
     void finalizePart(
         const MergeTreeMutableDataPartPtr & new_part,
-        const GatheredData & gathered_data,
         bool sync,
-        const NamesAndTypesList * total_columns_list = nullptr);
+        const NamesAndTypesList * total_columns_list = nullptr,
+        MergeTreeData::DataPart::Checksums * additional_column_checksums = nullptr,
+        ColumnsSubstreams * additional_columns_substreams = nullptr);
 
     void finalizeIndexGranularity();
 
@@ -84,12 +87,13 @@ private:
     WrittenFiles finalizePartOnDisk(
         const MergeTreeMutableDataPartPtr & new_part,
         MergeTreeData::DataPart::Checksums & checksums,
-        const GatheredData & gathered_data);
+        ColumnsSubstreams * additional_columns_substreams = nullptr);
 
     NamesAndTypesList columns_list;
+    IMergeTreeDataPart::MinMaxIndex minmax_idx;
     size_t rows_count = 0;
     CompressionCodecPtr default_codec;
-    MergeTreeWriterSettings writer_settings;
+    WriteSettings write_settings;
 };
 
 using MergedBlockOutputStreamPtr = std::shared_ptr<MergedBlockOutputStream>;

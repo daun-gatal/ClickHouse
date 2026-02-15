@@ -14,6 +14,7 @@ MergedColumnOnlyOutputStream::MergedColumnOnlyOutputStream(
     const StorageMetadataPtr & metadata_snapshot_,
     const NamesAndTypesList & columns_list_,
     const MergeTreeIndices & indices_to_recalc,
+    const ColumnsStatistics & stats_to_recalc,
     CompressionCodecPtr default_codec,
     MergeTreeIndexGranularityPtr index_granularity_ptr,
     size_t part_uncompressed_bytes,
@@ -52,6 +53,7 @@ MergedColumnOnlyOutputStream::MergedColumnOnlyOutputStream(
         metadata_snapshot_,
         data_part->storage.getVirtualsPtr(),
         indices_to_recalc,
+        stats_to_recalc,
         data_part->getMarksFileExtension(),
         default_codec,
         writer_settings,
@@ -73,7 +75,10 @@ void MergedColumnOnlyOutputStream::finalizeIndexGranularity()
     writer->finalizeIndexGranularity();
 }
 
-MergeTreeData::DataPart::Checksums MergedColumnOnlyOutputStream::fillChecksums(MergeTreeData::MutableDataPartPtr & new_part, MergeTreeDataPartChecksums & all_checksums)
+MergeTreeData::DataPart::Checksums
+MergedColumnOnlyOutputStream::fillChecksums(
+    MergeTreeData::MutableDataPartPtr & new_part,
+    MergeTreeData::DataPart::Checksums & all_checksums)
 {
     /// Finish columns serialization.
     MergeTreeData::DataPart::Checksums checksums;
@@ -84,12 +89,10 @@ MergeTreeData::DataPart::Checksums MergedColumnOnlyOutputStream::fillChecksums(M
         all_checksums.files.erase(filename);
 
     for (const auto & [projection_name, projection_part] : new_part->getProjectionParts())
-    {
         checksums.addFile(
             projection_name + ".proj",
             projection_part->checksums.getTotalSizeOnDisk(),
             projection_part->checksums.getTotalChecksumUInt128());
-    }
 
     auto columns = new_part->getColumns();
     auto serialization_infos = new_part->getSerializationInfos();
