@@ -178,11 +178,9 @@ size_t MergeTreeReaderWide::readRows(
         /// Check if we can serve from cache
         /// Cache requires:
         /// - columns_cache is available
-        /// - rows_offset == 0 (we don't cache partial granule reads)
         /// - table has a valid UUID (Atomic/Replicated databases only)
         /// - this is not a continuing read (continue_reading == false)
         const bool cache_possible = columns_cache
-            && rows_offset == 0
             && data_part_info_for_read->getTableUUID() != UUIDHelpers::Nil;
         const bool cache_enabled = cache_possible && !continue_reading;
 
@@ -195,9 +193,12 @@ size_t MergeTreeReaderWide::readRows(
 
         if (cache_enabled && settings.enable_columns_cache_reads)
         {
-            /// Compute the row range we're trying to read
+            /// Compute the row range we're trying to read.
+            /// When rows_offset > 0, the first rows_offset rows are skipped, so the actual
+            /// data starts at row_begin + rows_offset.
             const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
-            size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t mark_row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t row_begin = mark_row_begin + rows_offset;
             size_t row_end_max = (current_task_last_mark < index_granularity.getMarksCount())
                 ? index_granularity.getMarkStartingRow(current_task_last_mark)
                 : data_part_info_for_read->getRowCount();
@@ -290,7 +291,8 @@ size_t MergeTreeReaderWide::readRows(
             /// Serve from cached columns
             /// The cached block may be larger than what we need, so calculate the subset to extract
             const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
-            size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t mark_row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t row_begin = mark_row_begin + rows_offset;
             size_t row_end_max = (current_task_last_mark < index_granularity.getMarksCount())
                 ? index_granularity.getMarkStartingRow(current_task_last_mark)
                 : data_part_info_for_read->getRowCount();
@@ -326,7 +328,8 @@ size_t MergeTreeReaderWide::readRows(
         {
             /// All cached columns validated - serve from cache
             const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
-            size_t row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t mark_row_begin = index_granularity.getMarkStartingRow(from_mark);
+            size_t row_begin = mark_row_begin + rows_offset;
             size_t row_end_max = (current_task_last_mark < index_granularity.getMarksCount())
                 ? index_granularity.getMarkStartingRow(current_task_last_mark)
                 : data_part_info_for_read->getRowCount();
@@ -379,7 +382,7 @@ size_t MergeTreeReaderWide::readRows(
             {
                 const auto & index_granularity = data_part_info_for_read->getIndexGranularity();
                 cache_write_pending = true;
-                cache_row_begin = index_granularity.getMarkStartingRow(from_mark);
+                cache_row_begin = index_granularity.getMarkStartingRow(from_mark) + rows_offset;
                 cache_task_last_mark = current_task_last_mark;
                 cache_column_sizes_at_task_start.resize(num_columns);
             }

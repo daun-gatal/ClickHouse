@@ -1,16 +1,7 @@
 import argparse
 import os
-import sys
 import time
 from pathlib import Path
-
-# Add repository root and ci directory to Python path for imports
-repo_root = Path(__file__).resolve().parent.parent.parent
-ci_dir = repo_root / "ci"
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
-if str(ci_dir) not in sys.path:
-    sys.path.insert(0, str(ci_dir))
 
 from ci.defs.defs import ToolSet, chcache_secret
 from ci.jobs.scripts.clickhouse_proc import ClickHouseProc
