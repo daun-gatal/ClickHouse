@@ -186,7 +186,7 @@ private:
 
     void finalizeImpl() override;
 
-    bool hasDeferredStatistics() const override { return has_deferred_statistics; }
+    bool hasDeferredStatistics() const override { return has_deferred_statistics && exception_message.empty(); }
     void writeDeferredStatisticsAndFinalize() override;
 
     void resetFormatterImpl() override
