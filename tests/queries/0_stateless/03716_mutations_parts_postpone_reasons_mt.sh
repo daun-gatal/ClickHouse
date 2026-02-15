@@ -27,6 +27,8 @@ $CLICKHOUSE_CLIENT --query "
     SYSTEM ENABLE FAILPOINT mt_select_parts_to_mutate_no_free_threads;
     SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
     SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
+    SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
+    SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
 "
 
 $CLICKHOUSE_CLIENT --query "
@@ -49,6 +51,8 @@ $CLICKHOUSE_CLIENT --query "
     ALTER TABLE mt UPDATE num = num + 2 WHERE 1;
     ALTER TABLE mt UPDATE num = num + 3 WHERE 1;
     SYSTEM ENABLE FAILPOINT mt_select_parts_to_mutate_no_free_threads;
+    SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
+    SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
     SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
     SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
 "
@@ -81,6 +85,8 @@ $CLICKHOUSE_CLIENT --query "
     SYSTEM ENABLE FAILPOINT mt_select_parts_to_mutate_max_part_size;
     SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
     SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
+    SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
+    SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
 "
 
 $CLICKHOUSE_CLIENT --query "
@@ -103,6 +109,8 @@ $CLICKHOUSE_CLIENT --query "
     ALTER TABLE mt UPDATE num = num + 2 WHERE 1;
     ALTER TABLE mt UPDATE num = num + 3 WHERE 1;
     SYSTEM ENABLE FAILPOINT mt_select_parts_to_mutate_max_part_size;
+    SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
+    SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
     SYSTEM NOTIFY FAILPOINT mt_merge_selecting_task_pause_when_scheduled;
     SYSTEM WAIT FAILPOINT mt_merge_selecting_task_pause_when_scheduled PAUSE;
 "
