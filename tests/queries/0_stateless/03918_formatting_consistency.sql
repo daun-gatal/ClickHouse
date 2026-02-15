@@ -72,6 +72,9 @@ SELECT 1 WHERE 1 >= ANY (SELECT 0);
 SELECT 1 WHERE 1 > ANY (SELECT 0);
 SELECT 1 WHERE 1 != ALL (SELECT 2);
 
+-- Special float values
+SELECT nan, -nan, inf, -inf;
+
 -- EXISTS
 SELECT 1 WHERE EXISTS (SELECT 1);
 
