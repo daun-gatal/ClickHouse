@@ -647,7 +647,7 @@ void ASTFunction::formatImplWithoutAlias(WriteBuffer & ostr, const FormatSetting
             }
         }
 
-        if (!written && name == "array"sv)
+        if (!written && name == "array"sv && isOperator())
         {
             ostr << '[';
             for (size_t i = 0; i < arguments->children.size(); ++i)
@@ -663,7 +663,7 @@ void ASTFunction::formatImplWithoutAlias(WriteBuffer & ostr, const FormatSetting
             written = true;
         }
 
-        if (!written && arguments->children.size() >= 2 && name == "tuple"sv && !(frame.need_parens && !alias.empty()))
+        if (!written && arguments->children.size() >= 2 && name == "tuple"sv && isOperator() && !(frame.need_parens && !alias.empty()))
         {
             ostr << '(';
 
