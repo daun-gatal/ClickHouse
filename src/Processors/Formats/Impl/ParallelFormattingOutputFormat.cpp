@@ -43,6 +43,7 @@ namespace DB
         auto formatter = internal_formatter_creator(out);
         formatter->setRowsReadBefore(rows_collected);
         formatter->setException(exception_message);
+        formatter->statistics = std::move(statistics);
 
         if (!collected_prefix && (need_write_prefix || started_prefix))
             formatter->writePrefix();
@@ -51,9 +52,20 @@ namespace DB
             formatter->writeSuffix();
 
         if (!collected_finalize)
+        {
             formatter->finalizeImpl();
+            if (formatter->hasDeferredStatistics())
+                formatter->writeDeferredStatisticsAndFinalize();
+        }
 
         formatter->finalizeBuffers();
+    }
+
+    void ParallelFormattingOutputFormat::writeDeferredStatisticsAndFinalize()
+    {
+        auto formatter = internal_formatter_creator(out);
+        formatter->statistics = std::move(statistics);
+        formatter->writeDeferredStatisticsAndFinalize();
     }
 
     void ParallelFormattingOutputFormat::addChunk(Chunk chunk, ProcessingUnitType type, bool can_throw_exception)

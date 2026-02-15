@@ -272,6 +272,9 @@ void PipelineExecutor::finalizeExecution()
 
     if (!all_processors_finished)
         throw Exception(ErrorCodes::LOGICAL_ERROR, "Pipeline stuck. Current state:\n{}\n{}", dumpPipeline(), tasks.dump());
+
+    if (finalize_callback)
+        finalize_callback();
 }
 
 void PipelineExecutor::executeSingleThread(size_t thread_num, IAcquiredSlot * cpu_slot)
