@@ -49,14 +49,11 @@ ColumnsCache::getIntersecting(
 
         const auto & intervals = column_it->second;
 
-        /// Find the first interval that could potentially intersect
-        /// (last interval with row_begin <= row_end)
-        auto start_it = intervals.upper_bound(row_end);
-        if (start_it != intervals.begin())
-            --start_it;
-
-        /// Collect all intersecting intervals
-        for (auto interval_it = start_it; interval_it != intervals.end(); ++interval_it)
+        /// Collect all intervals that intersect with [row_begin, row_end).
+        /// An interval [a, b) intersects if a < row_end AND b > row_begin.
+        /// Since the map is sorted by row_begin (a), we iterate from the start
+        /// and stop once a >= row_end (all subsequent entries also have a >= row_end).
+        for (auto interval_it = intervals.begin(); interval_it != intervals.end(); ++interval_it)
         {
             const auto & key = interval_it->second;
 

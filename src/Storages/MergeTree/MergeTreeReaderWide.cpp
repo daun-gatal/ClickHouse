@@ -243,16 +243,21 @@ size_t MergeTreeReaderWide::readRows(
 
             if (all_columns_have_cache)
             {
-                /// Verify all cached blocks have the same row range
-                size_t cached_row_end = cached_columns[0].first.row_end;
+                /// Verify all cached blocks have the same row range.
+                /// Different columns may have been cached by different queries
+                /// with different task boundaries, resulting in different row ranges.
+                /// We must check BOTH row_begin and row_end to ensure the offset
+                /// calculation is correct for all columns.
+                size_t cached_row_begin_0 = cached_columns[0].first.row_begin;
+                size_t cached_row_end_0 = cached_columns[0].first.row_end;
                 bool consistent = true;
                 for (const auto & [key, col] : cached_columns)
                 {
-                    if (key.row_end != cached_row_end)
+                    if (key.row_begin != cached_row_begin_0 || key.row_end != cached_row_end_0)
                     {
                         consistent = false;
-                        LOG_TEST(log, "Inconsistent cached block row_end: expected={}, got={}",
-                            cached_row_end, key.row_end);
+                        LOG_TEST(log, "Inconsistent cached block range: expected=[{}, {}), got=[{}, {})",
+                            cached_row_begin_0, cached_row_end_0, key.row_begin, key.row_end);
                         break;
                     }
                 }
