@@ -216,7 +216,7 @@ void MergeTreeBackgroundExecutor<Queue>::removeTasksCorrespondingToStorage(Stora
         tasks_to_wait.reserve(active.size());
         for (auto & item : active)
         {
-            if (item->task->getStorageID() == id)
+            if (item->storage_id == id)
             {
                 item->is_currently_deleting = true;
                 tasks_to_wait.push_back(item);
@@ -251,13 +251,12 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
         active.erase(std::remove(active.begin(), active.end(), item_), active.end());
     };
 
-    auto release_task = [this] (TaskRuntimeDataPtr && item_) TSA_REQUIRES(mutex)
+    /// Destroys the task object without holding the lock.
+    /// The item remains in the 'active' queue so that removeTasksCorrespondingToStorage()
+    /// can discover it and wait on is_done, preventing a race between task destruction
+    /// and storage shutdown.
+    auto destroy_task = [this] (TaskRuntimeDataPtr & item_)
     {
-        /// We have to call reset() under a lock, otherwise a race is possible.
-        /// Imagine, that task is finally completed (last execution returned false),
-        /// we removed the task from both queues, but still have pointer.
-        /// The thread that shutdowns storage will scan queues in order to find some tasks to wait for, but will find nothing.
-        /// So, the destructor of a task and the destructor of a storage will be executed concurrently.
         std::optional<String> captured_storage_id;
         std::optional<String> captured_query_id;
         bool captured_was_deleting = item_->is_currently_deleting;
@@ -273,8 +272,6 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
             }
             item_->resetTask();
         });
-        item_->is_done.set();
-        item_.reset();
 
 #if defined(SANITIZER) || !defined(NDEBUG)
         static constexpr auto THRESHOLD_MILLISECONDS = 10 * 1000ULL;
@@ -298,15 +295,25 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
         });
     };
 
+    /// Under the lock: erase the item from active, signal completion, release the shared_ptr.
+    auto finalize_item = [this, &erase_from_active] (TaskRuntimeDataPtr && item_) TSA_NO_THREAD_SAFETY_ANALYSIS
+    {
+        LockGuardWithStopWatch lock(mutex, log, __PRETTY_FUNCTION__);
+        erase_from_active(item_);
+        has_tasks.notify_one();
+        item_->is_done.set();
+        item_.reset();
+    };
+
     /// No TSA because of unique_lock
-    auto restart_task = [this, &erase_from_active, &release_task] (TaskRuntimeDataPtr && item_) TSA_NO_THREAD_SAFETY_ANALYSIS
+    auto restart_task = [this, &erase_from_active, &destroy_task, &finalize_item] (TaskRuntimeDataPtr && item_) TSA_NO_THREAD_SAFETY_ANALYSIS
     {
         {
             LockGuardWithStopWatch lock(mutex, log, __PRETTY_FUNCTION__);
-            erase_from_active(item_);
 
             if (!item_->is_currently_deleting)
             {
+                erase_from_active(item_);
                 /// After the `guard` destruction `item` has to be in moved from state
                 /// Not to own the object it points to.
                 /// Otherwise the destruction of the task won't be ordered with the destruction of the
@@ -315,6 +322,8 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
                 has_tasks.notify_one();
                 return;
             }
+            /// is_currently_deleting: the item stays in 'active' during cancel/destroy
+            /// so that removeTasksCorrespondingToStorage() can find it and wait on is_done.
         }
 
         /// No lock here.
@@ -323,36 +332,11 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
             item_->cancel();
         }
 
-        LockGuardWithStopWatch lock(mutex, log, __PRETTY_FUNCTION__);
-        release_task(std::move(item_));
+        destroy_task(item_);
+        finalize_item(std::move(item_));
     };
 
     String query_id;
-
-    auto complete_task = [this, &erase_from_active, &release_task] (TaskRuntimeDataPtr && item_)
-    {
-        LockGuardWithStopWatch lock(mutex, log, __PRETTY_FUNCTION__);
-
-        erase_from_active(item_);
-        has_tasks.notify_one();
-
-        {
-            Stopwatch watch_on_completed;
-            ALLOW_ALLOCATIONS_IN_SCOPE;
-            /// In a situation of a lack of memory this method can throw an exception,
-            /// because it may interact somehow with BackgroundSchedulePool, which may allocate memory
-            /// But it is rather safe, because we have try...catch block here, and another one in ThreadPool.
-            item_->task->onCompleted();
-
-            if (watch_on_completed.elapsedMilliseconds() > 1000)
-            {
-                LOG_WARNING(log, "Execution of callback took {} ms in [{}], Stack trace (when copying this message, always include the lines below): \n {}",
-                    watch_on_completed.elapsedMilliseconds(), __PRETTY_FUNCTION__, StackTrace().toString());
-            }
-        }
-
-        release_task(std::move(item_));
-    };
 
     bool need_execute_again = false;
 
@@ -364,7 +348,24 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
 
         if (!need_execute_again)
         {
-            complete_task(std::move(item));
+            /// Task completed. Call onCompleted() and destroy the task without holding the lock.
+            /// The item remains in 'active' so removeTasksCorrespondingToStorage() can find it.
+            {
+                Stopwatch watch_on_completed;
+                /// In a situation of a lack of memory this method can throw an exception,
+                /// because it may interact somehow with BackgroundSchedulePool, which may allocate memory
+                /// But it is rather safe, because we have try...catch block here, and another one in ThreadPool.
+                item->task->onCompleted();
+
+                if (watch_on_completed.elapsedMilliseconds() > 1000)
+                {
+                    LOG_WARNING(log, "Execution of callback took {} ms in [{}], Stack trace (when copying this message, always include the lines below): \n {}",
+                        watch_on_completed.elapsedMilliseconds(), __PRETTY_FUNCTION__, StackTrace().toString());
+                }
+            }
+
+            destroy_task(item);
+            finalize_item(std::move(item));
             return;
         }
     }
@@ -387,11 +388,10 @@ void MergeTreeBackgroundExecutor<Queue>::routine(TaskRuntimeDataPtr item)
         }
 
         /// Release the task with exception context.
-        /// An exception context is needed to proper delete write buffers without finalization
-        LockGuardWithStopWatch lock(mutex, log, __PRETTY_FUNCTION__);
-        erase_from_active(item);
-        has_tasks.notify_one();
-        release_task(std::move(item));
+        /// An exception context is needed to proper delete write buffers without finalization.
+        /// The item remains in 'active' so removeTasksCorrespondingToStorage() can find it.
+        destroy_task(item);
+        finalize_item(std::move(item));
         return;
     }
 

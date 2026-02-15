@@ -62,6 +62,7 @@ public:
     void trigger();
     void postpone();
     void finish();
+    void setStorageID(const StorageID & new_id);
 
     bool scheduleMergeMutateTask(ExecutableTaskPtr merge_task);
     bool scheduleFetchTask(ExecutableTaskPtr fetch_task);

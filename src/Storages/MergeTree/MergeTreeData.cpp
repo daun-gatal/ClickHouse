@@ -3840,6 +3840,8 @@ void MergeTreeData::renameInMemory(const StorageID & new_table_id)
 {
     IStorage::renameInMemory(new_table_id);
     log.store(new_table_id.getNameForLogs());
+    background_operations_assignee.setStorageID(new_table_id);
+    background_moves_assignee.setStorageID(new_table_id);
 }
 
 void MergeTreeData::dropAllData()

@@ -118,6 +118,12 @@ void BackgroundJobsAssignee::start()
     holder->activateAndSchedule();
 }
 
+void BackgroundJobsAssignee::setStorageID(const StorageID & new_id)
+{
+    std::lock_guard lock(holder_mutex);
+    storage_id = new_id;
+}
+
 void BackgroundJobsAssignee::finish()
 {
     /// No lock here, because scheduled tasks could call trigger method
