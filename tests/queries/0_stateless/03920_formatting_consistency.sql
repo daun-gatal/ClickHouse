@@ -88,6 +88,7 @@ SELECT [1, 2, 3][1];
 SELECT map('a', 1, 'b', 2)['a'];
 SELECT (1, 'hello', [1, 2]).1;
 SELECT (1, 'hello', [1, 2]).2;
+SELECT tupleElement(('hello', 'world'), 3, []);
 
 -- Lambda
 SELECT arrayMap(x -> x + 1, [1, 2, 3]);
@@ -218,6 +219,10 @@ EXPLAIN AST SELECT 1;
 EXPLAIN SYNTAX SELECT 1;
 EXPLAIN PLAN SELECT 1;
 
+-- Data types with empty arguments
+CREATE TABLE test_fmt_empty_tuple (x Array(Tuple())) ENGINE = Memory;
+DROP TABLE test_fmt_empty_tuple;
+
 -- DDL
 CREATE TABLE test_fmt_mt (x UInt8) ENGINE = MergeTree ORDER BY x;
 CREATE TABLE test_fmt_mt2 (x UInt8, y String DEFAULT 'foo') ENGINE = MergeTree ORDER BY x;
@@ -266,16 +271,16 @@ DROP TABLE test_fmt_mem2;
 DROP TABLE test_fmt_replacing;
 
 -- Access control
-CREATE USER test_fmt_user1;
-CREATE USER test_fmt_user2 IDENTIFIED WITH plaintext_password BY 'abc';
-CREATE ROLE test_fmt_role1;
-DROP ROLE test_fmt_role1;
-DROP USER test_fmt_user1;
-DROP USER test_fmt_user2;
+CREATE USER IF NOT EXISTS test_fmt_user1;
+CREATE USER IF NOT EXISTS test_fmt_user2 IDENTIFIED WITH plaintext_password BY 'abc';
+CREATE ROLE IF NOT EXISTS test_fmt_role1;
+DROP ROLE IF EXISTS test_fmt_role1;
+DROP USER IF EXISTS test_fmt_user1;
+DROP USER IF EXISTS test_fmt_user2;
 
 -- Database
 CREATE DATABASE IF NOT EXISTS test_fmt_db;
-DROP DATABASE test_fmt_db;
+DROP DATABASE IF EXISTS test_fmt_db;
 
 -- FORMAT
 SELECT 1 FORMAT Null;

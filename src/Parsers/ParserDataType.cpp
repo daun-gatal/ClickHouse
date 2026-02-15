@@ -520,7 +520,12 @@ bool ParserDataType::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
         return false;
     ++pos;
 
-    data_type_node->children.push_back(expr_list_args);
+    /// Only attach arguments if non-empty, so that e.g. `Tuple()` produces the same
+    /// AST as `Tuple` (no children). This keeps the formatting roundtrip consistent:
+    /// formatImpl omits parentheses for empty arguments, and reparsing without
+    /// parentheses produces a node with no children.
+    if (!expr_list_args->children.empty())
+        data_type_node->children.push_back(expr_list_args);
 
     node = data_type_node;
     return true;
