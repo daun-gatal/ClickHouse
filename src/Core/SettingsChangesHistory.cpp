@@ -54,6 +54,7 @@ const VersionToSettingsChangesMap & getSettingsChangesHistory()
             {"use_columns_cache", false, false, "New setting to enable columns cache for MergeTree tables"},
             {"enable_reads_from_columns_cache", true, true, "New setting to control reading from columns cache"},
             {"enable_writes_to_columns_cache", true, true, "New setting to control writing to columns cache"},
+            {"output_format_arrow_date_as_uint16", true, false, "Write Date as Arrow DATE32 instead of plain UInt16 by default."},
         });
         addSettingsChanges(settings_changes_history, "26.1",
         {
