@@ -5,6 +5,12 @@
 #include <Analyzer/QueryTreeBuilder.h>
 #include <Analyzer/Resolve/QueryAnalyzer.h>
 #include <Analyzer/TableNode.h>
+#include <Columns/IColumn.h>
+#include <Columns/ColumnConst.h>
+#include <Common/FieldVisitorToString.h>
+#include <Functions/IFunctionAdaptors.h>
+#include <Functions/indexHint.h>
+#include <IO/WriteBufferFromString.h>
 #include <Interpreters/Context.h>
 #include <Interpreters/PreparedSets.h>
 #include <Parsers/ASTExpressionList.h>
@@ -85,12 +91,21 @@ ActionsDAG analyzeExpressionToActionsDAG(
     collectSourceColumns(expression_list, planner_context, false);
     collectSets(expression_list, *planner_context);
 
-    /// Build any subquery sets in place.  Unlike the normal query pipeline where
-    /// CreatingSetStep runs before other steps, standalone expression compilation
-    /// must execute subqueries immediately so that FutureSetFromSubquery sets are
-    /// ready when the expression is later evaluated (e.g. during TTL or constraint checks).
-    /// We must first build a QueryPlan from each subquery's query tree (collectSets only
-    /// stores the QueryTreeNodePtr, not a plan), then call buildSetInplace to execute it.
+    ColumnNodePtrWithHashSet empty_correlated_columns_set;
+    auto [actions, _] = buildActionsDAGFromExpressionNode(
+        expression_list,
+        {},
+        planner_context,
+        empty_correlated_columns_set,
+        false /* use_column_identifier_as_action_node_name */);
+
+    /// Build subquery sets in place AFTER constructing the DAG.  Building before
+    /// DAG construction would make the sets "ready", causing PlannerActionsVisitor
+    /// to constant-fold expressions like exists((SELECT 1)) — which then fails the
+    /// "key cannot contain constants" check for partition/sorting keys.
+    /// By building after, the DAG sees unready sets and keeps them as function calls.
+    /// The sets are still ready by the time the expression is actually evaluated
+    /// (e.g. during TTL checks, constraint validation, or INSERT).
     for (auto & subquery_set : planner_context->getPreparedSets().getSubqueries())
     {
         auto subquery_tree = subquery_set->detachQueryTree();
@@ -109,13 +124,53 @@ ActionsDAG analyzeExpressionToActionsDAG(
         subquery_set->buildSetInplace(execution_context);
     }
 
-    ColumnNodePtrWithHashSet empty_correlated_columns_set;
-    auto [actions, _] = buildActionsDAGFromExpressionNode(
-        expression_list,
-        {},
-        planner_context,
-        empty_correlated_columns_set,
-        false /* use_column_identifier_as_action_node_name */);
+    /// After building subquery sets in place, mark the corresponding DAG column
+    /// nodes as deterministic constants.  The sets have been evaluated and are now
+    /// fixed values, so assertDeterministic() should not reject them (e.g. when
+    /// used in partition key expressions like PARTITION BY exists((SELECT 1))).
+    for (const auto & node : actions.getNodes())
+    {
+        if (node.type == ActionsDAG::ActionType::COLUMN
+            && node.result_name.starts_with("__set_")
+            && !node.is_deterministic_constant)
+        {
+            const_cast<ActionsDAG::Node &>(node).is_deterministic_constant = true;
+        }
+    }
+
+    /// FunctionIndexHint hides its column arguments in an internal ActionsDAG,
+    /// making them invisible as inputs of the main DAG.  For key expression
+    /// analysis (e.g. partition key minmax index), those columns must be visible
+    /// so that getRequiredColumnsWithTypes() reports them.
+    std::vector<std::pair<String, DataTypePtr>> index_hint_columns;
+    for (const auto & node : actions.getNodes())
+    {
+        if (node.type == ActionsDAG::ActionType::FUNCTION && node.function_base)
+        {
+            if (const auto * adaptor = typeid_cast<const FunctionToFunctionBaseAdaptor *>(node.function_base.get()))
+            {
+                if (const auto * index_hint = typeid_cast<const FunctionIndexHint *>(adaptor->getFunction().get()))
+                {
+                    for (const auto * input : index_hint->getActions().getInputs())
+                        index_hint_columns.emplace_back(input->result_name, input->result_type);
+                }
+            }
+        }
+    }
+    for (const auto & [name, type] : index_hint_columns)
+    {
+        bool found = false;
+        for (const auto * existing : actions.getInputs())
+        {
+            if (existing->result_name == name)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            actions.addInput(name, type);
+    }
 
     if (add_aliases)
     {
@@ -131,10 +186,41 @@ ActionsDAG analyzeExpressionToActionsDAG(
     }
     else
     {
-        /// Rename expression outputs in place to match AST column names, so that callers
-        /// using ast->getColumnName() can find them in the DAG.  We modify result_name
-        /// directly rather than wrapping in ALIAS nodes to preserve the original node type
-        /// (e.g. FUNCTION), which validators like MergeTreeIndexTextPreprocessor check.
+        /// Rename constant and function nodes to match AST naming conventions.
+        /// PlannerActionsVisitor names constants with type suffixes (e.g. "1_UInt8")
+        /// while the old ExpressionAnalyzer used AST-based names (e.g. "1").
+        /// KeyCondition matches key subexpression names against WHERE clause names
+        /// derived from ASTs, so intermediate nodes must use AST-compatible naming.
+        /// Process in topological order (getNodes() returns leaves first) so that
+        /// function node names are rebuilt from already-renamed children.
+        for (const auto & node : actions.getNodes())
+        {
+            if (node.type == ActionsDAG::ActionType::COLUMN
+                && node.column && isColumnConst(*node.column)
+                && !node.result_name.starts_with("__set_"))
+            {
+                const auto & constant = assert_cast<const ColumnConst &>(*node.column);
+                const_cast<ActionsDAG::Node &>(node).result_name
+                    = applyVisitor(FieldVisitorToString(), constant.getField());
+            }
+            else if (node.type == ActionsDAG::ActionType::FUNCTION && node.function_base)
+            {
+                WriteBufferFromOwnString buf;
+                buf << node.function_base->getName() << '(';
+                for (size_t i = 0; i < node.children.size(); ++i)
+                {
+                    if (i > 0)
+                        buf << ", ";
+                    buf << node.children[i]->result_name;
+                }
+                buf << ')';
+                const_cast<ActionsDAG::Node &>(node).result_name = buf.str();
+            }
+        }
+
+        /// Rename outputs to match AST column names (overrides the above for
+        /// top-level expressions where AST formatting may differ from the
+        /// recursive function-name rebuild).
         auto & outputs = actions.getOutputs();
         for (size_t i = 0; i < outputs.size(); ++i)
         {
