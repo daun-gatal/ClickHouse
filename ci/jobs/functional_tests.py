@@ -36,6 +36,7 @@ def find_master_builds():
             }
     return None
 
+
 class JobStages(metaclass=MetaClasses.WithIter):
     INSTALL_CLICKHOUSE = "install"
     START = "start"

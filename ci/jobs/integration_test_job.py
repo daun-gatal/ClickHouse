@@ -37,6 +37,8 @@ def find_master_builds():
                 for bt in BUGFIX_BUILD_TYPES
             }
     return None
+
+
 MAX_FAILS_BEFORE_DROP = 5
 OOM_IN_DMESG_TEST_NAME = "OOM in dmesg"
 ncpu = Utils.cpu_count()
