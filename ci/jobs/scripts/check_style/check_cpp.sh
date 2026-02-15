@@ -86,6 +86,7 @@ EXTERN_TYPES_EXCLUDES=(
     ProfileEvents::keeper_profile_events
     ProfileEvents::CountersIncrement
     ProfileEvents::CountersPtr
+    ProfileEvents::CountersSeq
     ProfileEvents::size
     ProfileEvents::checkCPUOverload
 
