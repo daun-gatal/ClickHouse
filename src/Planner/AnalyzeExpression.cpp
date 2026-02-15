@@ -24,6 +24,34 @@ ActionsDAG analyzeExpressionToActionsDAG(
     const ContextPtr & context,
     bool add_aliases)
 {
+    /// Ensure the AST is an expression list, because QueryNode projection expects a ListNode.
+    ASTPtr expr_list_ast = expression_ast;
+    if (!expr_list_ast->as<ASTExpressionList>())
+    {
+        auto wrapper = make_intrusive<ASTExpressionList>();
+        wrapper->children.push_back(expr_list_ast);
+        expr_list_ast = wrapper;
+    }
+
+    const auto & ast_children = expr_list_ast->as<ASTExpressionList &>().children;
+
+    /// Handle empty expression list (e.g., ORDER BY tuple() produces no key columns,
+    /// or missing PARTITION BY produces an empty partition key).
+    if (ast_children.empty())
+    {
+        ActionsDAG dag;
+        for (const auto & col : available_columns)
+            dag.addInput(col.name, col.type);
+        return dag;
+    }
+
+    /// Collect AST column names to use for output renaming, so that callers
+    /// that rely on ast->getColumnName() (e.g. findInOutputs) work correctly.
+    std::vector<String> ast_column_names;
+    ast_column_names.reserve(ast_children.size());
+    for (const auto & child : ast_children)
+        ast_column_names.push_back(child->getColumnName());
+
     auto execution_context = Context::createCopy(context);
 
     ColumnsDescription columns_description(available_columns);
@@ -37,14 +65,6 @@ ActionsDAG analyzeExpressionToActionsDAG(
 
     auto query_node = std::make_shared<QueryNode>(execution_context);
 
-    /// Ensure the AST is an expression list, because QueryNode projection expects a ListNode.
-    ASTPtr expr_list_ast = expression_ast;
-    if (!expr_list_ast->as<ASTExpressionList>())
-    {
-        auto wrapper = make_intrusive<ASTExpressionList>();
-        wrapper->children.push_back(expr_list_ast);
-        expr_list_ast = wrapper;
-    }
     auto expression_list = buildQueryTree(expr_list_ast, execution_context);
 
     query_node->getProjectionNode() = expression_list;
@@ -68,15 +88,47 @@ ActionsDAG analyzeExpressionToActionsDAG(
 
     if (add_aliases)
     {
-        const auto & projection_columns = query_node->getProjectionColumns();
+        /// Project to only the expression columns, renamed to match AST column names.
         auto & outputs = actions.getOutputs();
         NamesWithAliases rename_pairs;
         rename_pairs.reserve(outputs.size());
 
         for (size_t i = 0; i != outputs.size(); ++i)
-            rename_pairs.emplace_back(outputs[i]->result_name, projection_columns[i].name);
+            rename_pairs.emplace_back(outputs[i]->result_name, ast_column_names[i]);
 
         actions.project(rename_pairs);
+    }
+    else
+    {
+        /// Rename expression outputs to match AST column names, so that callers
+        /// using ast->getColumnName() can find them in the DAG.
+        auto & outputs = actions.getOutputs();
+        for (size_t i = 0; i < outputs.size(); ++i)
+        {
+            if (outputs[i]->result_name != ast_column_names[i])
+                outputs[i] = &actions.addAlias(*outputs[i], ast_column_names[i]);
+        }
+
+        /// Add source columns to outputs to match ExpressionAnalyzer::getActions(false) behavior.
+        /// The old code included all source columns in the output; buildActionsDAGFromExpressionNode
+        /// only outputs the expression results.
+        std::vector<const ActionsDAG::Node *> inputs_to_add;
+        for (const auto * input : actions.getInputs())
+        {
+            bool already_in_outputs = false;
+            for (const auto * output : outputs)
+            {
+                if (output == input)
+                {
+                    already_in_outputs = true;
+                    break;
+                }
+            }
+            if (!already_in_outputs)
+                inputs_to_add.push_back(input);
+        }
+        for (const auto * input : inputs_to_add)
+            outputs.push_back(input);
     }
 
     return std::move(actions);
