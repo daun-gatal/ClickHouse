@@ -11,6 +11,7 @@
 #include <Planner/CollectTableExpressionData.h>
 #include <Planner/PlannerContext.h>
 #include <Planner/Utils.h>
+#include <DataTypes/DataTypesNumber.h>
 #include <Storages/ColumnsDescription.h>
 #include <Storages/StorageDummy.h>
 
@@ -37,13 +38,10 @@ ActionsDAG analyzeExpressionToActionsDAG(
 
     /// Handle empty expression list (e.g., ORDER BY tuple() produces no key columns,
     /// or missing PARTITION BY produces an empty partition key).
+    /// Return an empty DAG with no inputs — callers like getRequiredColumns()
+    /// must see an empty list, not all table columns.
     if (ast_children.empty())
-    {
-        ActionsDAG dag;
-        for (const auto & col : available_columns)
-            dag.addInput(col.name, col.type);
-        return dag;
-    }
+        return ActionsDAG();
 
     /// Collect AST column names to use for output renaming, so that callers
     /// that rely on ast->getColumnName() (e.g. findInOutputs) work correctly.
@@ -54,7 +52,13 @@ ActionsDAG analyzeExpressionToActionsDAG(
 
     auto execution_context = Context::createCopy(context);
 
-    ColumnsDescription columns_description(available_columns);
+    /// StorageDummy requires at least one column.  When the expression is constant
+    /// (e.g. a constant TTL like '2000-10-10'::DateTime), available_columns may be empty.
+    auto columns_for_dummy = available_columns;
+    if (columns_for_dummy.empty())
+        columns_for_dummy.emplace_back("_dummy", std::make_shared<DataTypeUInt8>());
+
+    ColumnsDescription columns_description(columns_for_dummy);
     auto storage = std::make_shared<StorageDummy>(StorageID{"dummy", "dummy"}, columns_description);
     QueryTreeNodePtr fake_table_expression = std::make_shared<TableNode>(storage, execution_context);
 
@@ -84,7 +88,8 @@ ActionsDAG analyzeExpressionToActionsDAG(
         expression_list,
         {},
         planner_context,
-        empty_correlated_columns_set);
+        empty_correlated_columns_set,
+        false /* use_column_identifier_as_action_node_name */);
 
     if (add_aliases)
     {
