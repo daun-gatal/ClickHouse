@@ -232,7 +232,13 @@ class CommandRequest:
             return stderr
         lines = stderr.split("\n")
         lines = [
-            x for x in lines if ("completion_queue" not in x and "Kick failed" not in x)
+            x
+            for x in lines
+            if (
+                "completion_queue" not in x
+                and "Kick failed" not in x
+                and "LLVM Profile" not in x
+            )
         ]
         return "\n".join(lines)
 
