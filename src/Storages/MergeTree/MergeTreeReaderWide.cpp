@@ -69,7 +69,10 @@ MergeTreeReaderWide::MergeTreeReaderWide(
     try
     {
         for (size_t i = 0; i < columns_to_read.size(); ++i)
-            addStreams(columns_to_read[i], serializations[i]);
+        {
+            if (!isColumnDroppedByPendingMutation(i))
+                addStreams(columns_to_read[i], serializations[i]);
+        }
     }
     catch (...)
     {
@@ -134,6 +137,9 @@ void MergeTreeReaderWide::prefetchForAllColumns(
     /// so if reading can be asynchronous, it will also be performed in parallel for all columns.
     for (size_t pos = 0; pos < num_columns; ++pos)
     {
+        if (isColumnDroppedByPendingMutation(pos))
+            continue;
+
         try
         {
             auto & cache = caches[columns_to_read[pos].getNameInStorage()];
@@ -342,6 +348,13 @@ size_t MergeTreeReaderWide::readRows(
 
             for (size_t pos = 0; pos < num_columns; ++pos)
             {
+                /// Column was dropped by a pending mutation. Don't read stale data; let defaults be used.
+                if (isColumnDroppedByPendingMutation(pos))
+                {
+                    res_columns[pos] = nullptr;
+                    continue;
+                }
+
                 const auto & column_to_read = columns_to_read[pos];
 
                 /// The column is already present in the block so we will append the values to the end.
@@ -681,6 +694,9 @@ void MergeTreeReaderWide::deserializePrefixForAllColumnsImpl(size_t num_columns,
         DeserializeBinaryBulkStateMap deserialize_state_map;
         for (size_t pos = 0; pos < num_columns; ++pos)
         {
+            if (isColumnDroppedByPendingMutation(pos))
+                continue;
+
             try
             {
                 auto & cache = caches[columns_to_read[pos].getNameInStorage()];
