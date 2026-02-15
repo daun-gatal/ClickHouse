@@ -332,9 +332,9 @@ HashedDictionary<dictionary_key_type, sparse, sharded>::~HashedDictionary()
         if (container.empty())
             return;
 
-        if (!pool.trySchedule([&container, thread_group = CurrentThread::getGroup(), profile_counters_scope = CurrentThread::getCountersScope()]
+        if (!pool.trySchedule([&container, thread_group = CurrentThread::getGroup(), profile_counters_scopes = CurrentThread::getCountersScopes()]
             {
-                ThreadGroupSwitcher switcher(thread_group, ThreadName::HASHED_DICT_DTOR, profile_counters_scope);
+                ThreadGroupSwitcher switcher(thread_group, ThreadName::HASHED_DICT_DTOR, profile_counters_scopes);
 
                 /// Do not account memory that was occupied by the dictionaries for the query/user context.
                 MemoryTrackerBlockerInThread memory_blocker;

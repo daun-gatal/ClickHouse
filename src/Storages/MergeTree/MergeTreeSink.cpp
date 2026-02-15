@@ -109,8 +109,8 @@ void MergeTreeSink::consume(Chunk & chunk)
 
     for (auto & current_block : part_blocks)
     {
-        auto part_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = part_scope->startCollecting();
+        auto part_scope = ProfileEventsScope::construct();
+        auto counters_scope_extension = part_scope->startCollecting();
 
         auto current_deduplication_info = deduplication_info->cloneSelf();
 
@@ -223,7 +223,7 @@ void MergeTreeSink::finishDelayedChunk()
     for (auto & partition : delayed_chunk->partitions)
     {
         Stopwatch watch;
-        auto switch_guard = partition.part_counters->startCollecting();
+        auto counters_scope_extension = partition.part_counters->startCollecting();
 
         auto retry_times = 0;
         while (true)

@@ -32,7 +32,7 @@ void MergeTreeSinkPatch::finishDelayedChunk()
 
     for (auto & partition : delayed_chunk->partitions)
     {
-        auto switch_guard = partition.part_counters->startCollecting();
+        auto counters_scope_extension = partition.part_counters->startCollecting();
 
         auto & part = partition.temp_part->part;
 

@@ -39,7 +39,7 @@ void ReplicatedMergeTreeSinkPatch::finishDelayed(const ZooKeeperWithFaultInjecti
     for (auto & partition : delayed_parts)
     {
         partition.temp_part->finalize();
-        auto switch_guard = partition.part_counters->startCollecting();
+        auto counters_scope_extension = partition.part_counters->startCollecting();
 
         auto & part = partition.temp_part->part;
         if (!part->info.isPatch())

@@ -72,11 +72,11 @@ public:
     InputPort & getInputPort() { return input; }
     OutputPort & getOutputPort() { return output; }
 
-    void setRuntimeData(ThreadGroupPtr thread_group_, ProfileEvents::CountersPtr profile_counters_scope_);
+    void setRuntimeData(ThreadGroupPtr thread_group_, ProfileEvents::CountersSeq profile_counters_scopes_);
 
 private:
     ThreadGroupPtr thread_group = nullptr;
-    ProfileEvents::CountersPtr profile_counters_scope = nullptr;
+    ProfileEvents::CountersSeq profile_counters_scopes = {};
 };
 
 }

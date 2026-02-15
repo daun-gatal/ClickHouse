@@ -35,7 +35,7 @@ public:
         , merge_mutate_entry(std::move(merge_mutate_entry_))
         , table_lock_holder(std::move(table_lock_holder_))
         , task_result_callback(task_result_callback_)
-        , profile_counters(std::make_shared<ProfileEventsScope>())
+        , profile_counters(ProfileEventsScope::construct())
     {
         for (auto & part : merge_mutate_entry->future_part->parts)
             priority.value += part->getBytesOnDisk();

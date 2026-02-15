@@ -2286,8 +2286,8 @@ void StorageMergeTree::truncate(const ASTPtr &, const StorageMetadataPtr &, Cont
         auto merge_blocker = stopMergesAndWait();
 
         Stopwatch watch;
-        auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = profile_events_scope->startCollecting();
+        auto profile_events_scope = ProfileEventsScope::construct();
+        auto counters_scope_extension = profile_events_scope->startCollecting();
 
         auto txn = query_context->getCurrentTransaction();
         if (txn)
@@ -2337,8 +2337,8 @@ void StorageMergeTree::dropPart(const String & part_name, bool detach, ContextPt
         auto merge_blocker = stopMergesAndWait();
 
         Stopwatch watch;
-        auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = profile_events_scope->startCollecting();
+        auto profile_events_scope = ProfileEventsScope::construct();
+        auto counters_scope_extension = profile_events_scope->startCollecting();
 
         /// It's important to create it outside of lock scope because
         /// otherwise it can lock parts in destructor and deadlock is possible.
@@ -2401,8 +2401,8 @@ void StorageMergeTree::dropPartition(const ASTPtr & partition, bool detach, Cont
         auto merge_blocker = stopMergesAndWait();
 
         Stopwatch watch;
-        auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = profile_events_scope->startCollecting();
+        auto profile_events_scope = ProfileEventsScope::construct();
+        auto counters_scope_extension = profile_events_scope->startCollecting();
 
         /// It's important to create it outside of lock scope because
         /// otherwise it can lock parts in destructor and deadlock is possible.
@@ -2575,8 +2575,8 @@ void StorageMergeTree::replacePartitionFrom(const StoragePtr & source_table, con
     auto my_metadata_snapshot = getInMemoryMetadataPtr();
 
     Stopwatch watch;
-    auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-    auto switch_guard = profile_events_scope->startCollecting();
+    auto profile_events_scope = ProfileEventsScope::construct();
+    auto counters_scope_extension = profile_events_scope->startCollecting();
 
     MergeTreeData & src_data = checkStructureAndGetMergeTreeData(source_table, source_metadata_snapshot, my_metadata_snapshot);
     DataPartsVector src_parts;
@@ -2725,8 +2725,8 @@ void StorageMergeTree::movePartitionToTable(const StoragePtr & dest_table, const
     auto dest_metadata_snapshot = dest_table->getInMemoryMetadataPtr();
     auto metadata_snapshot = getInMemoryMetadataPtr();
     Stopwatch watch;
-    auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-    auto switch_guard = profile_events_scope->startCollecting();
+    auto profile_events_scope = ProfileEventsScope::construct();
+    auto counters_scope_extension = profile_events_scope->startCollecting();
 
     MergeTreeData & src_data = dest_table_storage->checkStructureAndGetMergeTreeData(*this, metadata_snapshot, dest_metadata_snapshot);
     String partition_id = getPartitionIDFromQuery(partition, local_context);

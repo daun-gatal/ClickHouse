@@ -140,11 +140,11 @@ public:
         }
 
         thread = ThreadFromGlobalPool(
-            [&, thread_group = DB::CurrentThread::getGroup(), profile_counters_scope = DB::CurrentThread::getCountersScope()]
+            [&, thread_group = DB::CurrentThread::getGroup(), profile_counters_scopes = DB::CurrentThread::getCountersScopes()]
             {
                 /// Attach to current query thread group, to be able to
                 /// have query id in logs and metrics from scanDataFunc.
-                DB::ThreadGroupSwitcher switcher(thread_group, DB::ThreadName::DATALAKE_TABLE_SNAPSHOT, profile_counters_scope);
+                DB::ThreadGroupSwitcher switcher(thread_group, DB::ThreadName::DATALAKE_TABLE_SNAPSHOT, profile_counters_scopes);
                 scanDataFunc();
             });
     }

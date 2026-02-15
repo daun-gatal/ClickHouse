@@ -292,8 +292,8 @@ void ReplicatedMergeTreeSink::consume(Chunk & chunk)
     for (auto & current_block : part_blocks)
     {
         Stopwatch watch;
-        auto part_counters = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = part_counters->startCollecting();
+        auto part_counters = ProfileEventsScope::construct();
+        auto counters_scope_extension = part_counters->startCollecting();
 
         auto current_deduplication_info = deduplication_info->cloneSelf();
 
@@ -410,7 +410,7 @@ void ReplicatedMergeTreeSink::finishDelayed(const ZooKeeperWithFaultInjectionPtr
             SCOPE_EXIT({
                 partition.elapsed_ns += watch.elapsed();
             });
-            auto switch_guard = partition.part_counters->startCollecting();
+            auto counters_scope_extension = partition.part_counters->startCollecting();
 
             std::set<std::string> parts_to_wait_for_quorum;
 
@@ -541,8 +541,8 @@ bool ReplicatedMergeTreeSink::writeExistingPart(MergeTreeData::MutableDataPartPt
     auto zookeeper = std::make_shared<ZooKeeperWithFaultInjection>(origin_zookeeper);
 
     Stopwatch watch;
-    auto part_counters = std::make_shared<ProfileEventsScope>();
-    auto switch_guard = part_counters->startCollecting();
+    auto part_counters = ProfileEventsScope::construct();
+    auto counters_scope_extension = part_counters->startCollecting();
 
     String original_part_dir = part->getDataPartStorage().getPartDirectory();
     auto try_rollback_part_rename = [this, &part, &original_part_dir] ()

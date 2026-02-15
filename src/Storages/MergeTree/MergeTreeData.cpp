@@ -9477,8 +9477,8 @@ MovePartsOutcome MergeTreeData::moveParts(const CurrentlyMovingPartsTaggerPtr & 
     {
         Stopwatch stopwatch;
         MergeTreePartsMover::TemporaryClonedPart cloned_part;
-        auto profile_events_scope = std::make_shared<ProfileEventsScope>();
-        auto switch_guard = profile_events_scope->startCollecting();
+        auto profile_events_scope = ProfileEventsScope::construct();
+        auto counters_scope_extension = profile_events_scope->startCollecting();
 
         auto write_part_log = [&](const ExecutionStatus & execution_status)
         {

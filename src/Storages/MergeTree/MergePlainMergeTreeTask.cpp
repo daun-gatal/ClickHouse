@@ -4,6 +4,8 @@
 #include <Storages/StorageMergeTree.h>
 #include <Storages/MergeTree/MergeTreeDataMergerMutator.h>
 #include <Interpreters/TransactionLog.h>
+#include <Common/CurrentThread.h>
+#include <Common/ProfileEventsScope.h>
 #include <Common/setThreadName.h>
 #include <Common/ProfileEvents.h>
 #include <Common/ThreadFuzzer.h>
@@ -32,16 +34,10 @@ void MergePlainMergeTreeTask::onCompleted()
 
 bool MergePlainMergeTreeTask::executeStep()
 {
-    /// All metrics will be saved in the thread_group, including all scheduled tasks.
-    /// In profile_counters only metrics from this thread will be saved.
-    auto switch_guard = profile_counters->startCollecting();
-
     /// Make out memory tracker a parent of current thread memory tracker
     std::optional<ThreadGroupSwitcher> switcher;
     if (merge_list_entry)
-    {
-        switcher.emplace((*merge_list_entry)->thread_group, ThreadName::MERGE_MUTATE, nullptr, /*allow_existing_group*/ true);
-    }
+        switcher.emplace((*merge_list_entry)->thread_group, ThreadName::MERGE_MUTATE, ProfileEvents::CountersSeq{profile_counters->getCounters()}, /*allow_existing_group*/ true);
 
     switch (state)
     {

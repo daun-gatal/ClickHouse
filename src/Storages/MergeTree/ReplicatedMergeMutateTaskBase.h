@@ -30,7 +30,7 @@ public:
         , log(log_)
         /// This is needed to ask an asssignee to assign a new merge/mutate operation
         /// It takes bool argument and true means that current task is successfully executed.
-        , profile_counters(std::make_shared<ProfileEventsScope>())
+        , profile_counters(ProfileEventsScope::construct())
         , task_result_callback(task_result_callback_)
         , rng(randomSeed())
     {

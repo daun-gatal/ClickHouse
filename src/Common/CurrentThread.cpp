@@ -47,12 +47,7 @@ ThreadStatus & CurrentThread::get()
 ProfileEvents::Counters & CurrentThread::getProfileEvents()
 {
     if (current_thread)
-    {
-        if (current_thread->current_performance_counters)
-            return *current_thread->current_performance_counters;
-
         return current_thread->performance_counters;
-    }
 
     return ProfileEvents::global_counters;
 }

@@ -444,9 +444,9 @@ namespace
             {
                 for (auto && send_data_task : send_data_tasks)
                 {
-                    send_data_threads.emplace_back([thread_group = CurrentThread::getGroup(), profile_counters_scope = CurrentThread::getCountersScope(), task = std::move(send_data_task), this]() mutable
+                    send_data_threads.emplace_back([thread_group = CurrentThread::getGroup(), profile_counters_scopes = CurrentThread::getCountersScopes(), task = std::move(send_data_task), this]() mutable
                     {
-                        ThreadGroupSwitcher switcher(thread_group, ThreadName::SEND_TO_SHELL_CMD, profile_counters_scope);
+                        ThreadGroupSwitcher switcher(thread_group, ThreadName::SEND_TO_SHELL_CMD, profile_counters_scopes);
 
                         try
                         {

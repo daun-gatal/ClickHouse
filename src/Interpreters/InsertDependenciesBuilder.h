@@ -82,7 +82,7 @@ private:
     using MapIdThreadGroup = std::
         unordered_map<StorageIDMaybeEmpty, ThreadGroupPtr, StorageID::DatabaseAndTableNameHash, StorageID::DatabaseAndTableNameEqual>;
     using MapIdProfileCountersScope = std::
-        unordered_map<StorageIDMaybeEmpty, ProfileEvents::CountersPtr, StorageID::DatabaseAndTableNameHash, StorageID::DatabaseAndTableNameEqual>;
+        unordered_map<StorageIDMaybeEmpty, ProfileEvents::CountersSeq, StorageID::DatabaseAndTableNameHash, StorageID::DatabaseAndTableNameEqual>;
     using MapIdViewType = std::unordered_map<
         StorageIDMaybeEmpty,
         QueryViewsLogElement::ViewType,

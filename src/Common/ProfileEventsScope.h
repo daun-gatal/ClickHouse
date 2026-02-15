@@ -7,21 +7,25 @@
 namespace DB
 {
 
-class ProfileEventsScopeSwitch
+class ProfileEventScopeExtension
 {
 public:
-    explicit ProfileEventsScopeSwitch(ProfileEvents::CountersPtr to);
-    ~ProfileEventsScopeSwitch();
+    explicit ProfileEventScopeExtension(ProfileEvents::CountersPtr to);
+    ~ProfileEventScopeExtension();
 
 private:
-    ProfileEvents::CountersPtr previous_counters_scope;
+    ProfileEvents::CountersPtr attached_scope;
 };
 
 /// Use specific performance counters for current thread in the current scope.
 class ProfileEventsScope : public std::enable_shared_from_this<ProfileEventsScope>
 {
+    explicit ProfileEventsScope();
+
 public:
-    ProfileEventsScopeSwitch startCollecting();
+    static std::shared_ptr<ProfileEventsScope> construct();
+
+    ProfileEventScopeExtension startCollecting();
     ProfileEvents::CountersPtr getCounters();
     std::shared_ptr<ProfileEvents::Counters::Snapshot> getSnapshot();
 

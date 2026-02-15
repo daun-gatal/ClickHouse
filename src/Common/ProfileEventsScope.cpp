@@ -1,22 +1,36 @@
 #include <Common/ProfileEventsScope.h>
 #include <Common/CurrentThread.h>
+#include <Common/VariableContext.h>
 
 namespace DB
 {
 
-ProfileEventsScopeSwitch::ProfileEventsScopeSwitch(ProfileEvents::CountersPtr to)
+ProfileEventScopeExtension::ProfileEventScopeExtension(ProfileEvents::CountersPtr to)
+    : attached_scope(std::move(to))
 {
-    previous_counters_scope = CurrentThread::get().attachProfileCountersScope(to);
+    CurrentThread::get().attachProfileCountersScope(attached_scope);
 }
 
-ProfileEventsScopeSwitch::~ProfileEventsScopeSwitch()
+ProfileEventScopeExtension::~ProfileEventScopeExtension()
 {
-    CurrentThread::get().attachProfileCountersScope(previous_counters_scope);
+    auto detached_scope = CurrentThread::get().detachProfileCountersScope();
+    chassert(detached_scope == attached_scope);
 }
 
-ProfileEventsScopeSwitch ProfileEventsScope::startCollecting()
+ProfileEventsScope::ProfileEventsScope()
+    : performance_counters_holder(VariableContext::Scope)
 {
-    return ProfileEventsScopeSwitch(getCounters());
+}
+
+std::shared_ptr<ProfileEventsScope> ProfileEventsScope::construct()
+{
+    struct ProfileEventsScopeCreator : public ProfileEventsScope {};
+    return std::make_shared<ProfileEventsScopeCreator>();
+}
+
+ProfileEventScopeExtension ProfileEventsScope::startCollecting()
+{
+    return ProfileEventScopeExtension(getCounters());
 }
 
 ProfileEvents::CountersPtr ProfileEventsScope::getCounters()

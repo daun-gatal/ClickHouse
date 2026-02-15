@@ -5,6 +5,7 @@
 #include <Interpreters/TransactionLog.h>
 #include <Interpreters/Context.h>
 #include <Common/ErrorCodes.h>
+#include <Common/ProfileEventsScope.h>
 #include <Common/setThreadName.h>
 #include <Core/Settings.h>
 
@@ -41,6 +42,7 @@ void MutatePlainMergeTreeTask::prepare()
         storage.getStorageID(),
         future_part,
         task_context);
+    profile_counters = ProfileEventsScope::construct();
 
     stopwatch = std::make_unique<Stopwatch>();
 
@@ -87,13 +89,10 @@ void MutatePlainMergeTreeTask::finish()
 
 bool MutatePlainMergeTreeTask::executeStep()
 {
-    /// Metrics will be saved in the local profile_counters.
-    auto switch_guard = profile_counters->startCollecting();
-
     /// Make out memory tracker a parent of current thread memory tracker
     std::optional<ThreadGroupSwitcher> switcher;
     if (merge_list_entry)
-        switcher.emplace((*merge_list_entry)->thread_group, ThreadName::MERGE_MUTATE, nullptr, /*allow_existing_group*/ true);
+        switcher.emplace((*merge_list_entry)->thread_group, ThreadName::MERGE_MUTATE, ProfileEvents::CountersSeq{profile_counters->getCounters()}, /*allow_existing_group*/ true);
 
     switch (state)
     {
